@@ -62,7 +62,17 @@ export class MobileAuthService {
       throw new UnauthorizedException(INVALID_REFRESH_TOKEN_MESSAGE);
     }
 
-    return this.tenantContext.runWithTenant(resolved.tenant_id, async () => {
+    // Mobile-agent-found bug: this used to throw UnauthorizedException from
+    // inside runWithTenant's callback for the "reject" branches below. Since
+    // runWithTenant wraps the callback in one DB transaction
+    // (TenantContextService.runWithTenant -> dataSource.transaction), a
+    // thrown exception rolls the WHOLE transaction back — including the
+    // revokeAllForPerson() write meant to survive a reuse-detection reject,
+    // silently turning "burn the whole token family" into a no-op. Fix: the
+    // transaction always returns normally (never throws), so every write
+    // inside it commits; only AFTER it has returned/committed do we decide,
+    // outside any transaction, whether to throw.
+    const outcome = await this.tenantContext.runWithTenant(resolved.tenant_id, async () => {
       // Code-review finding — race condition in refresh-token rotation:
       // resolved's revoked_at/expires_at above is an unlocked snapshot read
       // before this transaction existed, so it can be stale under
@@ -71,7 +81,7 @@ export class MobileAuthService {
       // the race — see RefreshTokenService.lockById's own comment.
       const locked = await this.refreshTokenService.lockById(resolved.refresh_token_id);
       if (!locked) {
-        throw new UnauthorizedException(INVALID_REFRESH_TOKEN_MESSAGE);
+        return { rejected: true as const };
       }
 
       if (locked.revokedAt) {
@@ -79,7 +89,7 @@ export class MobileAuthService {
         // the reuse-detection signal per the approved design: burn the whole
         // family for this person (possible theft/replay), not just this row.
         await this.refreshTokenService.revokeAllForPerson(locked.personId);
-        throw new UnauthorizedException(INVALID_REFRESH_TOKEN_MESSAGE);
+        return { rejected: true as const };
       }
 
       if (locked.expiresAt.getTime() < Date.now()) {
@@ -87,14 +97,19 @@ export class MobileAuthService {
         // already rejected below either way): mark it revoked so it reads
         // consistently for anyone inspecting the row later.
         await this.refreshTokenService.revoke(locked.id);
-        throw new UnauthorizedException(INVALID_REFRESH_TOKEN_MESSAGE);
+        return { rejected: true as const };
       }
 
       const accessToken = this.signAccessToken({ personId: locked.personId, tenantId: resolved.tenant_id });
       const { tokenId, rawToken } = await this.refreshTokenService.issue(locked.personId);
       await this.refreshTokenService.rotate(locked.id, tokenId);
-      return { accessToken, refreshToken: rawToken };
+      return { rejected: false as const, accessToken, refreshToken: rawToken };
     });
+
+    if (outcome.rejected) {
+      throw new UnauthorizedException(INVALID_REFRESH_TOKEN_MESSAGE);
+    }
+    return { accessToken: outcome.accessToken, refreshToken: outcome.refreshToken };
   }
 
   async logout(presentedToken: string): Promise<void> {
