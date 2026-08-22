@@ -249,6 +249,43 @@ não decidido; ver `pending-decisions.md`), e se `captured_at` deve ser
 promovido a coluna indexada em vez de viver só dentro do `raw_payload`
 jsonb (avaliação técnica do Database Agent, não bloqueante).
 
+## Decisão de tecnologia — Frontend Web (aprovada em 2026-08-22)
+
+Proposta do Tech Decision Agent, aprovada pelo usuário. Preenche com
+tecnologia concreta o componente **Frontend Web** já previsto no diagrama
+de alto nível — não é uma decisão de arquitetura nova. Escopo: um
+dashboard interno mínimo de administração institucional (login,
+estrutura institucional, configuração de regras de chamada, registro de
+chamada, resolução de pendências, usuários/grupos de permissão,
+pulseiras, dispositivos) — não o app do aluno/professor (esse é o futuro
+App Mobile, decisão separada, ainda não tomada).
+
+1. **Framework/linguagem:** React 18+ com TypeScript, SPA (sem
+   SSR/Next.js — a ferramenta é interna, autenticada, sem SEO/conteúdo
+   público, então SSR resolveria um problema que não existe aqui).
+2. **Build:** Vite.
+3. **Busca/estado de dados do servidor:** TanStack Query sobre um cliente
+   HTTP `fetch` tipado — evita repetir loading/erro/retry em cada uma das
+   ~10 telas de CRUD/consulta.
+4. **Estilo:** CSS Modules como base (Tailwind é alternativa aceitável,
+   critério do Frontend Agent); biblioteca de componentes/design system
+   completa fica deliberadamente para a fase de implementação, não faz
+   parte desta decisão.
+5. **Autenticação:** o JWT emitido por `POST /v1/auth/login` fica em
+   `sessionStorage`, anexado a cada requisição via header `Authorization:
+   Bearer` centralizado no cliente HTTP (não espalhado por chamada).
+   Ressalva de segurança registrada: qualquer storage acessível por
+   JavaScript (sessionStorage incluso) tem exposição a XSS; um modelo de
+   cookie `httpOnly` seria mais forte, mas exigiria mudança no backend
+   (login passaria a responder com `Set-Cookie`) — não incluído nesta
+   rodada, fica como decisão futura separada se Security/Backend
+   quiserem revisitar.
+
+**Exceção de coding-identity confirmada (2026-08-22):** organização por
+feature/página (não controller/service/repository) e `async`/`await`
+(não Promises encadeadas) quando a stack for React — mesmo raciocínio já
+aplicado ao NestJS no backend.
+
 ## Restrições/premissas confirmadas
 
 - Multi-tenancy é requisito de arquitetura desde o início (ver
@@ -261,7 +298,9 @@ jsonb (avaliação técnica do Database Agent, não bloqueante).
   dispositivos deve ter estratégia para lidar com isso (retry,
   idempotência, deduplicação, etc. — a estratégia concreta é decisão do
   Backend/IoT Agent, não definida ainda).
-- Nenhuma tecnologia específica (linguagem, framework, banco de dados,
-  nuvem) foi aprovada ainda — isso é escopo do Tech Decision Agent e
-  requer aprovação explícita do usuário antes de ser tratado como
-  decidido.
+- Tecnologia já aprovada: núcleo do backend (Node.js/NestJS/PostgreSQL,
+  seção acima) e Frontend Web (React/TypeScript/Vite, seção acima). Ainda
+  não decidido: App Mobile, tecnologia de segurança de intrusão, hardware
+  de câmera/contagem — cada uma segue exigindo proposta do Tech Decision
+  Agent com aprovação explícita do usuário antes de ser tratada como
+  decidida.

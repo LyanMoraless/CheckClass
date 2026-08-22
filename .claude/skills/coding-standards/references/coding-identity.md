@@ -71,6 +71,12 @@ alongside the generic `coding-standards` and `clean-code` knowledge.
   produces less idiomatic, harder-to-maintain code for no real benefit. Only
   applies when NestJS (or a similarly opinionated framework) is the
   confirmed stack; the general preference above still applies elsewhere.
+- **Confirmed exception (2026-08-22, CheckClass frontend/React):** when the
+  approved stack is React, organize by feature/page (colocated components,
+  hooks, and API calls per feature folder) instead of the controller/
+  service/repository split — that layering doesn't map cleanly onto a
+  component-based SPA to begin with. Same reasoning as the NestJS exception:
+  follow the framework's own idiom rather than fight it.
 
 ## Asynchronous code style
 
@@ -83,6 +89,10 @@ alongside the generic `coding-standards` and `clean-code` knowledge.
   `.then()/.catch()` against that idiom adds friction without upholding the
   underlying reason for the general preference. Only applies when NestJS
   (or a similarly `async`-idiomatic framework) is the confirmed stack.
+- **Confirmed exception (2026-08-22, CheckClass frontend/React):** use
+  `async`/`await` throughout when the stack is React (hooks, event handlers,
+  and TanStack Query's query/mutation functions are near-universally written
+  this way in the ecosystem). Same reasoning as the NestJS exception.
 
 ## Dependency handling between classes/modules
 
