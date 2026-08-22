@@ -1,6 +1,7 @@
 import {
   AttendanceConfigEntity,
   AttendanceConfigRequiredFactorEntity,
+  AttendanceFactorTypeEntity,
   ClassGroupEntity,
 } from '../../database/entities';
 import {
@@ -33,6 +34,7 @@ describe('TenantConfigService', () => {
     requiredFactors?: Array<{ attendanceFactorTypeId: string }>;
     classGroupRepo?: MockRepository;
     configRepo?: MockRepository;
+    factorTypeRepo?: MockRepository;
   }) {
     const classGroupRepo =
       options.classGroupRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue(classGroup) });
@@ -46,16 +48,18 @@ describe('TenantConfigService', () => {
           .mockResolvedValueOnce(options.institutionConfig ?? null),
       });
     const requiredFactorRepo = createMockRepository({ findBy: jest.fn().mockResolvedValue(options.requiredFactors ?? []) });
+    const factorTypeRepo = options.factorTypeRepo ?? createMockRepository();
 
     const repositoriesByEntity = new Map<unknown, MockRepository>([
       [ClassGroupEntity, classGroupRepo],
       [AttendanceConfigEntity, configRepo],
       [AttendanceConfigRequiredFactorEntity, requiredFactorRepo],
+      [AttendanceFactorTypeEntity, factorTypeRepo],
     ]);
     const manager = createMockEntityManager(repositoriesByEntity);
     const tenantContext = createMockTenantContext(manager);
     const service = new TenantConfigService(tenantContext as never);
-    return { service, classGroupRepo, configRepo, requiredFactorRepo };
+    return { service, classGroupRepo, configRepo, requiredFactorRepo, factorTypeRepo };
   }
 
   test('test_resolveEffectiveConfig_classGroupSpecificConfigWins_overCourseAndInstitution', async () => {
@@ -230,5 +234,35 @@ describe('TenantConfigService', () => {
       expect.objectContaining({ scopeType: ConfigScopeType.INSTITUTION, minAttendancePercentage: 75 }),
     );
     expect(configRepo.update).not.toHaveBeenCalled();
+  });
+
+  test('test_listConfigs_returnsAllConfigsForTenant', async () => {
+    const configRows = [{ id: 'config-1' }, { id: 'config-2' }];
+    const configRepo = createMockRepository({ find: jest.fn().mockResolvedValue(configRows) });
+    const { service } = buildService({ configRepo });
+
+    const result = await service.listConfigs();
+
+    expect(result).toBe(configRows);
+    expect(configRepo.find).toHaveBeenCalledWith({ order: { scopeType: 'ASC' } });
+  });
+
+  test('test_listConfigs_noneConfigured_returnsEmptyArray', async () => {
+    const { service } = buildService({});
+
+    const result = await service.listConfigs();
+
+    expect(result).toEqual([]);
+  });
+
+  test('test_listFactorTypes_returnsAllFactorTypesOrderedByName', async () => {
+    const factorTypeRows = [{ id: 'factor-1', name: 'ROOM_ENTRY' }];
+    const factorTypeRepo = createMockRepository({ find: jest.fn().mockResolvedValue(factorTypeRows) });
+    const { service } = buildService({ factorTypeRepo });
+
+    const result = await service.listFactorTypes();
+
+    expect(result).toBe(factorTypeRows);
+    expect(factorTypeRepo.find).toHaveBeenCalledWith({ order: { name: 'ASC' } });
   });
 });

@@ -151,4 +151,26 @@ describe('PersonManagementService', () => {
 
     expect(result).toEqual({ personId: 'person-9', actorTypeId: 'actor-type-1' });
   });
+
+  test('test_list_returnsPersonsFromQuery_withoutTouchingRepositories', async () => {
+    const rows = [
+      { personId: 'person-1', fullName: 'Jane Student', actorTypeCode: 'STUDENT', hasLoginCredential: false },
+    ];
+    const { service, manager } = buildService();
+    manager.query.mockResolvedValue(rows);
+
+    const result = await service.list();
+
+    expect(result).toBe(rows);
+    expect(manager.query).toHaveBeenCalledWith(expect.stringContaining('FROM person p'));
+  });
+
+  test('test_list_noPersons_returnsEmptyArray', async () => {
+    const { service, manager } = buildService();
+    manager.query.mockResolvedValue([]);
+
+    const result = await service.list();
+
+    expect(result).toEqual([]);
+  });
 });

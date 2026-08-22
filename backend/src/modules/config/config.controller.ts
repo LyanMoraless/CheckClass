@@ -1,4 +1,4 @@
-import { Body, Controller, Param, ParseUUIDPipe, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards, UseInterceptors } from '@nestjs/common';
 import { TenantContextInterceptor } from '../../database/tenant-context.interceptor';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionCheckInterceptor } from '../auth/permission-check.interceptor';
@@ -13,6 +13,21 @@ import { TenantConfigService } from './tenant-config.service';
 @UseInterceptors(TenantContextInterceptor, PermissionCheckInterceptor)
 export class ConfigController {
   constructor(private readonly configService: TenantConfigService) {}
+
+  // Added for the admin frontend: no read path existed for either of these
+  // before — the config screen needs to show existing configs and the
+  // available factor types before offering to change them.
+  @Get()
+  @RequirePermission(Permission.CONFIGURE_ATTENDANCE_RULES)
+  listConfigs() {
+    return this.configService.listConfigs();
+  }
+
+  @Get('factor-types')
+  @RequirePermission(Permission.CONFIGURE_ATTENDANCE_RULES)
+  listFactorTypes() {
+    return this.configService.listFactorTypes();
+  }
 
   @Post()
   @RequirePermission(Permission.CONFIGURE_ATTENDANCE_RULES)

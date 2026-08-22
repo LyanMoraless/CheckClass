@@ -19,6 +19,13 @@ export interface CreatedPerson {
   actorTypeId: string;
 }
 
+export interface ListedPerson {
+  personId: string;
+  fullName: string;
+  actorTypeCode: string;
+  hasLoginCredential: boolean;
+}
+
 // Minimal "manage users" capability behind the MANAGE_USERS permission
 // (confirmed 2026-08-22) — create a person, optionally with login
 // credentials. Group assignment is a separate call
@@ -51,6 +58,24 @@ export class PersonManagementService {
     }
 
     return { personId: person.id, actorTypeId: actorType.id };
+  }
+
+  // Added for the admin frontend: every screen that needs to pick a person
+  // (enrollment, wristband issue, permission-group membership) needs a way
+  // to look one up — there was no read path for this at all previously.
+  async list(): Promise<ListedPerson[]> {
+    const manager = this.tenantContext.getManager();
+    return manager.query(`
+      SELECT
+        p.id AS "personId",
+        p.full_name AS "fullName",
+        at.code AS "actorTypeCode",
+        (pc.id IS NOT NULL) AS "hasLoginCredential"
+      FROM person p
+      JOIN actor_type at ON at.id = p.actor_type_id
+      LEFT JOIN person_credential pc ON pc.person_id = p.id
+      ORDER BY p.full_name ASC
+    `);
   }
 
   private async findOrCreateActorType(code: string): Promise<ActorTypeEntity> {

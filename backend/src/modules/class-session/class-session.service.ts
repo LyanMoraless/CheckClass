@@ -50,4 +50,15 @@ export class ClassSessionService {
 
     return saved;
   }
+
+  // Added for the admin frontend: there was no read path for existing
+  // sessions — the attendance-register screens need a classSessionId to
+  // look anything up, and had no way to discover one.
+  async list(classGroupId?: string): Promise<ClassSessionEntity[]> {
+    const manager = this.tenantContext.getManager();
+    const repository = manager.getRepository(ClassSessionEntity);
+    return classGroupId
+      ? repository.find({ where: { classGroupId }, order: { scheduledStart: 'DESC' } })
+      : repository.find({ order: { scheduledStart: 'DESC' } });
+  }
 }

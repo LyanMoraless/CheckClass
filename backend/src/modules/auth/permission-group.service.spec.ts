@@ -20,6 +20,7 @@ import { PermissionGroupService } from './permission-group.service';
 describe('PermissionGroupService', () => {
   function buildService(options: {
     permissionGroupRepo?: MockRepository;
+    permissionRepo?: MockRepository;
     personRepo?: MockRepository;
     personGroupRepo?: MockRepository;
     countResult?: number;
@@ -28,7 +29,7 @@ describe('PermissionGroupService', () => {
     const permissionGroupRepo =
       options.permissionGroupRepo ??
       createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'group-1' }) });
-    const permissionRepo = createMockRepository();
+    const permissionRepo = options.permissionRepo ?? createMockRepository();
     const personRepo =
       options.personRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'person-1' }) });
     const personGroupRepo = options.personGroupRepo ?? createMockRepository();
@@ -136,6 +137,37 @@ describe('PermissionGroupService', () => {
     const { service } = buildService({ queryRows: [] });
 
     const result = await service.getPermissionsForPerson('person-1');
+
+    expect(result).toEqual([]);
+  });
+
+  test('test_listGroups_returnsEachGroupWithItsOwnPermissionsOnly', async () => {
+    const permissionGroupRepo = createMockRepository({
+      find: jest.fn().mockResolvedValue([
+        { id: 'group-1', name: 'Secretaria' },
+        { id: 'group-2', name: 'Empty Group' },
+      ]),
+    });
+    const permissionRepo = createMockRepository({
+      find: jest.fn().mockResolvedValue([
+        { permissionGroupId: 'group-1', permissionCode: Permission.MANAGE_USERS },
+        { permissionGroupId: 'group-1', permissionCode: Permission.VIEW_ATTENDANCE_REGISTER },
+      ]),
+    });
+    const { service } = buildService({ permissionGroupRepo, permissionRepo });
+
+    const result = await service.listGroups();
+
+    expect(result).toEqual([
+      { id: 'group-1', name: 'Secretaria', permissions: [Permission.MANAGE_USERS, Permission.VIEW_ATTENDANCE_REGISTER] },
+      { id: 'group-2', name: 'Empty Group', permissions: [] },
+    ]);
+  });
+
+  test('test_listGroups_noGroups_returnsEmptyArray', async () => {
+    const { service } = buildService({});
+
+    const result = await service.listGroups();
 
     expect(result).toEqual([]);
   });

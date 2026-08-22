@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { TenantContextInterceptor } from '../../database/tenant-context.interceptor';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionCheckInterceptor } from '../auth/permission-check.interceptor';
@@ -23,5 +23,15 @@ export class ClassSessionController {
       scheduledEnd: new Date(body.scheduledEnd),
     });
     return { classSessionId: session.id };
+  }
+
+  // Added for the admin frontend: gated the same as creation
+  // (MANAGE_INSTITUTION_STRUCTURE) — a separate read permission for
+  // "can discover session ids" (e.g. for VIEW_ATTENDANCE_REGISTER-only
+  // holders) isn't modeled yet; flagged in the implementation summary.
+  @Get()
+  @RequirePermission(Permission.MANAGE_INSTITUTION_STRUCTURE)
+  list(@Query('classGroupId') classGroupId?: string) {
+    return this.classSessionService.list(classGroupId);
   }
 }

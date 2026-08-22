@@ -57,6 +57,22 @@ export class PermissionGroupService {
     await repository.save(repository.create({ tenantId, personId, permissionGroupId }));
   }
 
+  // Added for the admin frontend: the "assign member" screen needs a list of
+  // existing groups to pick from (no other consumer needs this yet).
+  async listGroups(): Promise<Array<{ id: string; name: string; permissions: Permission[] }>> {
+    const manager = this.tenantContext.getManager();
+    const groups = await manager.getRepository(PermissionGroupEntity).find({ order: { name: 'ASC' } });
+    const permissionRows = await manager.getRepository(PermissionGroupPermissionEntity).find();
+
+    return groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      permissions: permissionRows
+        .filter((row) => row.permissionGroupId === group.id)
+        .map((row) => row.permissionCode as Permission),
+    }));
+  }
+
   // A person can belong to more than one group; any one of them granting the
   // permission is enough (same "any role in the chain authorizes" spirit as
   // RULE-ATT-12, applied here to general management instead).

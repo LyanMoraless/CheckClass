@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Param, ParseUUIDPipe, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { TenantContextInterceptor } from '../../database/tenant-context.interceptor';
 import { AssignPersonToGroupDto } from './dto/assign-person-to-group.dto';
 import { CreatePermissionGroupDto } from './dto/create-permission-group.dto';
@@ -17,6 +17,13 @@ import { RequirePermission } from './require-permission.decorator';
 @RequirePermission(Permission.MANAGE_USERS)
 export class PermissionGroupController {
   constructor(private readonly permissionGroupService: PermissionGroupService) {}
+
+  // Added for the admin frontend: assigning a member needs a list of
+  // existing groups to choose from.
+  @Get()
+  list() {
+    return this.permissionGroupService.listGroups();
+  }
 
   @Post()
   async create(@Body() body: CreatePermissionGroupDto, @Req() request: AuthenticatedRequest) {

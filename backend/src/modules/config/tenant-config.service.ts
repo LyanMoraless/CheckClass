@@ -3,6 +3,7 @@ import { IsNull } from 'typeorm';
 import {
   AttendanceConfigEntity,
   AttendanceConfigRequiredFactorEntity,
+  AttendanceFactorTypeEntity,
   ClassGroupEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
@@ -102,6 +103,23 @@ export class TenantConfigService {
       postToleranceBehavior: input.postToleranceBehavior,
     });
     return repository.save(created);
+  }
+
+  // Added for the admin frontend: the required-factors screen needs to show
+  // which factor types exist to pick from (standard ones, tenant_id NULL,
+  // plus any this tenant registered — though no endpoint creates custom ones
+  // yet, so in practice this is just the seeded standard set today).
+  async listFactorTypes(): Promise<AttendanceFactorTypeEntity[]> {
+    const manager = this.tenantContext.getManager();
+    return manager.getRepository(AttendanceFactorTypeEntity).find({ order: { name: 'ASC' } });
+  }
+
+  // Added for the admin frontend: there was no read path for existing
+  // config rows at all — the config screen needs to show what's already
+  // set before offering to change it.
+  async listConfigs(): Promise<AttendanceConfigEntity[]> {
+    const manager = this.tenantContext.getManager();
+    return manager.getRepository(AttendanceConfigEntity).find({ order: { scopeType: 'ASC' } });
   }
 
   async setRequiredFactors(configId: string, factorTypeIds: string[]): Promise<void> {
