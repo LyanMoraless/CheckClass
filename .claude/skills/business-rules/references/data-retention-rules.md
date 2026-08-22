@@ -26,6 +26,15 @@ ATT-11 já estabelece que pendências não expiram automaticamente,
 independentemente deste prazo.
 **Source of confirmation:** Confirmado pelo usuário em 2026-08-21.
 
+**Nota adicional — comportamento do app mobile (confirmado em
+2026-08-22):** quando o app mobile pede um registro de presença/chamada
+que já saiu da janela viva de 60 dias (ou seja, já foi arquivado
+conforme esta regra), o app deve exibir uma mensagem indicando que
+existem dados mais antigos, mas que foram arquivados fora do sistema
+vivo — nunca deve simplesmente não mostrar nada, como se o dado não
+existisse. Nesta rodada de escopo, não está confirmado acesso in-app aos
+dados arquivados em si (apenas o aviso de que existem).
+
 ### RULE-RET-02: Consolidação anual após 12 meses de fechamentos mensais
 
 **Statement:** Após acumular 12 fechamentos mensais (RULE-RET-01), o

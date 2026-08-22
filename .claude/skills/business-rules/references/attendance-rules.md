@@ -77,6 +77,44 @@ mecanismos futuros.
 **Exceptions:** Nenhuma — a lista de mecanismos é extensível por design.
 **Source of confirmation:** Prompt Mestre, seção 7.
 
+**Nota adicional (confirmado em 2026-08-22):** o mecanismo "aplicativo"
+citado acima agora tem forma de submissão confirmada: o check-in feito
+pelo app mobile usa um **caminho de submissão novo, autenticado pelo JWT
+da própria pessoa** — explicitamente **não** reaproveita o contrato de
+ingestão de dispositivo (`POST /v1/ingestion/events`, autenticado por API
+key do dispositivo, usado pelos fatores IoT — pulseira/tag, facial,
+sensor de sala). É uma capacidade autenticada por pessoa, distinta desses
+fatores de dispositivo, não uma variante deles. O contrato técnico exato
+desse novo endpoint (rota, payload) ainda não foi definido aqui — é
+trabalho do Solution Architect/Backend.
+
+**Resolução da sessão de aula para check-in via app (confirmado em
+2026-08-22; precisão sobre "momento do check-in" esclarecida em
+2026-08-22):** ao contrário do check-in originado por dispositivo (que
+resolve a sessão de aula via `roomId` + horário), o check-in via app não
+tem sinal físico de sala. Nesse caso, o sistema resolve automaticamente a
+sessão de aula aplicável combinando **matrícula ativa do aluno** +
+**janela de horário atual**: é a sessão, dentre as turmas em que o aluno
+está matriculado, que está em andamento (dentro do intervalo
+início/fim programado) **no momento em que o servidor recebe a
+requisição** — nunca um `capturedAt` informado pelo cliente; o DTO desse
+endpoint não aceita mais um `capturedAt` do cliente. Essa precisão foi
+confirmada em 2026-08-22 a partir de uma revisão de segurança feita
+durante a implementação de `POST /v1/app-checkin`: sem ela, um aluno
+poderia fabricar presença para uma sessão que não frequentou apenas
+manipulando um timestamp autorreportado para cair dentro da janela da
+sessão. Não há tolerância para esse timestamp — a resolução é sempre
+baseada no relógio do servidor, sem margem configurável. Consequência
+aceita: um check-in enfileirado offline (ver design de retry offline do
+App Mobile) que só chega ao servidor depois que sua sessão de aula já
+terminou falha corretamente com o erro existente de "nenhuma sessão
+ativa" — isso é intencional, não é um bug. Não há seleção manual de
+sessão pelo aluno.
+**Source of confirmation:** Confirmado pelo usuário, 2026-08-22 (resolução
+por matrícula + horário); precisão sobre timestamp do servidor confirmada
+pelo usuário, 2026-08-22, a partir de revisão de segurança surgida durante
+a implementação do Backend Agent.
+
 ### RULE-ATT-07: Fator obrigatório ausente gera pendência, não falta automática
 
 **Statement:** Quando um fator marcado como obrigatório pela instituição
@@ -180,3 +218,28 @@ três aplicar, mas não pode definir um comportamento diferente das três.
 **Exceptions:** Nenhuma — ao contrário dos fatores de chamada
 (RULE-ATT-13), este conjunto não é extensível pela instituição.
 **Source of confirmation:** Confirmado pelo usuário, 2026-08-21.
+
+### RULE-ATT-15: Acesso ao próprio registro consolidado, independente de permissão de grupo
+
+**Statement:** Qualquer pessoa autenticada pode sempre consultar seu
+**próprio** registro consolidado de presença/chamada e horários/
+calendário — independentemente de pertencer a algum grupo de permissão.
+Isso é um mecanismo de acesso **auto-restrito** (self-scoped), novo e
+distinto das quatro permissões de grupo já existentes (`manage_users`,
+`configure_attendance_rules`, `view_attendance_register`,
+`manage_institution_structure`), todas de perfil administrativo/staff,
+que dão a quem as possui visão sobre os dados de **qualquer** pessoa do
+tenant — não apenas os próprios. Esta regra existe especificamente para
+que um aluno (ou qualquer pessoa) veja seus próprios dados sem precisar
+de uma concessão de permissão de perfil administrativo.
+**Applies to:** Consulta de dados consolidados de presença/chamada e
+horários/calendário por app mobile ou qualquer outro canal autenticado
+por pessoa.
+**Exceptions:** Não é substituta nem sobreposição das regras de pendência
+de revisão manual (RULE-ATT-11 / RULE-ATT-12) — este acesso é somente de
+**leitura do próprio registro**; a resolução de pendências continua
+seguindo exclusivamente a cadeia de liderança direta (RULE-ATT-12), não é
+liberada por esta regra. O mecanismo técnico exato (nova permissão
+dedicada, checagem direta de `personId`, ou outra abordagem) **não está
+decidido aqui** — é escopo do Solution Architect/Backend.
+**Source of confirmation:** Confirmado pelo usuário, 2026-08-22.

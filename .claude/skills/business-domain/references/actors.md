@@ -11,8 +11,21 @@
 - **Aluno** — usuário final típico em instituições de ensino; realiza
   check-in, é submetido à apuração de presença multifatorial do
   CheckClass, consulta faltas/presença/calendário/horários no app mobile.
+  **Confirmado em 2026-08-22:** autentica no app com o mesmo mecanismo
+  cpf + senha já existente para funcionários/administradores
+  (`person-management`) — a credencial, hoje opcional por pessoa, passa a
+  ser emitida também para alunos daqui para frente. Ver detalhamento de
+  escopo desta primeira rodada de app mobile em
+  `project-knowledge/references/architecture-overview.md` e regras novas
+  em `business-rules/references/attendance-rules.md` (RULE-ATT-06,
+  RULE-ATT-15) e `business-rules/references/data-retention-rules.md`
+  (nota em RULE-RET-01).
 - **Professor** — participa do fluxo institucional (aulas, turmas,
-  horários); pode portar pulseira/tag.
+  horários); pode portar pulseira/tag. **Confirmado em 2026-08-22:** é
+  também ator do app mobile, mas especificamente e apenas para resolver
+  pendências de chamada dentro da cadeia de liderança direta
+  (RULE-ATT-12) — nenhum uso mais amplo do app mobile pelo professor foi
+  confirmado nesta rodada.
 - **Funcionário** — colaborador da instituição; pode portar pulseira/tag
   com categoria própria.
 - **Visitante** — acesso temporário e restrito a áreas/período

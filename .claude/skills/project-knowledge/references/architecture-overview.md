@@ -286,6 +286,132 @@ feature/página (não controller/service/repository) e `async`/`await`
 (não Promises encadeadas) quando a stack for React — mesmo raciocínio já
 aplicado ao NestJS no backend.
 
+## Decisão de tecnologia — App Mobile (aprovada em 2026-08-22)
+
+Proposta do Tech Decision Agent, aprovada pelo usuário. Preenche com
+tecnologia concreta o componente **App Mobile** já previsto no diagrama
+de alto nível — não é uma decisão de arquitetura nova. Escopo desta
+rodada: o conteúdo Escola/Aluno já confirmado em "Escopo confirmado —
+App Mobile, primeira rodada" abaixo.
+
+1. **Framework/linguagem:** React Native via o framework/workflow Expo
+   (modelo development build, não Expo Go), com TypeScript.
+2. **Busca/estado de dados do servidor:** TanStack Query (mesma
+   biblioteca já usada no dashboard web), conectado às especificidades do
+   React Native (`NetInfo` para `onlineManager`, `AppState` para
+   `focusManager`). Nenhuma biblioteca de estado global adicional — estado
+   local/de UI permanece em state/context nativos do React.
+3. **Armazenamento de JWT/sessão:** `expo-secure-store` (armazenamento
+   criptografado apoiado em iOS Keychain / Android Keystore) — o
+   equivalente mobile-apropriado da abordagem via `sessionStorage` do
+   dashboard web, não uma portabilidade literal dela.
+4. **Navegação:** Expo Router (roteamento baseado em arquivos).
+5. **Ferramental de build:** ferramental padrão do Expo (`expo
+   prebuild`/dev builds, EAS Build para binários prontos para loja).
+6. **Versões mínimas de SO:** iOS 16.4+, Android 7.0 (API 24).
+7. **Tolerância a offline/retry no check-in:** abordagem leve —
+   consciência de conectividade via NetInfo, pausa/retomada nativa de
+   mutation do TanStack Query para quedas de rede durante a sessão, mais
+   um pequeno acréscimo customizado para persistir localmente apenas o
+   payload do check-in pendente (não o JWT), de forma que sobreviva ao
+   encerramento do app enquanto offline e seja reenviado na próxima
+   abertura/retorno ao primeiro plano. Deliberadamente **não** uma
+   arquitetura completa de sincronização offline (sem WatermelonDB, Redux
+   Offline, ou o mecanismo mais pesado de persister do TanStack Query) —
+   este app tem um único tipo de escrita, sem cenário de merge/conflito.
+8. **Escopo de lançamento por plataforma:** iOS e Android juntos, não em
+   fases — confirmado explicitamente pelo usuário.
+
+**Justificativa (resumo):** alinhada à ordem de princípios do projeto
+(simplicidade > confiabilidade > segurança > escalabilidade >
+manutenibilidade > custo > desempenho > facilidade de desenvolvimento >
+facilidade de testes). React Native/Expo reaproveita o conhecimento já
+existente da equipe em React/TypeScript/TanStack Query vindo do dashboard
+web (sem segundo idioma/toolchain, ao contrário do Dart do Flutter);
+evita duplicar a base de código (ao contrário de builds nativos separados
+em Swift/Kotlin); e `expo-secure-store` oferece armazenamento seguro real
+apoiado em hardware, que uma alternativa via Progressive Web App não
+consegue igualar estruturalmente — relevante porque este app carrega
+dados de presença/PII de alunos em dispositivos pessoais, um contexto de
+maior risco que o dashboard administrativo interno (cujo trade-off via
+`sessionStorage` foi aceito para um perfil de risco diferente).
+
+**Ainda em aberto (não resolvido nesta decisão)** — ver
+`pending-decisions.md`:
+- Idempotency key no futuro endpoint de check-in via app.
+
+(Design de expiração/refresh do JWT para o App Mobile: resolvido em
+2026-08-22 — ver "Decisão de segurança — Autenticação Mobile" logo
+abaixo.)
+
+## Decisão de segurança — Autenticação Mobile (aprovada em 2026-08-22)
+
+Proposta do Security Agent, aprovada pelo usuário. Resolve o ponto que
+estava em aberto na seção anterior (design de expiração/refresh do JWT
+para o App Mobile — ver também `pending-decisions.md`). Aplica-se
+especificamente ao **App Mobile** e não altera o modelo de JWT único já
+aprovado para o dashboard web (ver "Decisão de tecnologia — Frontend
+Web" acima, item de autenticação) — o dashboard web continua com um
+único JWT em `sessionStorage`, sem refresh token.
+
+1. **Access token:** JWT de curta duração (15–30 min), mesmo
+   formato/assinatura do `POST /v1/auth/login` já existente (personId,
+   tenantId, HS256) — nenhuma mudança no shape do token de acesso.
+2. **Refresh token:** valor opaco de alta entropia gerado no servidor
+   (não é um JWT), persistido em uma nova tabela `refresh_token`
+   (`tenant_id`-scoped, seguindo o mesmo padrão de RLS já adotado nas
+   demais tabelas do domínio). Armazenado apenas como hash SHA-256 —
+   nunca o valor bruto — espelhando a convenção já usada para o segredo
+   de API-key de dispositivo (`device-auth.service.ts`); bcrypt continua
+   reservado para senhas humanas de baixa entropia.
+3. **Rotação com detecção de reuso:** a cada refresh, um novo refresh
+   token é emitido e o anterior é marcado como usado/substituído. Se um
+   refresh token já usado for apresentado novamente, toda a família de
+   tokens daquela pessoa é revogada — sinal de possível roubo/replay.
+4. **Novos endpoints:** um endpoint de login mobile-specific (não altera
+   o contrato `{ accessToken }` já existente de `POST /v1/auth/login`, do
+   qual o dashboard web depende), `POST /v1/auth/refresh`, e um endpoint
+   de logout mobile que revoga o refresh token.
+5. **Gancho de troca de senha:** trocar a senha de uma pessoa revoga
+   todos os refresh tokens pendentes dessa pessoa — mitigação concreta
+   para o comportamento padrão do iOS Keychain de persistir dados através
+   de desinstalação/reinstalação do app (um refresh token obsoleto que
+   sobreviva no Keychain após uma desinstalação é eliminado na próxima
+   troca de senha do aluno, ou expira naturalmente).
+6. **Tempos de vida:** access token ~15–30 min; refresh token com janela
+   deslizante de ~30 dias (renovada a cada rotação bem-sucedida).
+7. **Rate limiting:** aplicado ao endpoint de refresh, similar ao
+   throttle já existente no login, como defesa em profundidade.
+8. **Rejeitado explicitamente:** vinculação de dispositivo/token (mTLS,
+   certificados de dispositivo) — não há evidência de modelo de ameaça
+   que exija isso agora; sinalizado apenas como possível hardening futuro
+   caso surja evidência concreta de abuso.
+
+**Ainda em aberto (não resolvido nesta decisão)** — ver
+`pending-decisions.md`:
+- Esquema exato de migration da tabela `refresh_token` (Database Agent).
+- Nome/path exato do endpoint de login mobile-specific (Backend Agent).
+
+## Escopo confirmado — App Mobile, primeira rodada (confirmado em 2026-08-22)
+
+Esta seção registra apenas **escopo**, não arquitetura (a tecnologia do
+componente **App Mobile** já foi decidida — ver "Decisão de tecnologia —
+App Mobile" acima). Confirmado pelo usuário, a partir de um levantamento
+do Business Analyst:
+
+- Conteúdo desta rodada: Escola/Aluno apenas (aulas, faltas, calendário,
+  presença/horários). Ver `business-domain/references/actors.md` para os
+  atores envolvidos e `business-rules/references/attendance-rules.md`
+  (RULE-ATT-06, RULE-ATT-15) e
+  `business-rules/references/data-retention-rules.md` (nota em
+  RULE-RET-01) para as regras de negócio novas confirmadas junto com este
+  escopo.
+- Professor é ator do app mobile apenas para resolução de pendências
+  (RULE-ATT-12) — nenhum uso mais amplo confirmado.
+- Fora desta rodada (adiado, não rejeitado): "atividades" (Escola) e a
+  variante de conteúdo "Empresa" — ver
+  `project-knowledge/references/pending-decisions.md`.
+
 ## Restrições/premissas confirmadas
 
 - Multi-tenancy é requisito de arquitetura desde o início (ver
@@ -299,8 +425,8 @@ aplicado ao NestJS no backend.
   idempotência, deduplicação, etc. — a estratégia concreta é decisão do
   Backend/IoT Agent, não definida ainda).
 - Tecnologia já aprovada: núcleo do backend (Node.js/NestJS/PostgreSQL,
-  seção acima) e Frontend Web (React/TypeScript/Vite, seção acima). Ainda
-  não decidido: App Mobile, tecnologia de segurança de intrusão, hardware
-  de câmera/contagem — cada uma segue exigindo proposta do Tech Decision
-  Agent com aprovação explícita do usuário antes de ser tratada como
-  decidida.
+  seção acima), Frontend Web (React/TypeScript/Vite, seção acima) e App
+  Mobile (React Native/Expo/TypeScript, seção acima). Ainda não decidido:
+  tecnologia de segurança de intrusão, hardware de câmera/contagem — cada
+  uma segue exigindo proposta do Tech Decision Agent com aprovação
+  explícita do usuário antes de ser tratada como decidida.
