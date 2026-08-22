@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsString, validateSync } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, MinLength, validateSync } from 'class-validator';
 
 class EnvVariables {
   @IsInt()
@@ -31,6 +31,15 @@ class EnvVariables {
   @IsString()
   @IsNotEmpty()
   APP_DB_PASSWORD: string;
+
+  @IsString()
+  @IsNotEmpty()
+  // Security review finding: @IsNotEmpty alone would still pass a short,
+  // guessable secret at startup. 32 chars is a low bar (not enforcing real
+  // entropy), but catches the obvious case of someone leaving a short
+  // placeholder in place.
+  @MinLength(32)
+  JWT_SECRET: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvVariables {

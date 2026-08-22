@@ -6,6 +6,7 @@ import { validateEnv } from './config/env-validation';
 import { DatabaseModule } from './database/database.module';
 import { AttendanceRegisterModule } from './modules/attendance-register/attendance-register.module';
 import { AttendanceRulesModule } from './modules/attendance-rules/attendance-rules.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { ClassSessionModule } from './modules/class-session/class-session.module';
 import { TenantConfigModule } from './modules/config/tenant-config.module';
 import { DeduplicationModule } from './modules/deduplication/deduplication.module';
@@ -13,6 +14,7 @@ import { HealthModule } from './modules/health/health.module';
 import { IdentificationModule } from './modules/identification/identification.module';
 import { IngestionModule } from './modules/ingestion/ingestion.module';
 import { PendingReviewModule } from './modules/pending-review/pending-review.module';
+import { PersonManagementModule } from './modules/person-management/person-management.module';
 import { QueueModule } from './queue/queue.module';
 
 @Module({
@@ -38,6 +40,8 @@ import { QueueModule } from './queue/queue.module';
     AttendanceRulesModule,
     PendingReviewModule,
     AttendanceRegisterModule,
+    AuthModule,
+    PersonManagementModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
