@@ -21,7 +21,12 @@ export class PersonManagementController {
 
   // Added for the admin frontend: other screens (enrollment, wristband
   // issue, permission-group membership) need to look up a personId by name.
+  // Method-level override (does NOT widen the class-level MANAGE_USERS
+  // gate, which still covers create()): ClassGroupController.enroll() is
+  // gated MANAGE_INSTITUTION_STRUCTURE and needs a personId to enroll
+  // someone, so that permission alone must also be enough to list here.
   @Get()
+  @RequirePermission(Permission.MANAGE_USERS, Permission.MANAGE_INSTITUTION_STRUCTURE)
   list() {
     return this.personManagementService.list();
   }

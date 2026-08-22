@@ -26,11 +26,11 @@ export class PermissionCheckInterceptor implements NestInterceptor {
     // class-level one, so a controller can set a default and override it
     // per route — supports @RequirePermission on either the handler or the
     // whole controller (AttendanceRegisterController uses the latter).
-    const requiredPermission = this.reflector.getAllAndOverride<Permission | undefined>(REQUIRED_PERMISSION_KEY, [
+    const requiredPermissions = this.reflector.getAllAndOverride<Permission[] | undefined>(REQUIRED_PERMISSION_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (!requiredPermission) {
+    if (!requiredPermissions || requiredPermissions.length === 0) {
       return next.handle();
     }
 
@@ -39,11 +39,15 @@ export class PermissionCheckInterceptor implements NestInterceptor {
       throw new ForbiddenException('No authenticated person on this request');
     }
 
-    const allowed = await this.permissionGroupService.hasPermission(request.personId, requiredPermission);
-    if (!allowed) {
-      throw new ForbiddenException(`Missing required permission: ${requiredPermission}`);
+    // OR semantics: holding any one of the listed permissions is enough.
+    for (const permission of requiredPermissions) {
+      // eslint-disable-next-line no-await-in-loop -- short-circuit on first
+      // match instead of firing every check concurrently.
+      if (await this.permissionGroupService.hasPermission(request.personId, permission)) {
+        return next.handle();
+      }
     }
 
-    return next.handle();
+    throw new ForbiddenException(`Missing required permission: one of [${requiredPermissions.join(', ')}]`);
   }
 }

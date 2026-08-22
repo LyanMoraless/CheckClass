@@ -25,12 +25,12 @@ export class ClassSessionController {
     return { classSessionId: session.id };
   }
 
-  // Added for the admin frontend: gated the same as creation
-  // (MANAGE_INSTITUTION_STRUCTURE) — a separate read permission for
-  // "can discover session ids" (e.g. for VIEW_ATTENDANCE_REGISTER-only
-  // holders) isn't modeled yet; flagged in the implementation summary.
+  // Also allowed for VIEW_ATTENDANCE_REGISTER holders: the attendance
+  // register roster screens need a classSessionId to look up, and a caller
+  // gated only by that permission couldn't otherwise discover which
+  // sessions exist (permission-boundary gap fixed per Solution Architect).
   @Get()
-  @RequirePermission(Permission.MANAGE_INSTITUTION_STRUCTURE)
+  @RequirePermission(Permission.MANAGE_INSTITUTION_STRUCTURE, Permission.VIEW_ATTENDANCE_REGISTER)
   list(@Query('classGroupId') classGroupId?: string) {
     return this.classSessionService.list(classGroupId);
   }
