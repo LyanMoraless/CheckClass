@@ -1,0 +1,70 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, type FormEvent } from 'react';
+import { DataTable } from '../../components/data-table';
+import { ErrorBanner } from '../../components/error-banner';
+import { Loading } from '../../components/loading';
+import { PermissionHint } from '../../components/permission-hint';
+import { useAuth } from '../auth/auth-context';
+import { errorMessage } from '../../lib/api-client';
+import { createCourse, listCourses, type Course } from './courses-api';
+
+export function CoursesPage() {
+  const { hasPermission } = useAuth();
+  const canManage = hasPermission('manage_institution_structure');
+  const queryClient = useQueryClient();
+  const { data: courses, isLoading, error } = useQuery({ queryKey: ['courses'], queryFn: listCourses });
+
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const mutation = useMutation({
+    mutationFn: createCourse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      setName('');
+      setCode('');
+    },
+  });
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    mutation.mutate({ name, code: code || undefined });
+  }
+
+  return (
+    <section>
+      <h1>Courses</h1>
+
+      {isLoading && <Loading />}
+      {error && <ErrorBanner message={errorMessage(error)} />}
+      {courses && (
+        <DataTable<Course>
+          rows={courses}
+          getRowKey={(course) => course.id}
+          columns={[
+            { header: 'Name', cell: (course) => course.name },
+            { header: 'Code', cell: (course) => course.code ?? '—' },
+          ]}
+        />
+      )}
+
+      <fieldset disabled={!canManage}>
+        <legend>New course</legend>
+        {!canManage && <PermissionHint permission="manage_institution_structure" />}
+        <form onSubmit={handleSubmit}>
+          {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
+          <label>
+            Name
+            <input type="text" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} />
+          </label>
+          <label>
+            Code (optional)
+            <input type="text" value={code} onChange={(event) => setCode(event.target.value)} maxLength={50} />
+          </label>
+          <button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? 'Creating…' : 'Create course'}
+          </button>
+        </form>
+      </fieldset>
+    </section>
+  );
+}
