@@ -61,11 +61,28 @@ alongside the generic `coding-standards` and `clean-code` knowledge.
 
 - Layered structure preferred: **controller / service / repository**
   separation within a module, rather than pure feature-based grouping.
+- **Confirmed exception (2026-08-21, CheckClass backend/NestJS):** when the
+  approved tech stack is NestJS, organize by feature/pipeline-stage module
+  (one folder per module, service calling the repository layer directly via
+  `manager.getRepository(...)` with no separate repository class) instead of
+  the controller/service/repository split above. This isn't a reversal of
+  the general preference — it's NestJS's own idiomatic module convention
+  (guards/interceptors/lifecycle hooks are built around it), and fighting it
+  produces less idiomatic, harder-to-maintain code for no real benefit. Only
+  applies when NestJS (or a similarly opinionated framework) is the
+  confirmed stack; the general preference above still applies elsewhere.
 
 ## Asynchronous code style
 
 - Chained Promises (`.then()` / `.catch()`) are preferred over
   `async`/`await`, when the language/stack supports both.
+- **Confirmed exception (2026-08-21, CheckClass backend/NestJS):** use
+  `async`/`await` throughout when the stack is NestJS. Guards, interceptors,
+  and lifecycle hooks (`onModuleInit`, etc.) are written and consumed as
+  `async` functions across the framework and its ecosystem; chaining
+  `.then()/.catch()` against that idiom adds friction without upholding the
+  underlying reason for the general preference. Only applies when NestJS
+  (or a similarly `async`-idiomatic framework) is the confirmed stack.
 
 ## Dependency handling between classes/modules
 
