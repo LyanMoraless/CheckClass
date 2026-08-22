@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: checkclass-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: checkclass
+      POSTGRES_PASSWORD: checkclass
+      POSTGRES_DB: checkclass
+    ports:
+      - "5432:5432"
+    volumes:
+      - checkclass-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  checkclass-postgres-data:
