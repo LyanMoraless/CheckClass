@@ -4,9 +4,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { MobileAuthService } from './mobile-auth.service';
 import { PermissionCheckInterceptor } from './permission-check.interceptor';
 import { PermissionGroupController } from './permission-group.controller';
 import { PermissionGroupService } from './permission-group.service';
+import { RefreshTokenService } from './refresh-token.service';
 import { TenantBootstrapService } from './tenant-bootstrap.service';
 
 const jwtModule = JwtModule.registerAsync({
@@ -29,12 +31,32 @@ const jwtModule = JwtModule.registerAsync({
 @Module({
   imports: [jwtModule],
   controllers: [AuthController, PermissionGroupController],
-  providers: [AuthService, PermissionGroupService, TenantBootstrapService, JwtAuthGuard, PermissionCheckInterceptor],
+  providers: [
+    AuthService,
+    PermissionGroupService,
+    TenantBootstrapService,
+    JwtAuthGuard,
+    PermissionCheckInterceptor,
+    RefreshTokenService,
+    MobileAuthService,
+  ],
   // Re-exporting jwtModule too: every module that imports AuthModule for
   // JwtAuthGuard also needs JwtService in scope, or Nest can't resolve the
   // guard's constructor dependency (bit us once already — a guard's
   // provider deps must be resolvable from whichever module actually
   // instantiates it via @UseGuards, not just from AuthModule itself).
-  exports: [jwtModule, AuthService, PermissionGroupService, TenantBootstrapService, JwtAuthGuard, PermissionCheckInterceptor],
+  // RefreshTokenService is exported too: it's the reusable
+  // revoke-all-for-person primitive a future password-change flow
+  // (PersonManagementService today has no credential-update path at all)
+  // will need to call on password change.
+  exports: [
+    jwtModule,
+    AuthService,
+    PermissionGroupService,
+    TenantBootstrapService,
+    JwtAuthGuard,
+    PermissionCheckInterceptor,
+    RefreshTokenService,
+  ],
 })
 export class AuthModule {}

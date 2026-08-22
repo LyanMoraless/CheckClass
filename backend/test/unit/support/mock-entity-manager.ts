@@ -5,6 +5,7 @@
 // the decision logic without a real Postgres connection.
 
 export interface MockRepository {
+  findOne: jest.Mock;
   findOneBy: jest.Mock;
   findOneByOrFail: jest.Mock;
   findBy: jest.Mock;
@@ -18,6 +19,11 @@ export interface MockRepository {
 
 export function createMockRepository(overrides: Partial<MockRepository> = {}): MockRepository {
   return {
+    // Standing in for both a plain findOne(...) and a locked one (e.g.
+    // RefreshTokenService.lockById's `{ where, lock: { mode: 'pessimistic_write' } }`)
+    // — the mock doesn't distinguish, since locking is a real-Postgres-only
+    // concern no unit-level mock can meaningfully simulate anyway.
+    findOne: jest.fn(),
     findOneBy: jest.fn(),
     findOneByOrFail: jest.fn(),
     findBy: jest.fn().mockResolvedValue([]),
