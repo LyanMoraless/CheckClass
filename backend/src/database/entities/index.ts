@@ -21,3 +21,7 @@ export * from './session-attendance-consolidation.entity';
 export * from './attendance-pending-review.entity';
 export * from './person-facial-reference.entity';
 export * from './class-session-required-factor.entity';
+export * from './person-credential.entity';
+export * from './permission-group.entity';
+export * from './permission-group-permission.entity';
+export * from './person-permission-group.entity';
