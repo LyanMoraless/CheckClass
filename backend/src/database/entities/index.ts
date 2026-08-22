@@ -25,3 +25,4 @@ export * from './person-credential.entity';
 export * from './permission-group.entity';
 export * from './permission-group-permission.entity';
 export * from './person-permission-group.entity';
+export * from './refresh-token.entity';

@@ -8,10 +8,19 @@ export class RawIdentificationEventEntity {
   @Column({ name: 'tenant_id', type: 'uuid' })
   tenantId: string;
 
-  @Column({ name: 'device_id', type: 'uuid' })
-  deviceId: string;
+  // NULL means app-originated (AppCheckinService) — a person-JWT-authenticated
+  // submission has no device at all, unlike every other event type on this
+  // table, which always comes through DeviceAuthGuard with a real device_id
+  // (see AllowNullDeviceIdForAppCheckin migration). The DB enforces that this
+  // is exactly equivalent to event_type = 'APP_CHECKIN' — never NULL for any
+  // other event_type, never non-NULL for APP_CHECKIN — via a CHECK constraint
+  // (see AddRawIdentificationEventOriginCheckConstraint), so a technical
+  // administrator auditing raw events (RULE-RET-04) never has to infer origin
+  // from device_id alone.
+  @Column({ name: 'device_id', type: 'uuid', nullable: true })
+  deviceId: string | null;
 
-  // TAG_CHECKIN | FACIAL_CHECKIN | ROOM_ENTRY | ROOM_EXIT | CAMERA_COUNT | CUSTOM
+  // TAG_CHECKIN | FACIAL_CHECKIN | ROOM_ENTRY | ROOM_EXIT | CAMERA_COUNT | CUSTOM | APP_CHECKIN
   @Column({ name: 'event_type', type: 'varchar', length: 30 })
   eventType: string;
 
