@@ -40,6 +40,13 @@ class EnvVariables {
   // placeholder in place.
   @MinLength(32)
   JWT_SECRET: string;
+
+  // Frontend origin allowed to call this API from a browser (CORS). A
+  // comma-separated list, since a real deployment may need to allow more
+  // than one (e.g. a staging + production frontend URL).
+  @IsString()
+  @IsNotEmpty()
+  CORS_ORIGIN: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvVariables {
