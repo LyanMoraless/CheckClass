@@ -26,6 +26,64 @@ export class PendingReviewService {
     return manager.getRepository(AttendancePendingReviewEntity).findBy({ resolvedAt: IsNull() });
   }
 
+  // Leadership-chain-scoped variant for the mobile Professor use case
+  // (RULE-ATT-12): "list only the pending reviews this person is authorized
+  // to resolve, given their leadership assignments" — the inverse of the
+  // per-review isAuthorizedToResolve() check resolve() already runs, applied
+  // as a filter over every unresolved review instead of a single one.
+  // Deliberately does NOT reuse/alter listUnresolved() (VIEW_ATTENDANCE_REGISTER
+  // -gated, tenant-wide, the web admin dashboard's existing contract) — this
+  // is a separate, narrower view with its own authorization mechanism, not a
+  // permission-group concept (same reasoning as resolve() itself).
+  //
+  // Performance finding (N+1): this used to loop over every unresolved
+  // review doing a session lookup + a class_group lookup + a leadership
+  // count query per row — 3 round trips per review. Rewritten as one query:
+  // the join to class_session/class_group is now inline, and the leadership
+  // check is a correlated EXISTS against leadership_assignment expressing
+  // the EXACT same three RULE-ATT-12 branches isAuthorizedToResolve() checks
+  // per-row today (class_group-scoped match, OR whole-course with
+  // class_group_id NULL, OR institution-wide with course_id NULL).
+  async listUnresolvedForPerson(personId: string): Promise<AttendancePendingReviewEntity[]> {
+    const manager = this.tenantContext.getManager();
+    const tenantId = this.tenantContext.getTenantId();
+
+    const rows: AttendancePendingReviewEntity[] = await manager.query(
+      `
+      SELECT
+        r.id AS "id",
+        r.tenant_id AS "tenantId",
+        r.class_session_id AS "classSessionId",
+        r.person_id AS "personId",
+        r.reason AS "reason",
+        r.resolved_by_person_id AS "resolvedByPersonId",
+        r.resolved_at AS "resolvedAt",
+        r.resolution_note AS "resolutionNote",
+        r.created_at AS "createdAt"
+      FROM attendance_pending_review r
+      JOIN class_session cs ON cs.id = r.class_session_id
+      JOIN class_group cg ON cg.id = cs.class_group_id
+      WHERE r.tenant_id = $1
+        AND r.resolved_at IS NULL
+        AND EXISTS (
+          SELECT 1
+          FROM leadership_assignment la
+          WHERE la.tenant_id = $1
+            AND la.person_id = $2
+            AND (
+              (la.course_id = cg.course_id AND la.class_group_id = cg.id)
+              OR (la.course_id = cg.course_id AND la.class_group_id IS NULL)
+              OR la.course_id IS NULL
+            )
+        )
+      ORDER BY r.created_at ASC
+      `,
+      [tenantId, personId],
+    );
+
+    return rows;
+  }
+
   async resolve(pendingReviewId: string, resolvingPersonId: string, decision: PendingReviewDecision, note?: string): Promise<void> {
     if (decision !== 'present' && decision !== 'absent') {
       throw new BadRequestException('decision must be "present" or "absent"');

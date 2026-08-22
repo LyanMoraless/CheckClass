@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/env-validation';
 import { DatabaseModule } from './database/database.module';
+import { AppCheckinModule } from './modules/app-checkin/app-checkin.module';
 import { AttendanceRegisterModule } from './modules/attendance-register/attendance-register.module';
 import { AttendanceRulesModule } from './modules/attendance-rules/attendance-rules.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -19,6 +20,7 @@ import { IngestionModule } from './modules/ingestion/ingestion.module';
 import { PendingReviewModule } from './modules/pending-review/pending-review.module';
 import { PersonManagementModule } from './modules/person-management/person-management.module';
 import { RoomModule } from './modules/room/room.module';
+import { SelfServiceModule } from './modules/self-service/self-service.module';
 import { WristbandModule } from './modules/wristband/wristband.module';
 import { QueueModule } from './queue/queue.module';
 
@@ -52,6 +54,8 @@ import { QueueModule } from './queue/queue.module';
     ClassGroupModule,
     WristbandModule,
     DeviceModule,
+    SelfServiceModule,
+    AppCheckinModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

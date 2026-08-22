@@ -12,6 +12,11 @@ import { TenantContextService } from '../../database/tenant-context.service';
 import { QueueService } from '../../queue/queue.service';
 import { DeduplicateCheckinJobData, DEDUPLICATE_CHECKIN_QUEUE } from '../deduplication/deduplicate-checkin.job';
 import { IngestionEventType } from '../ingestion/dto/ingestion-event-type.enum';
+// Shared with AppCheckinService (RULE-ATT-06's confirmed note) — deliberately
+// NOT part of IngestionEventType, since that enum is the device-ingestion
+// contract's event-type allow-list and app check-in is explicitly not a
+// variant of it.
+import { APP_CHECKIN_FACTOR_CODE } from '../attendance-factor-codes';
 
 interface RawEventPayload {
   capturedAt: string;
@@ -64,9 +69,17 @@ export class IdentificationService {
       return;
     }
 
-    const classSessionId = payload.roomId
-      ? await this.resolveClassSession(manager, payload.roomId, payload.capturedAt)
-      : null;
+    // App check-in (RULE-ATT-06's confirmed note) has no room signal at all —
+    // its class_session was already resolved by AppCheckinService, keyed on
+    // the caller's own active enrollments + the current time window, and is
+    // carried through here rather than re-derived. Device-originated events
+    // keep resolving by room+time exactly as before.
+    let classSessionId: string | null = null;
+    if (payload.roomId) {
+      classSessionId = await this.resolveClassSession(manager, payload.roomId, payload.capturedAt);
+    } else if (typeof payload.data.classSessionId === 'string') {
+      classSessionId = payload.data.classSessionId;
+    }
 
     const insertResult = await manager
       .createQueryBuilder()
@@ -119,9 +132,17 @@ export class IdentificationService {
     rawEvent: RawIdentificationEventEntity,
     data: Record<string, unknown>,
   ): Promise<string | null> {
+    if (rawEvent.eventType === APP_CHECKIN_FACTOR_CODE) {
+      // Already resolved server-side by AppCheckinService from the caller's
+      // own verified JWT before this raw event was ever created — never a
+      // device signal, and never re-derived here. rawEvent.device_id is NULL
+      // for this event type by construction (see the entity's comment).
+      return typeof data.personId === 'string' ? data.personId : null;
+    }
+
     if (rawEvent.eventType === IngestionEventType.FACIAL_CHECKIN) {
       const reference = await manager.getRepository(PersonFacialReferenceEntity).findOneBy({
-        deviceId: rawEvent.deviceId,
+        deviceId: rawEvent.deviceId as string,
         localReference: data.matchReference as string,
       });
       return reference?.personId ?? null;

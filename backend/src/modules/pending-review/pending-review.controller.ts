@@ -28,6 +28,19 @@ export class PendingReviewController {
     return this.pendingReviewService.listUnresolved();
   }
 
+  // Mobile Professor use case (RULE-ATT-12): a narrower, leadership-chain
+  // -scoped view — "only what I'm authorized to resolve", not the whole
+  // tenant. Deliberately no @RequirePermission/PermissionCheckInterceptor,
+  // same reasoning as resolve(): RULE-ATT-12's leadership chain is its own
+  // authorization mechanism, not a permission-group concept, and it's
+  // already enforced (inverted into a filter) inside the service. Leaves
+  // listUnresolved() above completely untouched — the web admin dashboard
+  // already depends on its current behavior/gating.
+  @Get('mine')
+  listUnresolvedForPerson(@Req() request: AuthenticatedRequest) {
+    return this.pendingReviewService.listUnresolvedForPerson(request.personId);
+  }
+
   @Post(':pendingReviewId/resolve')
   async resolve(
     @Param('pendingReviewId', ParseUUIDPipe) pendingReviewId: string,
