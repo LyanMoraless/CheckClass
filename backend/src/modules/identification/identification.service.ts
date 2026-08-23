@@ -6,12 +6,12 @@ import {
   IdentificationCheckinEntity,
   PersonFacialReferenceEntity,
   RawIdentificationEventEntity,
-  WristbandEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { QueueService } from '../../queue/queue.service';
 import { DeduplicateCheckinJobData, DEDUPLICATE_CHECKIN_QUEUE } from '../deduplication/deduplicate-checkin.job';
 import { IngestionEventType } from '../ingestion/dto/ingestion-event-type.enum';
+import { WristbandIdentityService } from '../wristband-identity/wristband-identity.service';
 // Shared with AppCheckinService (RULE-ATT-06's confirmed note) — deliberately
 // NOT part of IngestionEventType, since that enum is the device-ingestion
 // contract's event-type allow-list and app check-in is explicitly not a
@@ -38,6 +38,7 @@ export class IdentificationService {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly queue: QueueService,
+    private readonly wristbandIdentity: WristbandIdentityService,
   ) {}
 
   async processRawEvent(rawEventId: string): Promise<void> {
@@ -152,12 +153,15 @@ export class IdentificationService {
     if (!tagCode) {
       return null;
     }
-    // Code review finding: a deactivated/revoked wristband must not still
-    // authenticate — status exists precisely for lost/stolen/reissued tags
-    // (RULE-ACC-01's "identidade do usuário" is meant to be the CURRENT
-    // holder, not whoever last held that physical tag).
-    const wristband = await manager.getRepository(WristbandEntity).findOneBy({ tagCode, status: 'active' });
-    return wristband?.personId ?? null;
+    // Delegates to the shared Serviço de Identidade por Pulseira
+    // (architecture-overview.md — Segurança de Intrusão, primeira rodada):
+    // a deactivated/revoked wristband must not still authenticate — status
+    // exists precisely for lost/stolen/reissued tags (RULE-ACC-01's
+    // "identidade do usuário" is meant to be the CURRENT holder, not whoever
+    // last held that physical tag). Behavior unchanged from before the
+    // extraction, only the ownership moved.
+    const identity = await this.wristbandIdentity.resolveByTagCode(tagCode);
+    return identity?.personId ?? null;
   }
 
   private async resolveClassSession(manager: EntityManager, roomId: string, capturedAt: string): Promise<string | null> {

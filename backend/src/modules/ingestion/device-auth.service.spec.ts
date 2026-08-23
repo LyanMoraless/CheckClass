@@ -15,6 +15,7 @@ describe('DeviceAuthService', () => {
   const activeDeviceRow = {
     device_id: 'device-1',
     tenant_id: 'tenant-a-id',
+    device_type: 'raspberry_pi',
     api_key_secret_hash: hashSecret(validSecret),
     status: 'active',
   };
@@ -30,7 +31,7 @@ describe('DeviceAuthService', () => {
 
     const result = await service.authenticate(`device-1.${validSecret}`);
 
-    expect(result).toEqual({ deviceId: 'device-1', tenantId: 'tenant-a-id' });
+    expect(result).toEqual({ deviceId: 'device-1', tenantId: 'tenant-a-id', deviceType: 'raspberry_pi' });
     expect(dataSource.query).toHaveBeenCalledWith('SELECT * FROM resolve_device_by_api_key_id($1)', ['device-1']);
   });
 

@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { TenantContextService } from '../../src/database/tenant-context.service';
 import { IdentificationService } from '../../src/modules/identification/identification.service';
 import { IngestionEventType } from '../../src/modules/ingestion/dto/ingestion-event-type.enum';
+import { WristbandIdentityService } from '../../src/modules/wristband-identity/wristband-identity.service';
 import { QueueService } from '../../src/queue/queue.service';
 import { cleanupTenants, createAppDataSource, createSuperuserClient, createTenantWithPerson, TenantFixture } from './support/db';
 
@@ -70,7 +71,8 @@ describe('IdentificationService checkin idempotency (real Postgres)', () => {
   });
 
   test('test_processRawEvent_calledTwiceForSameRawEvent_insertsOnlyOneIdentificationCheckin', async () => {
-    const identificationService = new IdentificationService(tenantContext, queueStub);
+    const wristbandIdentityService = new WristbandIdentityService(tenantContext);
+    const identificationService = new IdentificationService(tenantContext, queueStub, wristbandIdentityService);
 
     await tenantContext.runWithTenant(tenant.tenantId, () => identificationService.processRawEvent(rawEventId));
     await tenantContext.runWithTenant(tenant.tenantId, () => identificationService.processRawEvent(rawEventId));

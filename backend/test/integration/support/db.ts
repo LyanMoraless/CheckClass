@@ -98,6 +98,14 @@ export async function cleanupTenants(superuser: Client, tenantIds: string[]): Pr
     'attendance_config_required_factor',
     'attendance_config',
     'person_facial_reference',
+    // Segurança de Intrusão tables — deleted before wristband_category,
+    // device, person, and area (all still further down/below), since each
+    // of these references one or more of those.
+    'intrusion_incident_location_entry',
+    'intrusion_incident',
+    'raw_security_event',
+    'wristband_category_area_permission',
+    'camera',
     'wristband',
     'wristband_category',
     'device',
@@ -105,6 +113,12 @@ export async function cleanupTenants(superuser: Client, tenantIds: string[]): Pr
     'class_group',
     'course',
     'room',
+    // area is self-referencing (parent_area_id) and referenced by room.area_id
+    // (nullable) — safe here since room's rows for this tenant are already
+    // gone, and a single DELETE removing every area row for a tenant at once
+    // is safe against the self-reference too (all rows in the reference
+    // chain are removed together).
+    'area',
     'leadership_assignment',
     'leadership_role',
     'person',

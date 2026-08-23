@@ -43,6 +43,7 @@ export interface MockEntityManager {
   query: jest.Mock;
   getRepository: jest.Mock;
   createQueryBuilder: jest.Mock;
+  transaction: jest.Mock;
 }
 
 // Chainable stand-in for manager.createQueryBuilder().insert().into(...)
@@ -66,7 +67,7 @@ export function createMockInsertQueryBuilder(insertedId: string | null) {
 // entity -> mock repository. Keyed by the actual entity class reference, the
 // same value services pass to manager.getRepository(SomeEntity).
 export function createMockEntityManager(repositoriesByEntity: Map<unknown, MockRepository> = new Map()): MockEntityManager {
-  return {
+  const manager: MockEntityManager = {
     query: jest.fn().mockResolvedValue([]),
     getRepository: jest.fn((entity: unknown) => {
       const repository = repositoriesByEntity.get(entity);
@@ -81,7 +82,15 @@ export function createMockEntityManager(repositoriesByEntity: Map<unknown, MockR
     // manager.createQueryBuilder.mockReturnValue(createMockInsertQueryBuilder(null))
     // to simulate the orIgnore/losing-the-race path instead.
     createQueryBuilder: jest.fn().mockReturnValue(createMockInsertQueryBuilder('inserted-id')),
+    // Faithful enough for unit-level decision-logic coverage: just runs the
+    // callback against this same mock manager, with no real
+    // SAVEPOINT/ROLLBACK TO SAVEPOINT semantics — that transaction-abort
+    // recovery behavior (IntrusionDetectionService.openNewIncident) is only
+    // meaningfully verified against a real Postgres connection, see the
+    // integration spec for that.
+    transaction: jest.fn((callback: (manager: MockEntityManager) => Promise<unknown>) => callback(manager)),
   };
+  return manager;
 }
 
 export interface MockTenantContext {

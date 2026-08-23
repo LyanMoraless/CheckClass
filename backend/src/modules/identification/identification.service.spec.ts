@@ -40,7 +40,8 @@ describe('IdentificationService — app check-in event handling', () => {
 
     const tenantContext = createMockTenantContext(manager);
     const queue = { sendWithManager: jest.fn().mockResolvedValue(undefined) };
-    const service = new IdentificationService(tenantContext as never, queue as never);
+    const wristbandIdentity = { resolveByTagCode: jest.fn().mockResolvedValue(null) };
+    const service = new IdentificationService(tenantContext as never, queue as never, wristbandIdentity as never);
     return { service, manager, queue, factorTypeRepo };
   }
 
@@ -79,7 +80,8 @@ describe('IdentificationService — app check-in event handling', () => {
     );
     const tenantContext = createMockTenantContext(manager);
     const queue = { sendWithManager: jest.fn().mockResolvedValue(undefined) };
-    const service = new IdentificationService(tenantContext as never, queue as never);
+    const wristbandIdentity = { resolveByTagCode: jest.fn().mockResolvedValue(null) };
+    const service = new IdentificationService(tenantContext as never, queue as never, wristbandIdentity as never);
 
     await service.processRawEvent('raw-event-1');
 

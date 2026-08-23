@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 interface ResolvedDevice {
   device_id: string;
   tenant_id: string;
+  device_type: string;
   api_key_secret_hash: string;
   status: string;
 }
@@ -12,6 +13,7 @@ interface ResolvedDevice {
 export interface AuthenticatedDevice {
   deviceId: string;
   tenantId: string;
+  deviceType: string;
 }
 
 // Fixed placeholder to hash the presented secret against when apiKeyId
@@ -45,7 +47,7 @@ export class DeviceAuthService {
       throw new ForbiddenException('Device is not active');
     }
 
-    return { deviceId: device.device_id, tenantId: device.tenant_id };
+    return { deviceId: device.device_id, tenantId: device.tenant_id, deviceType: device.device_type };
   }
 
   private parseKey(rawKey: string): [string, string] {

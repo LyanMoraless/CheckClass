@@ -17,4 +17,8 @@ export enum Permission {
   FOLLOW_CAMERA_EVENTS = 'follow_camera_events',
   ACCESS_CAMERA_RECORDINGS = 'access_camera_recordings',
   ADMINISTER_CAMERA_DEVICES = 'administer_camera_devices',
+
+  // RULE-SEC-07's closure authorization: any "Equipe de segurança" member,
+  // flat (no leadership hierarchy) — confirmed 2026-08-23.
+  MANAGE_SECURITY_INCIDENTS = 'manage_security_incidents',
 }
