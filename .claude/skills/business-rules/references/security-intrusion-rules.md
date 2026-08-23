@@ -174,3 +174,20 @@ exigência de nota obrigatória em ambos os desfechos foi inspirada no
 precedente já existente de `POST /v1/pending-reviews/:id/resolve`
 (`decision` + nota), mas é uma regra própria e separada para este domínio
 de intrusão, não um reaproveitamento daquele mecanismo.
+
+**Nota de mecanismo (confirmado pelo usuário em 2026-08-23) — como o
+sistema sabe quem é "Equipe de segurança":** "qualquer membro do ator
+'Equipe de segurança'", acima, é definido concretamente como "qualquer
+pessoa que possua a permissão `manage_security_incidents`" — um novo
+código do enum `Permission`, um 5º código de permissão de grupo, seguindo
+o mesmo mecanismo plano já estabelecido para as quatro permissões de grupo
+existentes (`manage_users`, `configure_attendance_rules`,
+`view_attendance_register`, `manage_institution_structure` — ver nota de
+RULE-ATT-15, `business-rules/references/attendance-rules.md`). Não é um
+conceito de autorização novo, apenas mais um código no mesmo modelo já
+aprovado. Visualizar e fechar incidentes de intrusão (esta regra) é
+gateado por essa permissão. Alternativa rejeitada: reaproveitar um dos
+seis códigos de permissão de câmera de RULE-ACC-07
+(`business-rules/references/access-control-rules.md`) — rejeitada por
+serem especificamente sobre capacidades de câmera, uma preocupação
+diferente e mais estreita que a gestão geral de incidentes.

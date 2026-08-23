@@ -109,3 +109,11 @@ primeira vez que as capacidades de RULE-ACC-07 recebem códigos concretos —
 até então existiam apenas na linguagem conceitual do Prompt Mestre. Resolve
 o gap "Pendente — Códigos exatos do novo enum `Permission` para permissões
 de câmera" em `project-knowledge/references/pending-decisions.md`.
+
+**Nota de referência cruzada (confirmado pelo usuário em 2026-08-23):**
+não confundir estes seis códigos de câmera com `manage_security_incidents`
+— um 7º código relacionado, mas conceitualmente separado, confirmado na
+mesma data para gatear visualização/fechamento de incidentes de intrusão
+(RULE-SEC-07, `business-rules/references/security-intrusion-rules.md`).
+Câmeras e gestão de incidentes são preocupações distintas mesmo estando
+ambas dentro do módulo de segurança.
