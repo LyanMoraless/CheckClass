@@ -182,6 +182,12 @@ e segurança de intrusão ainda não têm tecnologia decidida.
 de intrusão, tecnologia de contagem de entrada/saída (RULE-SEC-05),
 hardware específico de câmera/Raspberry (ver `pending-decisions.md`).
 
+> **Correção retroativa (2026-08-23):** o mecanismo de autenticação por
+> dispositivo mencionado como pendente na seção "Contrato de payload IoT e
+> deduplicação" logo abaixo foi ratificado retroativamente pelo usuário —
+> ver "Decisão de tecnologia — Segurança de Intrusão, primeira rodada",
+> item 2, mais abaixo nesta mesma skill. Não está mais em aberto.
+
 ## Modelagem de dados — Núcleo do CheckClass (aprovada em 2026-08-21)
 
 Proposta do Database Agent, aprovada pelo usuário (incluindo os dois
@@ -243,11 +249,19 @@ Resposta do Gateway ao dispositivo segue código HTTP padrão (201 novo,
 200 duplicata, 400/401/403/422 sem retry, 429/503/500 com retry e
 backoff exponencial).
 
-**Ainda pendente antes de produção:** mecanismo concreto de autenticação
-por dispositivo (API key por dispositivo, mTLS, ou JWT de curto prazo —
-não decidido; ver `pending-decisions.md`), e se `captured_at` deve ser
-promovido a coluna indexada em vez de viver só dentro do `raw_payload`
-jsonb (avaliação técnica do Database Agent, não bloqueante).
+**Mecanismo de autenticação por dispositivo — resolvido retroativamente
+em 2026-08-23:** API key por dispositivo (hash SHA-256, formato
+`{apiKeyId}.{secret}`, revogável individualmente) — já estava implementado
+no código (`device-auth.service.ts`/`device-auth.guard.ts`, migration
+`1755751000000-AddDeviceApiKey.ts`) mas só foi formalmente ratificado como
+Decisão de Tecnologia nesta data; ver "Decisão de tecnologia — Segurança
+de Intrusão, primeira rodada", item 2, mais abaixo, para o registro
+completo (inclui a nota de que essa ratificação fecha um gap real entre
+implementação e documentação).
+
+**Ainda pendente antes de produção:** se `captured_at` deve ser promovido
+a coluna indexada em vez de viver só dentro do `raw_payload` jsonb
+(avaliação técnica do Database Agent, não bloqueante).
 
 ## Decisão de tecnologia — Frontend Web (aprovada em 2026-08-22)
 
@@ -412,6 +426,221 @@ do Business Analyst:
   variante de conteúdo "Empresa" — ver
   `project-knowledge/references/pending-decisions.md`.
 
+## Decisão de arquitetura — Segurança de Intrusão, primeira rodada (aprovada em 2026-08-23)
+
+Proposta do Solution Architect, aprovada pelo usuário sem alterações.
+Detalha a arquitetura para o escopo já confirmado em "Escopo confirmado —
+Segurança de Intrusão, primeira rodada" (`pending-decisions.md`):
+detecção de presença não autorizada + localização grosseira por barreira
+IR + acompanhamento automático de câmera + alerta (RULE-SEC-01,
+RULE-SEC-02, RULE-SEC-03 em
+`business-rules/references/security-intrusion-rules.md`). RULE-SEC-04
+(bloqueio) permanece explicitamente fora de escopo desta rodada.
+
+**Padrão arquitetural:** um segundo pipeline orientado a eventos,
+estruturalmente paralelo ao pipeline de chamada, dentro do mesmo
+monólito modular NestJS — não um novo deployável, não microserviços.
+Separação no estilo bounded-context, compartilhando com o pipeline de
+chamada apenas uma primitiva mínima e explícita de resolução de
+identidade. Nada do pipeline de chamada existente (Ingestão,
+Identificação, Deduplicação, Motor de Regras de Presença,
+`raw_identification_event`) tem seu comportamento alterado.
+
+**Componentes lógicos novos:**
+
+1. **Gateway de Ingestão de Sinais de Segurança** — irmão do Gateway de
+   Ingestão de Eventos de Dispositivo já existente, autenticado por
+   dispositivo, recebe eventos de cruzamento de barreira IR e de leitores
+   de acesso de área, persiste em tabela de evento bruto própria e nova
+   (deliberadamente **não** `raw_identification_event` — essa tabela e
+   seus consumidores são específicos de chamada).
+2. **Serviço de Identidade por Pulseira** — novo serviço pequeno e
+   compartilhado, extraído da lógica hoje embutida em
+   `IdentificationService.resolvePerson()`, expondo uma primitiva mínima e
+   estável (`tagCode → { personId, wristbandCategoryId } | null`,
+   sensível a status). É o que torna concreta a nota já existente na
+   seção do núcleo ("compartilha o Serviço de Identificação como
+   dependência comum"). `IdentificationService` passa a consumir essa
+   primitiva; seu próprio comportamento não muda.
+3. **Serviço de Autorização de Área** — implementa a checagem de
+   autorização de RULE-ACC-02/RULE-SEC-01 (categoria de pulseira →
+   permissão de área/bloco/período). Serviço de decisão puro, somente
+   leitura, reutilizável futuramente por controle de acesso em nível de
+   porta ou por trabalho futuro de bloqueio, mas não construído para
+   esses casos agora.
+4. **Motor de Detecção de Intrusão** — concentra a decisão "o que conta
+   como intrusão", no mesmo espírito em que o Motor de Regras concentra
+   "o que conta como presença". Correlaciona sinais de pulseira não
+   autorizada e de cruzamento de barreira IR não explicado, abre/atualiza
+   um incidente de intrusão com um histórico de localização (não apenas
+   um campo de localização atual — RULE-SEC-02 exige rastrear movimento,
+   não uma foto instantânea). Nunca decide bloqueio.
+5. **Registro/Consulta de Alertas de Segurança** — lado de leitura
+   consultável do alerta, mesmo precedente de separação já usado em
+   Consolidação/Fila de Pendências da chamada (estruturalmente
+   semelhante ao `PendingReviewModule` existente).
+6. **Serviço de Câmeras — Cobertura de Área e Seleção Automática** —
+   mantém o mapeamento câmera→área e seleciona qual câmera deve ficar em
+   tela cheia dado a área estimada atual, atualizando conforme a
+   localização muda. Não faz visão computacional/rastreamento nem
+   controle de protocolo de câmera.
+7. **Isolamento multi-tenant** — transversal, mesmo modelo `tenant_id` +
+   RLS do núcleo, sem exceção.
+
+**Fluxo de integração:** dispositivo (barreira IR / leitor de área) →
+Gateway de Ingestão de Sinais de Segurança → Serviço de Identidade por
+Pulseira + Serviço de Autorização de Área → Motor de Detecção de
+Intrusão → Registro/Consulta de Alertas de Segurança → Frontend/Mobile
+(consultado via polling — ver abaixo). Em paralelo, o Motor de Detecção
+de Intrusão informa o Serviço de Câmeras sobre a área estimada corrente
+do incidente, que atualiza a seleção automática de câmera em tela cheia.
+
+**Entrega de alerta: polling, não push/realtime.** Decisão fundamentada,
+não um default assumido: o projeto não tem infraestrutura de tempo real
+em nenhum outro ponto hoje; cruzamentos de barreira IR têm ritmo humano
+(não são de alta frequência), então um intervalo curto de polling é
+imperceptivelmente diferente de push para um operador de segurança
+humano; reaproveita o modelo de cliente TanStack Query sobre `fetch`
+(autenticação/retry) já existente sem alteração. Revisitar apenas se o
+uso real produzir evidência de que a latência do polling é insuficiente
+— o mesmo raciocínio de "extrair quando surgir evidência" já aplicado à
+decisão de broker de mensagens no núcleo.
+
+**Pontos em aberto para Tech Decision/Hardware Evaluation Agent**
+(arquitetura não decide tecnologia nem hardware): mecânica de bloqueio
+de RULE-SEC-04 (adiada, fora desta rodada); mecânica dos níveis de
+vigilância de RULE-SEC-06 (reconhecida apenas como eixo de configuração
+futuro); protocolo/hardware de controle de câmera; mecanismo de
+autenticação de dispositivo e contrato de payload da barreira IR;
+semântica de deduplicação para sinais de segurança (não presumir a
+lógica de RULE-ATT-10); semântica de ciclo de vida/resolução de
+incidente; códigos exatos do novo enum `Permission` para as permissões
+de câmera de RULE-ACC-07.
+
+## Decisão de tecnologia — Segurança de Intrusão, primeira rodada (aprovada em 2026-08-23)
+
+Proposta do Tech Decision Agent, aprovada pelo usuário sem alterações.
+Preenche com tecnologia concreta os pontos deixados em aberto pela
+"Decisão de arquitetura — Segurança de Intrusão, primeira rodada" acima.
+Escopo: mesmo recorte já aprovado nessa decisão de arquitetura
+(RULE-SEC-01/02/03) — RULE-SEC-04 e RULE-SEC-05 permanecem fora.
+
+1. **Hardware de barreira IR / leitor de área:** pares de sensor de
+   barreira IR (infravermelho) comercial passivo, com saída em
+   relé/contato seco, sem pilha de rede própria — cabeado a um
+   controlador de borda Raspberry Pi por andar/área. Reaproveita a mesma
+   classe de dispositivo, padrão de imagem e provisionamento já aprovados
+   para o processamento de câmera/OpenCV no núcleo ("Decisão de
+   tecnologia — Núcleo do CheckClass", item 5). **Rejeitado:** sensores
+   IR "inteligentes" com Wi-Fi/firmware próprio embutido por unidade —
+   cada sensor adicional viraria um nó de rede completo a
+   provisionar/proteger/manter, na contramão do modelo "mais cobertura =
+   mais precisão" de RULE-SEC-02. **Também rejeitado** para o próprio
+   controlador de borda: um microcontrolador classe ESP32 — introduziria
+   um segundo toolchain de firmware, o mesmo raciocínio de "evitar um
+   segundo toolchain" já aplicado na escolha de React Native/Expo em vez
+   de Flutter. Sinalizado como possível otimização de custo futura,
+   quando a densidade de sensores justificar uma segunda classe de
+   dispositivo — não descartado para sempre, apenas não decidido nesta
+   rodada.
+
+2. **Mecanismo de autenticação por dispositivo — ratificação
+   retroativa, não um mecanismo novo.** O mecanismo de API key por
+   dispositivo já implementado no código
+   (`backend/src/modules/ingestion/device-auth.service.ts`,
+   `device-auth.guard.ts`, `device.entity.ts`, migration
+   `1755751000000-AddDeviceApiKey.ts` — cujo comentário já dizia
+   "approved 2026-08-21") nunca havia sido formalmente registrado como
+   Decisão de Tecnologia aprovada nesta skill, e `pending-decisions.md`
+   ainda listava o mecanismo como não resolvido/bloqueante. **O usuário
+   ratificou retroativamente, de forma explícita, em 2026-08-23, que este
+   é o mecanismo oficial**: API key por dispositivo com hash SHA-256
+   (formato `{apiKeyId}.{secret}`, comparação em tempo constante,
+   resolvida via consulta SECURITY DEFINER restrita antes de existir
+   contexto de tenant), revogável individualmente por dispositivo. Este
+   único mecanismo passa a cobrir oficialmente **tanto os dispositivos de
+   ingestão de chamada originais quanto os novos dispositivos de
+   segurança** (barreira IR, leitor de área) — não são duas decisões
+   separadas. Como `device_type` já é uma coluna `varchar(50)` livre,
+   novos valores como `ir_barrier`/`area_reader` não exigem mudança de
+   schema. **Alternativas rejeitadas (avaliadas de novo, não apenas
+   herdadas):** mTLS (exigiria estruturar uma CA privada/pipeline de
+   certificados — o mesmo raciocínio de "sem evidência de modelo de
+   ameaça que exija isso" já usado para rejeitar vinculação de
+   dispositivo/token na autenticação mobile) e JWT de curta duração por
+   dispositivo (exigiria um fluxo de emissão/refresh do tipo login para
+   dispositivos de borda headless e de conexão intermitente — mais peças
+   móveis sem necessidade evidenciada).
+
+   > Esta ratificação também corrige retroativamente a seção "Decisão de
+   > tecnologia — Núcleo do CheckClass" e o "Contrato de payload IoT e
+   > deduplicação — Núcleo do CheckClass" acima, que ainda listavam o
+   > mecanismo de autenticação por dispositivo como pendente — ver nota
+   > acrescentada nessa seção.
+
+3. **Contrato de payload de barreira IR / leitor de área:** segue
+   exatamente o mesmo precedente já usado no núcleo — HTTPS REST POST
+   (novo endpoint, ex.: `POST /v1/security-ingestion/events`, sob o novo
+   Gateway de Ingestão de Sinais de Segurança), autenticado por
+   dispositivo via o mecanismo do item 2, com `idempotencyKey` obrigatória
+   gerada pelo cliente (segurança de reenvio em nível de transporte — uma
+   preocupação mais restrita e diferente da lógica de "index case" de
+   correlação de incidente, já decidida separadamente em
+   `pending-decisions.md`). `tenantId`/`deviceId` nunca são aceitos no
+   corpo — sempre resolvidos a partir da credencial de autenticação,
+   mesmo idioma anti-spoofing já usado em todo o restante do código.
+   Envelope aproximado: `{ idempotencyKey, eventType: "IR_BARRIER_CROSSING"
+   | "AREA_READER_SCAN", capturedAt, areaId, data }` — `data` carrega
+   `{ tagCode }` para `AREA_READER_SCAN`; `IR_BARRIER_CROSSING` pode não
+   carregar nenhum dado de identidade (um corte de feixe é anônimo por
+   natureza). O destino exato de FK de `areaId` fica deliberadamente em
+   aberto — depende do gap ainda aberto "Vínculo categoria de pulseira →
+   área (schema)" do Database Agent, não resolvido aqui. MQTT foi
+   avaliado e descartado de novo pelo mesmo motivo já estabelecido no
+   núcleo (nenhum broker se justifica neste volume; o tráfego de barreira
+   IR é de frequência mais baixa/ritmo humano, o mesmo raciocínio já
+   usado para a entrega de alerta via polling).
+
+4. **Hardware/controle de câmera:** câmeras IP fixas com saída RTSP,
+   **sem PTZ** (pan-tilt-zoom) — uma releitura do texto de RULE-SEC-03
+   confirmou que ela exige apenas SELECIONAR qual feed de câmera já
+   existente aparece em tela cheia conforme a área estimada muda, não
+   mover fisicamente uma câmera. O backend (Serviço de Câmeras, já
+   previsto na arquitetura aprovada) nunca fala um protocolo de
+   fabricante de câmera (sem ONVIF, sem cliente RTSP, sem SDK de
+   fabricante dentro do monólito NestJS) — apenas armazena metadados
+   `cameraId → areaId` / `cameraId → streamUrl` e informa ao frontend qual
+   câmera exibir, exatamente conforme o limite "não faz controle de
+   protocolo de câmera" já declarado na arquitetura. O inventário de
+   câmeras é administrado manualmente pelo dashboard admin já existente
+   (a permissão `administer_camera_devices` de RULE-ACC-07 já antecipa
+   essa interface) — nenhum protocolo de auto-descoberta nesta rodada.
+   **Necessidade de infraestrutura sinalizada, não decidida aqui, apenas
+   registrada para não ser silenciosamente presumida:** navegadores não
+   reproduzem RTSP bruto nativamente, então algo (as próprias câmeras, se
+   capazes, ou um relay de streaming RTSP→HLS/WebRTC separado e
+   desacoplado) precisa ficar entre as câmeras e o navegador — esse relay
+   explicitamente **não** faz parte do backend de negócio NestJS (embutir
+   restreaming de vídeo no mesmo processo da API de negócio violaria
+   simplicidade/desempenho/confiabilidade ao acoplar preocupações não
+   relacionadas) — é uma tarefa futura de dimensionamento de IoT/DevOps,
+   sem software de relay escolhido.
+
+5. **Confirmação de escopo, não uma decisão de tecnologia:** RULE-SEC-05
+   (contagem de entrada/saída) permanece explicitamente fora do escopo
+   desta rodada — é uma capacidade diferente (contagem de ocupação sob
+   passagem simultânea) da localização de intrusão por barreira IR de
+   RULE-SEC-01/02 (um sinal simples de "um cruzamento aconteceu aqui" via
+   corte de feixe, que o hardware do item 1 já satisfaz sem resolver o
+   problema de contagem). Nenhuma mudança ao status já existente em
+   `pending-decisions.md`.
+
+**Fora desta rodada (ainda não decidido):** mecânica de bloqueio de
+RULE-SEC-04; mecânica dos níveis de vigilância de RULE-SEC-06; tecnologia
+de contagem de entrada/saída de RULE-SEC-05; software de relay
+RTSP→HLS/WebRTC (dimensionamento futuro de IoT/DevOps); schema exato do
+vínculo categoria de pulseira → área (Database Agent).
+
 ## Restrições/premissas confirmadas
 
 - Multi-tenancy é requisito de arquitetura desde o início (ver
@@ -425,8 +654,14 @@ do Business Analyst:
   idempotência, deduplicação, etc. — a estratégia concreta é decisão do
   Backend/IoT Agent, não definida ainda).
 - Tecnologia já aprovada: núcleo do backend (Node.js/NestJS/PostgreSQL,
-  seção acima), Frontend Web (React/TypeScript/Vite, seção acima) e App
-  Mobile (React Native/Expo/TypeScript, seção acima). Ainda não decidido:
-  tecnologia de segurança de intrusão, hardware de câmera/contagem — cada
+  seção acima), Frontend Web (React/TypeScript/Vite, seção acima), App
+  Mobile (React Native/Expo/TypeScript, seção acima) e, desde 2026-08-23,
+  segurança de intrusão primeira rodada — hardware de barreira
+  IR/Raspberry, autenticação de dispositivo (ratificada retroativamente,
+  cobre também os dispositivos do núcleo), contrato de payload de
+  barreira IR/leitor de área, e hardware de câmera fixa/RTSP sem PTZ (ver
+  "Decisão de tecnologia — Segurança de Intrusão, primeira rodada"
+  acima). Ainda não decidido: hardware/tecnologia de contagem de
+  entrada-saída (RULE-SEC-05), software de relay RTSP→HLS/WebRTC — cada
   uma segue exigindo proposta do Tech Decision Agent com aprovação
   explícita do usuário antes de ser tratada como decidida.

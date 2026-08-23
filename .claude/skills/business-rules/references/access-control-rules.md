@@ -26,6 +26,16 @@ Enfermagem com acesso a blocos X/Y; visitante com acesso a áreas/período
 autorizados; VIP com acesso "All Inclusive" — todos são exemplos, as
 categorias reais são definidas pela instituição).
 
+**Nota de referência cruzada (confirmado pelo usuário em 2026-08-23):** o
+vínculo conceitual "categoria → permissão de área/bloco/período" já
+descrito acima foi confirmado como o mecanismo concreto de autorização
+usado por RULE-SEC-01
+(`business-rules/references/security-intrusion-rules.md`) para
+determinar se uma pessoa está autorizada a estar em uma área, para fins de
+detecção de intrusão. O vínculo concreto (tabela/colunas) ainda não existe
+no schema atual — ver
+`project-knowledge/references/pending-decisions.md`.
+
 ### RULE-ACC-03: Critérios de decisão de acesso a uma área
 
 **Statement:** Ao avaliar se uma pessoa pode acessar uma área, o sistema
@@ -79,3 +89,23 @@ quem pode administrar os dispositivos.
 **Applies to:** Módulo de câmeras/segurança.
 **Exceptions:** Nenhuma.
 **Source of confirmation:** Prompt Mestre, seção 21.
+
+**Nota de implementação (confirmado pelo usuário em 2026-08-23) — códigos
+concretos:** as seis capacidades descritas acima foram confirmadas como
+seis códigos independentes do enum `Permission`, sem dependência entre si
+(ex.: `follow_camera_events` NÃO exige que `view_camera` também esteja
+concedida — um grupo de permissão pode combiná-las livremente, consistente
+com o funcionamento das quatro permissões já existentes hoje):
+- `view_camera` — visualizar uma câmera específica.
+- `view_sector_cameras` — visualizar câmeras de um setor.
+- `fullscreen_camera` — colocar uma câmera em tela cheia.
+- `follow_camera_events` — acompanhamento automático de câmera (RULE-SEC-03).
+- `access_camera_recordings` — acessar gravações (se existirem).
+- `administer_camera_devices` — administrar os dispositivos de câmera.
+A distinção entre "visualizar uma câmera específica" e "visualizar câmeras
+de um setor" permanece como dois códigos separados, não um único código
+combinado com um parâmetro de escopo em tempo de concessão. Esta é a
+primeira vez que as capacidades de RULE-ACC-07 recebem códigos concretos —
+até então existiam apenas na linguagem conceitual do Prompt Mestre. Resolve
+o gap "Pendente — Códigos exatos do novo enum `Permission` para permissões
+de câmera" em `project-knowledge/references/pending-decisions.md`.
