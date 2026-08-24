@@ -1,13 +1,13 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
-import { PersonEntity, WristbandCategoryEntity, WristbandEntity } from '../../database/entities';
+import { AreaEntity, PersonEntity, WristbandCategoryAreaPermissionEntity, WristbandCategoryEntity, WristbandEntity } from '../../database/entities';
 import {
   createMockEntityManager,
   createMockRepository,
   createMockTenantContext,
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
-import { IssueWristbandInput, WristbandService } from './wristband.service';
+import { GrantAreaPermissionInput, IssueWristbandInput, WristbandService } from './wristband.service';
 
 // RULE-ACC-01: a wristband/tag is the holder's identity credential. Revoking
 // sets status inactive (IdentificationService already filters on
@@ -23,21 +23,27 @@ describe('WristbandService', () => {
     personRepo?: MockRepository;
     categoryRepo?: MockRepository;
     wristbandRepo?: MockRepository;
+    areaRepo?: MockRepository;
+    areaPermissionRepo?: MockRepository;
   } = {}) {
     const personRepo = options.personRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'person-1' }) });
     const categoryRepo =
       options.categoryRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'category-1' }) });
     const wristbandRepo = options.wristbandRepo ?? createMockRepository();
+    const areaRepo = options.areaRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'area-1' }) });
+    const areaPermissionRepo = options.areaPermissionRepo ?? createMockRepository();
 
     const repositoriesByEntity = new Map([
       [PersonEntity, personRepo],
       [WristbandCategoryEntity, categoryRepo],
       [WristbandEntity, wristbandRepo],
+      [AreaEntity, areaRepo],
+      [WristbandCategoryAreaPermissionEntity, areaPermissionRepo],
     ]);
     const manager = createMockEntityManager(repositoriesByEntity);
     const tenantContext = createMockTenantContext(manager);
     const service = new WristbandService(tenantContext as never);
-    return { service, personRepo, categoryRepo, wristbandRepo };
+    return { service, personRepo, categoryRepo, wristbandRepo, areaRepo, areaPermissionRepo };
   }
 
   test('test_issue_personAndCategoryExist_savesWristband', async () => {
@@ -88,5 +94,54 @@ describe('WristbandService', () => {
     const { service } = buildService({ wristbandRepo });
 
     await expect(service.revoke('missing-wristband')).rejects.toThrow(NotFoundException);
+  });
+
+  // RULE-ACC-02's actual authorization link: grants a category access to an
+  // area. Without this, wristband_category_area_permission rows could never
+  // be created and AreaAuthorizationService.isAuthorized would always
+  // return false.
+  describe('grantAreaPermission', () => {
+    const grantInput: GrantAreaPermissionInput = { wristbandCategoryId: 'category-1', areaId: 'area-1' };
+
+    test('test_grantAreaPermission_categoryAndAreaExist_savesPermissionWithTenantId', async () => {
+      const { service, areaPermissionRepo } = buildService();
+
+      await service.grantAreaPermission(grantInput);
+
+      expect(areaPermissionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-a-id',
+          wristbandCategoryId: 'category-1',
+          areaId: 'area-1',
+          validFrom: null,
+          validUntil: null,
+        }),
+      );
+    });
+
+    test('test_grantAreaPermission_categoryNotFound_throwsNotFoundWithoutSaving', async () => {
+      const categoryRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
+      const { service, areaPermissionRepo } = buildService({ categoryRepo });
+
+      await expect(service.grantAreaPermission(grantInput)).rejects.toThrow(NotFoundException);
+      expect(areaPermissionRepo.save).not.toHaveBeenCalled();
+    });
+
+    test('test_grantAreaPermission_areaNotFound_throwsNotFoundWithoutSaving', async () => {
+      const areaRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
+      const { service, areaPermissionRepo } = buildService({ areaRepo });
+
+      await expect(service.grantAreaPermission(grantInput)).rejects.toThrow(NotFoundException);
+      expect(areaPermissionRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  test('test_listAreaPermissionsByCategory_returnsPermissionsForThatCategory', async () => {
+    const permissions = [{ id: 'perm-1' } as WristbandCategoryAreaPermissionEntity];
+    const areaPermissionRepo = createMockRepository({ findBy: jest.fn().mockResolvedValue(permissions) });
+    const { service } = buildService({ areaPermissionRepo });
+
+    await expect(service.listAreaPermissionsByCategory('category-1')).resolves.toBe(permissions);
+    expect(areaPermissionRepo.findBy).toHaveBeenCalledWith({ wristbandCategoryId: 'category-1' });
   });
 });

@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionCheckInterceptor } from '../auth/permission-check.interceptor';
 import { Permission } from '../auth/permission.enum';
 import { RequirePermission } from '../auth/require-permission.decorator';
+import { CreateWristbandCategoryAreaPermissionDto } from './dto/create-wristband-category-area-permission.dto';
 import { CreateWristbandCategoryDto } from './dto/create-wristband-category.dto';
 import { IssueWristbandDto } from './dto/issue-wristband.dto';
 import { WristbandService } from './wristband.service';
@@ -43,5 +44,27 @@ export class WristbandController {
   @Get()
   listByPerson(@Query('personId', ParseUUIDPipe) personId: string) {
     return this.wristbandService.listByPerson(personId);
+  }
+
+  // RULE-ACC-02's area/bloco/período grant is institutional structure
+  // configuration, not identity-credential management — same conceptual
+  // bucket AreaController sits under, so these two routes override the
+  // controller's default MANAGE_USERS with MANAGE_INSTITUTION_STRUCTURE
+  // (per-route override pattern PermissionCheckInterceptor documents).
+  @Post('categories/:categoryId/area-permissions')
+  @RequirePermission(Permission.MANAGE_INSTITUTION_STRUCTURE)
+  grantAreaPermission(@Param('categoryId', ParseUUIDPipe) categoryId: string, @Body() body: CreateWristbandCategoryAreaPermissionDto) {
+    return this.wristbandService.grantAreaPermission({
+      wristbandCategoryId: categoryId,
+      areaId: body.areaId,
+      validFrom: body.validFrom ? new Date(body.validFrom) : null,
+      validUntil: body.validUntil ? new Date(body.validUntil) : null,
+    });
+  }
+
+  @Get('categories/:categoryId/area-permissions')
+  @RequirePermission(Permission.MANAGE_INSTITUTION_STRUCTURE)
+  listAreaPermissions(@Param('categoryId', ParseUUIDPipe) categoryId: string) {
+    return this.wristbandService.listAreaPermissionsByCategory(categoryId);
   }
 }

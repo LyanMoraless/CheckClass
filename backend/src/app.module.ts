@@ -6,6 +6,7 @@ import { validateEnv } from './config/env-validation';
 import { DatabaseModule } from './database/database.module';
 import { AppCheckinModule } from './modules/app-checkin/app-checkin.module';
 import { AreaAuthorizationModule } from './modules/area-authorization/area-authorization.module';
+import { AreaModule } from './modules/area/area.module';
 import { AttendanceRegisterModule } from './modules/attendance-register/attendance-register.module';
 import { AttendanceRulesModule } from './modules/attendance-rules/attendance-rules.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -57,6 +58,7 @@ import { QueueModule } from './queue/queue.module';
     PersonManagementModule,
     CourseModule,
     RoomModule,
+    AreaModule,
     ClassGroupModule,
     WristbandModule,
     DeviceModule,

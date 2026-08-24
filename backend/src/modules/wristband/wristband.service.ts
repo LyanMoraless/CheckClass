@@ -1,6 +1,12 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
-import { PersonEntity, WristbandCategoryEntity, WristbandEntity } from '../../database/entities';
+import {
+  AreaEntity,
+  PersonEntity,
+  WristbandCategoryAreaPermissionEntity,
+  WristbandCategoryEntity,
+  WristbandEntity,
+} from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 
 const UNIQUE_VIOLATION = '23505';
@@ -9,6 +15,13 @@ export interface IssueWristbandInput {
   personId: string;
   wristbandCategoryId: string;
   tagCode: string;
+}
+
+export interface GrantAreaPermissionInput {
+  wristbandCategoryId: string;
+  areaId: string;
+  validFrom?: Date | null;
+  validUntil?: Date | null;
 }
 
 // RULE-ACC-01: a wristband/tag represents the holder's identity in the
@@ -76,5 +89,39 @@ export class WristbandService {
   async listByPerson(personId: string): Promise<WristbandEntity[]> {
     const manager = this.tenantContext.getManager();
     return manager.getRepository(WristbandEntity).findBy({ personId });
+  }
+
+  // RULE-ACC-02's actual authorization link: grants a wristband category
+  // access to an area (optionally bounded by validFrom/validUntil), the row
+  // AreaAuthorizationService.isAuthorized reads. Without this, no permission
+  // row could ever exist and isAuthorized() would always return false.
+  async grantAreaPermission(input: GrantAreaPermissionInput): Promise<WristbandCategoryAreaPermissionEntity> {
+    const manager = this.tenantContext.getManager();
+    const tenantId = this.tenantContext.getTenantId();
+
+    const category = await manager.getRepository(WristbandCategoryEntity).findOneBy({ id: input.wristbandCategoryId });
+    if (!category) {
+      throw new NotFoundException(`wristband_category ${input.wristbandCategoryId} not found`);
+    }
+    const area = await manager.getRepository(AreaEntity).findOneBy({ id: input.areaId });
+    if (!area) {
+      throw new NotFoundException(`area ${input.areaId} not found`);
+    }
+
+    const repository = manager.getRepository(WristbandCategoryAreaPermissionEntity);
+    return repository.save(
+      repository.create({
+        tenantId,
+        wristbandCategoryId: input.wristbandCategoryId,
+        areaId: input.areaId,
+        validFrom: input.validFrom ?? null,
+        validUntil: input.validUntil ?? null,
+      }),
+    );
+  }
+
+  async listAreaPermissionsByCategory(wristbandCategoryId: string): Promise<WristbandCategoryAreaPermissionEntity[]> {
+    const manager = this.tenantContext.getManager();
+    return manager.getRepository(WristbandCategoryAreaPermissionEntity).findBy({ wristbandCategoryId });
   }
 }
