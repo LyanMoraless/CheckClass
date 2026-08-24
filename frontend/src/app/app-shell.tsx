@@ -23,6 +23,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/users', label: 'Users' },
   { to: '/permission-groups', label: 'Permission groups' },
   { to: '/wristbands', label: 'Wristbands' },
+  { to: '/security-incidents', label: 'Security incidents' },
+  { to: '/cameras', label: 'Cameras' },
 ];
 
 export function AppShell() {
