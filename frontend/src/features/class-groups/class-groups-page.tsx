@@ -47,12 +47,12 @@ export function ClassGroupsPage() {
 
   return (
     <section>
-      <h1>Class groups</h1>
+      <h1>Turmas</h1>
 
       <label>
-        Filter by course
+        Filtrar por curso
         <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)}>
-          <option value="">All courses</option>
+          <option value="">Todos os cursos</option>
           {courses?.map((course) => (
             <option key={course.id} value={course.id}>
               {course.name}
@@ -68,27 +68,27 @@ export function ClassGroupsPage() {
           rows={classGroups}
           getRowKey={(group) => group.id}
           columns={[
-            { header: 'Name', cell: (group) => group.name },
-            { header: 'Course', cell: (group) => courseName(group.courseId) },
+            { header: 'Nome', cell: (group) => group.name },
+            { header: 'Curso', cell: (group) => courseName(group.courseId) },
             { header: 'ID', cell: (group) => <code>{group.id}</code> },
             {
-              header: 'Details',
-              cell: (group) => <Link to={`/class-groups/${group.id}`}>Enrollments &amp; sessions</Link>,
+              header: 'Detalhes',
+              cell: (group) => <Link to={`/class-groups/${group.id}`}>Matrículas e aulas</Link>,
             },
           ]}
         />
       )}
 
       <fieldset disabled={!canManage}>
-        <legend>New class group</legend>
+        <legend>Nova turma</legend>
         {!canManage && <PermissionHint permission="manage_institution_structure" />}
         <form onSubmit={handleSubmit}>
           {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
           <label>
-            Course
+            Curso
             <select value={courseId} onChange={(event) => setCourseId(event.target.value)} required>
               <option value="" disabled>
-                Select a course
+                Selecione um curso
               </option>
               {courses?.map((course) => (
                 <option key={course.id} value={course.id}>
@@ -98,11 +98,11 @@ export function ClassGroupsPage() {
             </select>
           </label>
           <label>
-            Name
+            Nome
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} />
           </label>
           <button type="submit" disabled={mutation.isPending || !courseId}>
-            {mutation.isPending ? 'Creating…' : 'Create class group'}
+            {mutation.isPending ? 'Criando…' : 'Criar turma'}
           </button>
         </form>
       </fieldset>

@@ -54,7 +54,7 @@ export function DevicesPage() {
 
   return (
     <section>
-      <h1>Devices</h1>
+      <h1>Dispositivos</h1>
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -63,12 +63,12 @@ export function DevicesPage() {
           rows={devices}
           getRowKey={(device) => device.id}
           columns={[
-            { header: 'Type', cell: (device) => device.deviceType },
-            { header: 'External identifier', cell: (device) => device.externalIdentifier },
-            { header: 'Room', cell: (device) => roomName(device.roomId) },
+            { header: 'Tipo', cell: (device) => device.deviceType },
+            { header: 'Identificador externo', cell: (device) => device.externalIdentifier },
+            { header: 'Sala', cell: (device) => roomName(device.roomId) },
             { header: 'Status', cell: (device) => device.status },
             {
-              header: 'Actions',
+              header: 'Ações',
               cell: (device) =>
                 device.status === 'active' ? (
                   <button
@@ -76,7 +76,7 @@ export function DevicesPage() {
                     disabled={!canManage || revokeMutation.isPending}
                     onClick={() => revokeMutation.mutate(device.id)}
                   >
-                    Revoke
+                    Revogar
                   </button>
                 ) : (
                   '—'
@@ -88,23 +88,23 @@ export function DevicesPage() {
       {revokeMutation.isError && <ErrorBanner message={errorMessage(revokeMutation.error)} />}
 
       <fieldset disabled={!canManage}>
-        <legend>Register a device</legend>
+        <legend>Registrar dispositivo</legend>
         {!canManage && <PermissionHint permission="manage_institution_structure" />}
         <form onSubmit={handleSubmit}>
           {registerMutation.isError && <ErrorBanner message={errorMessage(registerMutation.error)} />}
           <label>
-            Device type
+            Tipo do dispositivo
             <input
               type="text"
               value={deviceType}
               onChange={(event) => setDeviceType(event.target.value)}
               required
               maxLength={50}
-              placeholder="e.g. tag_reader, camera"
+              placeholder="ex.: tag_reader, camera"
             />
           </label>
           <label>
-            External identifier
+            Identificador externo
             <input
               type="text"
               value={externalIdentifier}
@@ -114,9 +114,9 @@ export function DevicesPage() {
             />
           </label>
           <label>
-            Room (optional)
+            Sala (opcional)
             <select value={roomId} onChange={(event) => setRoomId(event.target.value)}>
-              <option value="">No room</option>
+              <option value="">Sem sala</option>
               {rooms?.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.name}
@@ -125,7 +125,7 @@ export function DevicesPage() {
             </select>
           </label>
           <button type="submit" disabled={registerMutation.isPending}>
-            {registerMutation.isPending ? 'Registering…' : 'Register device'}
+            {registerMutation.isPending ? 'Registrando…' : 'Registrar dispositivo'}
           </button>
         </form>
       </fieldset>

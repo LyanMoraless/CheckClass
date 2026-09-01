@@ -54,6 +54,15 @@ hospital, evento) têm o mesmo princípio de adaptação, mas seus conteúdos
 específicos de interface **ainda não foram detalhados** — tratar como gap
 a esclarecer quando o trabalho tocar esses tipos especificamente.
 
+> **Correção de escopo (2026-08-31):** o parágrafo acima está superado —
+> ver correção em `business-domain/references/domain-overview.md`
+> (2026-08-31). Universidade, curso, igreja, hospital e evento não são
+> mais "gap a detalhar depois": **saíram de escopo** com a fixação do enum
+> de tipos de instituição em três valores (faculdade, escola, empresa —
+> RULE-INST-01, `business-rules/references/institution-management-rules.md`).
+> Não devem ser tratados como suportados nem parcialmente suportados até
+> reintrodução explícita futura.
+
 ## Hierarquia de liderança institucional (confirmado em 2026-08-21)
 
 Confirmado pelo usuário como resposta à clarificação sobre quem pode
@@ -69,6 +78,36 @@ trabalhado).
 
 Regra de autorização derivada desta hierarquia: ver RULE-ATT-11 em
 `business-rules/references/attendance-rules.md`.
+
+### Hierarquia de liderança — Faculdade (fechada em 2026-08-31)
+
+Confirmado explicitamente pelo usuário como parte do pivot estrutural do
+produto: para o tipo de instituição **faculdade**, a cadeia genérica citada
+acima (Professor → Coordenador → Diretor → CEO) fica definida com estes
+nomes/níveis concretos:
+
+**Aluno → Professor → Coordenador de Curso → Direção/Reitoria**
+
+- **Aluno**: ator sujeito à apuração de presença — não é, ele próprio, um
+  nível com autoridade de resolução de pendência (RULE-ATT-12); está
+  listado como a base da cadeia, não como um `leadership_role`.
+- **Professor**: primeiro nível com autoridade de resolução de pendência
+  de chamada da(s) turma(s) às quais está vinculado — concedida
+  automaticamente ao ser atribuído a uma turma (ver RULE-INST-05,
+  `business-rules/references/institution-management-rules.md`).
+- **Coordenador de Curso**: segundo nível, escopado ao curso (ver
+  `leadership_assignment.courseId`).
+- **Direção/Reitoria**: topo da cadeia para faculdade — equivalente ao
+  exemplo genérico "Diretor/CEO" já registrado acima, agora nomeado
+  especificamente para este tipo de instituição.
+
+Isto fecha, **especificamente para o tipo faculdade**, o gap "Gap — Papéis
+administrativos internos da instituição" (ver
+`project-knowledge/references/pending-decisions.md`) e a observação
+"Papéis não totalmente detalhados" logo abaixo. **Escola e empresa
+permanecem em aberto** — o exemplo genérico Professor/Coordenador/
+Diretor/CEO citado em 2026-08-21 usava empresa apenas como ilustração
+(CEO), sem ter sido formalmente fechado como cadeia oficial de empresa.
 
 ## Administrador técnico da instituição (confirmado em 2026-08-21)
 
@@ -87,3 +126,7 @@ existem outros perfis administrativos fora dessa cadeia direta (ex:
 secretaria, RH) com permissões distintas. Isso deve ser levantado pelo
 Business Analyst quando um requisito específico de gerenciamento
 institucional (prioridade 2) for trabalhado — não deve ser assumido.
+
+> **Atualização (2026-08-31):** para o tipo **faculdade**, este gap está
+> fechado — ver "Hierarquia de liderança — Faculdade" acima. Continua em
+> aberto, sem alteração, para escola e empresa.

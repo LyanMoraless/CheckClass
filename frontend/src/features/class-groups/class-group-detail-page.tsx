@@ -21,17 +21,17 @@ import {
 export function ClassGroupDetailPage() {
   const { classGroupId } = useParams<{ classGroupId: string }>();
   if (!classGroupId) {
-    return <ErrorBanner message="Missing class group id in the URL" />;
+    return <ErrorBanner message="ID da turma ausente na URL" />;
   }
 
   return (
     <section>
       <p>
-        <Link to="/class-groups">&larr; Back to class groups</Link>
+        <Link to="/class-groups">&larr; Voltar para turmas</Link>
       </p>
-      <h1>Class group detail</h1>
+      <h1>Detalhes da turma</h1>
       <p>
-        Class group ID: <code>{classGroupId}</code>
+        ID da turma: <code>{classGroupId}</code>
       </p>
       <EnrollmentsSection classGroupId={classGroupId} />
       <SessionsSection classGroupId={classGroupId} />
@@ -67,7 +67,7 @@ function EnrollmentsSection({ classGroupId }: { classGroupId: string }) {
 
   return (
     <div>
-      <h2>Enrollments</h2>
+      <h2>Matrículas</h2>
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
       {enrollments && (
@@ -75,27 +75,27 @@ function EnrollmentsSection({ classGroupId }: { classGroupId: string }) {
           rows={enrollments}
           getRowKey={(enrollment) => enrollment.id}
           columns={[
-            { header: 'Person ID', cell: (enrollment) => enrollment.personId },
-            { header: 'Role', cell: (enrollment) => enrollment.role },
+            { header: 'ID da pessoa', cell: (enrollment) => enrollment.personId },
+            { header: 'Papel', cell: (enrollment) => enrollment.role },
           ]}
         />
       )}
 
       <fieldset disabled={!canManage}>
-        <legend>Enroll a person</legend>
+        <legend>Matricular pessoa</legend>
         {!canManage && <PermissionHint permission="manage_institution_structure" />}
         <form onSubmit={handleSubmit}>
           {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
-          <PersonIdField label="Person" value={personId} onChange={setPersonId} required />
+          <PersonIdField label="Pessoa" value={personId} onChange={setPersonId} required />
           <label>
-            Role
+            Papel
             <select value={role} onChange={(event) => setRole(event.target.value as 'student' | 'teacher')}>
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
+              <option value="student">Aluno</option>
+              <option value="teacher">Professor</option>
             </select>
           </label>
           <button type="submit" disabled={mutation.isPending || !personId}>
-            {mutation.isPending ? 'Enrolling…' : 'Enroll'}
+            {mutation.isPending ? 'Matriculando…' : 'Matricular'}
           </button>
         </form>
       </fieldset>
@@ -144,7 +144,7 @@ function SessionsSection({ classGroupId }: { classGroupId: string }) {
 
   return (
     <div>
-      <h2>Sessions</h2>
+      <h2>Aulas</h2>
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
       {sessions && (
@@ -152,29 +152,29 @@ function SessionsSection({ classGroupId }: { classGroupId: string }) {
           rows={sessions}
           getRowKey={(session) => session.id}
           columns={[
-            { header: 'Room', cell: (session) => roomName(session.roomId) },
-            { header: 'Start', cell: (session) => new Date(session.scheduledStart).toLocaleString() },
-            { header: 'End', cell: (session) => new Date(session.scheduledEnd).toLocaleString() },
-            { header: 'Session ID', cell: (session) => <code>{session.id}</code> },
+            { header: 'Sala', cell: (session) => roomName(session.roomId) },
+            { header: 'Início', cell: (session) => new Date(session.scheduledStart).toLocaleString() },
+            { header: 'Fim', cell: (session) => new Date(session.scheduledEnd).toLocaleString() },
+            { header: 'ID da aula', cell: (session) => <code>{session.id}</code> },
           ]}
         />
       )}
       <p>
         <small>
-          Copy a session ID above to look it up in <Link to="/register">Attendance register</Link>.
+          Copie um ID de aula acima para consultá-lo em <Link to="/register">Registro de presença</Link>.
         </small>
       </p>
 
       <fieldset disabled={!canManage}>
-        <legend>New session</legend>
+        <legend>Nova aula</legend>
         {!canManage && <PermissionHint permission="manage_institution_structure" />}
         <form onSubmit={handleSubmit}>
           {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
           <label>
-            Room
+            Sala
             <select value={roomId} onChange={(event) => setRoomId(event.target.value)} required>
               <option value="" disabled>
-                Select a room
+                Selecione uma sala
               </option>
               {rooms?.map((room) => (
                 <option key={room.id} value={room.id}>
@@ -184,7 +184,7 @@ function SessionsSection({ classGroupId }: { classGroupId: string }) {
             </select>
           </label>
           <label>
-            Scheduled start
+            Início programado
             <input
               type="datetime-local"
               value={scheduledStart}
@@ -193,11 +193,11 @@ function SessionsSection({ classGroupId }: { classGroupId: string }) {
             />
           </label>
           <label>
-            Scheduled end
+            Fim programado
             <input type="datetime-local" value={scheduledEnd} onChange={(event) => setScheduledEnd(event.target.value)} required />
           </label>
           <button type="submit" disabled={mutation.isPending || !roomId}>
-            {mutation.isPending ? 'Creating…' : 'Create session'}
+            {mutation.isPending ? 'Criando…' : 'Criar aula'}
           </button>
         </form>
       </fieldset>

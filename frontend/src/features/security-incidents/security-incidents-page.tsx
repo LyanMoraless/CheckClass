@@ -27,7 +27,7 @@ export function SecurityIncidentsPage() {
   if (!canManage) {
     return (
       <section>
-        <h1>Security incidents</h1>
+        <h1>Incidentes de segurança</h1>
         <PermissionHint permission="manage_security_incidents" />
       </section>
     );
@@ -35,13 +35,13 @@ export function SecurityIncidentsPage() {
 
   return (
     <section>
-      <h1>Security incidents</h1>
+      <h1>Incidentes de segurança</h1>
       <label>
         Status
         <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as SecurityIncidentStatus | '')}>
-          <option value="">All</option>
-          <option value="open">Open</option>
-          <option value="closed">Closed</option>
+          <option value="">Todos</option>
+          <option value="open">Aberto</option>
+          <option value="closed">Fechado</option>
         </select>
       </label>
 
@@ -53,12 +53,12 @@ export function SecurityIncidentsPage() {
           getRowKey={(incident) => incident.id}
           columns={[
             { header: 'Status', cell: (incident) => incident.status },
-            { header: 'Current area', cell: (incident) => (incident.currentAreaId ? <code>{incident.currentAreaId}</code> : '—') },
-            { header: 'Opened at', cell: (incident) => new Date(incident.openedAt).toLocaleString() },
-            { header: 'Outcome', cell: (incident) => (incident.outcome ? incident.outcome : '—') },
+            { header: 'Área atual', cell: (incident) => (incident.currentAreaId ? <code>{incident.currentAreaId}</code> : '—') },
+            { header: 'Aberto em', cell: (incident) => new Date(incident.openedAt).toLocaleString() },
+            { header: 'Resultado', cell: (incident) => (incident.outcome ? incident.outcome : '—') },
             {
-              header: 'Actions',
-              cell: (incident) => <Link to={`/security-incidents/${incident.id}`}>View</Link>,
+              header: 'Ações',
+              cell: (incident) => <Link to={`/security-incidents/${incident.id}`}>Ver</Link>,
             },
           ]}
         />

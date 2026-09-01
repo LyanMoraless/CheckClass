@@ -30,9 +30,9 @@ export function AttendanceConfigPage() {
   const { data: configs, isLoading, error } = useQuery({ queryKey: ['attendance-configs'], queryFn: listConfigs });
 
   function scopeLabel(config: AttendanceConfig): string {
-    if (config.scopeType === 'institution') return 'Institution-wide';
-    if (config.scopeType === 'course') return `Course: ${courses?.find((c) => c.id === config.scopeId)?.name ?? config.scopeId}`;
-    return `Class group: ${classGroups?.find((g) => g.id === config.scopeId)?.name ?? config.scopeId}`;
+    if (config.scopeType === 'institution') return 'Toda a instituição';
+    if (config.scopeType === 'course') return `Curso: ${courses?.find((c) => c.id === config.scopeId)?.name ?? config.scopeId}`;
+    return `Turma: ${classGroups?.find((g) => g.id === config.scopeId)?.name ?? config.scopeId}`;
   }
 
   const [scopeType, setScopeType] = useState<ConfigScopeType>('institution');
@@ -63,7 +63,7 @@ export function AttendanceConfigPage() {
 
   return (
     <section>
-      <h1>Attendance configuration</h1>
+      <h1>Configuração de presença</h1>
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -72,28 +72,28 @@ export function AttendanceConfigPage() {
           rows={configs}
           getRowKey={(config) => config.id}
           columns={[
-            { header: 'Scope', cell: scopeLabel },
-            { header: 'Min attendance %', cell: (config) => config.minAttendancePercentage },
-            { header: 'Tolerance (min)', cell: (config) => config.toleranceMinutes },
-            { header: 'Post-tolerance behavior', cell: (config) => config.postToleranceBehavior },
-            { header: 'Config ID', cell: (config) => <code>{config.id}</code> },
+            { header: 'Escopo', cell: scopeLabel },
+            { header: '% mínimo de presença', cell: (config) => config.minAttendancePercentage },
+            { header: 'Tolerância (min)', cell: (config) => config.toleranceMinutes },
+            { header: 'Comportamento pós-tolerância', cell: (config) => config.postToleranceBehavior },
+            { header: 'ID da configuração', cell: (config) => <code>{config.id}</code> },
           ]}
         />
       )}
 
       <fieldset disabled={!canManage}>
-        <legend>Create / update config</legend>
+        <legend>Criar / atualizar configuração</legend>
         {!canManage && <PermissionHint permission="configure_attendance_rules" />}
         <p>
           <small>
-            Resolution order: class_group config wins over its course's, which wins over the institution-wide default.
-            Submitting again for the same scope updates it (no separate edit action).
+            Ordem de resolução: a configuração da turma prevalece sobre a do seu curso, que prevalece sobre o padrão da
+            instituição. Enviar novamente para o mesmo escopo o atualiza (não há uma ação de edição separada).
           </small>
         </p>
         <form onSubmit={handleUpsertSubmit}>
           {upsertMutation.isError && <ErrorBanner message={errorMessage(upsertMutation.error)} />}
           <label>
-            Scope type
+            Tipo de escopo
             <select
               value={scopeType}
               onChange={(event) => {
@@ -101,18 +101,18 @@ export function AttendanceConfigPage() {
                 setScopeId('');
               }}
             >
-              <option value="institution">Institution</option>
-              <option value="course">Course</option>
-              <option value="class_group">Class group</option>
+              <option value="institution">Instituição</option>
+              <option value="course">Curso</option>
+              <option value="class_group">Turma</option>
             </select>
           </label>
 
           {scopeType === 'course' && (
             <label>
-              Course
+              Curso
               <select value={scopeId} onChange={(event) => setScopeId(event.target.value)} required>
                 <option value="" disabled>
-                  Select a course
+                  Selecione um curso
                 </option>
                 {courses?.map((course) => (
                   <option key={course.id} value={course.id}>
@@ -125,10 +125,10 @@ export function AttendanceConfigPage() {
 
           {scopeType === 'class_group' && (
             <label>
-              Class group
+              Turma
               <select value={scopeId} onChange={(event) => setScopeId(event.target.value)} required>
                 <option value="" disabled>
-                  Select a class group
+                  Selecione uma turma
                 </option>
                 {classGroups?.map((group) => (
                   <option key={group.id} value={group.id}>
@@ -140,7 +140,7 @@ export function AttendanceConfigPage() {
           )}
 
           <label>
-            Minimum attendance percentage
+            Percentual mínimo de presença
             <input
               type="number"
               min={0}
@@ -152,7 +152,7 @@ export function AttendanceConfigPage() {
             />
           </label>
           <label>
-            Tolerance (minutes)
+            Tolerância (minutos)
             <input
               type="number"
               min={0}
@@ -163,7 +163,7 @@ export function AttendanceConfigPage() {
             />
           </label>
           <label>
-            Post-tolerance behavior
+            Comportamento pós-tolerância
             <select value={postToleranceBehavior} onChange={(event) => setPostToleranceBehavior(event.target.value as PostToleranceBehavior)}>
               {POST_TOLERANCE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -173,7 +173,7 @@ export function AttendanceConfigPage() {
             </select>
           </label>
           <button type="submit" disabled={upsertMutation.isPending || (scopeType !== 'institution' && !scopeId)}>
-            {upsertMutation.isPending ? 'Saving…' : 'Save config'}
+            {upsertMutation.isPending ? 'Salvando…' : 'Salvar configuração'}
           </button>
         </form>
       </fieldset>
@@ -222,16 +222,16 @@ function RequiredFactorsSection({
 
   return (
     <fieldset disabled={!canManage}>
-      <legend>Required factors for a config</legend>
+      <legend>Fatores obrigatórios de uma configuração</legend>
       {!canManage && <PermissionHint permission="configure_attendance_rules" />}
       <form onSubmit={handleSubmit}>
         {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
-        {mutation.isSuccess && <p>Required factors saved.</p>}
+        {mutation.isSuccess && <p>Fatores obrigatórios salvos.</p>}
         <label>
-          Config
+          Configuração
           <select value={configId} onChange={(event) => setConfigId(event.target.value)} required>
             <option value="" disabled>
-              Select a config
+              Selecione uma configuração
             </option>
             {configs?.map((config) => (
               <option key={config.id} value={config.id}>
@@ -241,7 +241,7 @@ function RequiredFactorsSection({
           </select>
         </label>
         <fieldset>
-          <legend>Factors</legend>
+          <legend>Fatores</legend>
           {factorTypes?.map((factor) => (
             <label key={factor.id} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.4rem', maxWidth: 'none' }}>
               <input type="checkbox" checked={selectedFactors.has(factor.id)} onChange={() => toggleFactor(factor.id)} />
@@ -250,7 +250,7 @@ function RequiredFactorsSection({
           ))}
         </fieldset>
         <button type="submit" disabled={mutation.isPending || !configId}>
-          {mutation.isPending ? 'Saving…' : 'Save required factors'}
+          {mutation.isPending ? 'Salvando…' : 'Salvar fatores obrigatórios'}
         </button>
       </form>
     </fieldset>

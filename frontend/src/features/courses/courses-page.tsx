@@ -32,7 +32,7 @@ export function CoursesPage() {
 
   return (
     <section>
-      <h1>Courses</h1>
+      <h1>Cursos</h1>
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -41,27 +41,27 @@ export function CoursesPage() {
           rows={courses}
           getRowKey={(course) => course.id}
           columns={[
-            { header: 'Name', cell: (course) => course.name },
-            { header: 'Code', cell: (course) => course.code ?? '—' },
+            { header: 'Nome', cell: (course) => course.name },
+            { header: 'Código', cell: (course) => course.code ?? '—' },
           ]}
         />
       )}
 
       <fieldset disabled={!canManage}>
-        <legend>New course</legend>
+        <legend>Novo curso</legend>
         {!canManage && <PermissionHint permission="manage_institution_structure" />}
         <form onSubmit={handleSubmit}>
           {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
           <label>
-            Name
+            Nome
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} />
           </label>
           <label>
-            Code (optional)
+            Código (opcional)
             <input type="text" value={code} onChange={(event) => setCode(event.target.value)} maxLength={50} />
           </label>
           <button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Creating…' : 'Create course'}
+            {mutation.isPending ? 'Criando…' : 'Criar curso'}
           </button>
         </form>
       </fieldset>

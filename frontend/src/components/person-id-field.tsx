@@ -30,7 +30,7 @@ export function PersonIdField({ label, value, onChange, required }: PersonIdFiel
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}
-        placeholder="Person ID (UUID)"
+        placeholder="ID da pessoa (UUID)"
         list={persons && persons.length > 0 ? listId : undefined}
       />
       {persons && persons.length > 0 && (
@@ -42,7 +42,7 @@ export function PersonIdField({ label, value, onChange, required }: PersonIdFiel
           ))}
         </datalist>
       )}
-      {!persons && <small>Type the person's ID directly if the lookup list isn't available to you.</small>}
+      {!persons && <small>Digite o ID da pessoa diretamente se a lista de busca não estiver disponível para você.</small>}
     </label>
   );
 }

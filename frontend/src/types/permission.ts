@@ -29,15 +29,15 @@ export const PERMISSIONS: Permission[] = [
 ];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
-  manage_users: 'Manage users',
-  configure_attendance_rules: 'Configure attendance rules',
-  view_attendance_register: 'View attendance register',
-  manage_institution_structure: 'Manage institution structure',
-  view_camera: 'View camera',
-  view_sector_cameras: 'View sector cameras',
-  fullscreen_camera: 'Fullscreen camera',
-  follow_camera_events: 'Follow camera events',
-  access_camera_recordings: 'Access camera recordings',
-  administer_camera_devices: 'Administer camera devices',
-  manage_security_incidents: 'Manage security incidents',
+  manage_users: 'Gerenciar usuários',
+  configure_attendance_rules: 'Configurar regras de presença',
+  view_attendance_register: 'Ver registro de presença',
+  manage_institution_structure: 'Gerenciar estrutura da instituição',
+  view_camera: 'Ver câmera',
+  view_sector_cameras: 'Ver câmeras do setor',
+  fullscreen_camera: 'Câmera em tela cheia',
+  follow_camera_events: 'Acompanhar eventos de câmera',
+  access_camera_recordings: 'Acessar gravações de câmera',
+  administer_camera_devices: 'Administrar dispositivos de câmera',
+  manage_security_incidents: 'Gerenciar incidentes de segurança',
 };

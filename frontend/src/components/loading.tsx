@@ -1,3 +1,3 @@
-export function Loading({ label = 'Loading…' }: { label?: string }) {
+export function Loading({ label = 'Carregando…' }: { label?: string }) {
   return <p role="status">{label}</p>;
 }

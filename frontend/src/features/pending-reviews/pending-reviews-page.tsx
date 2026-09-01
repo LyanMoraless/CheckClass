@@ -10,17 +10,17 @@ export function PendingReviewsPage() {
 
   return (
     <section>
-      <h1>Pending reviews</h1>
+      <h1>Revisões pendentes</h1>
       <p>
         <small>
-          Resolving a review is authorized by the leadership chain above the session's class group (professor,
-          course coordinator, or institution head) — not by the general permission groups. A 403 here means you're
-          not in that chain for this specific session, not a missing permission-group grant.
+          A resolução de uma revisão é autorizada pela cadeia de liderança acima da turma da aula (professor,
+          coordenador de curso ou direção da instituição) — não pelos grupos de permissões gerais. Um 403 aqui
+          significa que você não está nessa cadeia para esta aula específica, não uma permissão ausente.
         </small>
       </p>
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
-      {data && data.length === 0 && <p>No unresolved reviews.</p>}
+      {data && data.length === 0 && <p>Nenhuma revisão pendente.</p>}
       {data?.map((review) => <ReviewRow key={review.id} review={review} />)}
     </section>
   );
@@ -38,23 +38,23 @@ function ReviewRow({ review }: { review: PendingReview }) {
 
   return (
     <fieldset>
-      <legend>Session {review.classSessionId}</legend>
-      <p>Person: {review.personId}</p>
-      <p>Reason: {review.reason}</p>
+      <legend>Aula {review.classSessionId}</legend>
+      <p>Pessoa: {review.personId}</p>
+      <p>Motivo: {review.reason}</p>
       {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
       <label>
-        Decision
+        Decisão
         <select value={decision} onChange={(event) => setDecision(event.target.value as 'present' | 'absent')}>
-          <option value="present">Present</option>
-          <option value="absent">Absent</option>
+          <option value="present">Presente</option>
+          <option value="absent">Ausente</option>
         </select>
       </label>
       <label>
-        Note (optional)
+        Nota (opcional)
         <input type="text" value={note} onChange={(event) => setNote(event.target.value)} />
       </label>
       <button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-        {mutation.isPending ? 'Resolving…' : 'Resolve'}
+        {mutation.isPending ? 'Resolvendo…' : 'Resolver'}
       </button>
     </fieldset>
   );

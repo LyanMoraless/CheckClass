@@ -30,25 +30,25 @@ export function RoomsPage() {
 
   return (
     <section>
-      <h1>Rooms</h1>
+      <h1>Salas</h1>
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
       {rooms && (
-        <DataTable<Room> rows={rooms} getRowKey={(room) => room.id} columns={[{ header: 'Name', cell: (room) => room.name }]} />
+        <DataTable<Room> rows={rooms} getRowKey={(room) => room.id} columns={[{ header: 'Nome', cell: (room) => room.name }]} />
       )}
 
       <fieldset disabled={!canManage}>
-        <legend>New room</legend>
+        <legend>Nova sala</legend>
         {!canManage && <PermissionHint permission="manage_institution_structure" />}
         <form onSubmit={handleSubmit}>
           {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
           <label>
-            Name
+            Nome
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} />
           </label>
           <button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Creating…' : 'Create room'}
+            {mutation.isPending ? 'Criando…' : 'Criar sala'}
           </button>
         </form>
       </fieldset>

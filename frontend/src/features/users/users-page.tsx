@@ -46,7 +46,7 @@ export function UsersPage() {
 
   return (
     <section>
-      <h1>Users</h1>
+      <h1>Usuários</h1>
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -55,47 +55,47 @@ export function UsersPage() {
           rows={persons}
           getRowKey={(person) => person.personId}
           columns={[
-            { header: 'Full name', cell: (person) => person.fullName },
-            { header: 'Actor type', cell: (person) => person.actorTypeCode },
-            { header: 'Has login', cell: (person) => (person.hasLoginCredential ? 'Yes' : 'No') },
+            { header: 'Nome completo', cell: (person) => person.fullName },
+            { header: 'Tipo de ator', cell: (person) => person.actorTypeCode },
+            { header: 'Possui login', cell: (person) => (person.hasLoginCredential ? 'Sim' : 'Não') },
             { header: 'ID', cell: (person) => <code>{person.personId}</code> },
           ]}
         />
       )}
 
       <fieldset disabled={!canManage}>
-        <legend>New person</legend>
+        <legend>Nova pessoa</legend>
         {!canManage && <PermissionHint permission="manage_users" />}
         {createdId && (
           <p>
-            Created person <code>{createdId}</code> — copy this ID to use in enrollment, wristband, or permission-group
-            screens if the lookup list above isn't available to you.
+            Pessoa criada <code>{createdId}</code> — copie este ID para usar nas telas de matrícula, pulseira ou grupo de
+            permissões caso a lista de busca acima não esteja disponível para você.
           </p>
         )}
         <form onSubmit={handleSubmit}>
           {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
           <label>
-            Full name
+            Nome completo
             <input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} required />
           </label>
           <label>
-            Actor type code
+            Código do tipo de ator
             <input
               type="text"
               value={actorTypeCode}
               onChange={(event) => setActorTypeCode(event.target.value)}
               required
-              placeholder="e.g. STUDENT, TEACHER"
+              placeholder="ex.: STUDENT, TEACHER"
             />
           </label>
           <label style={{ flexDirection: 'row', alignItems: 'center', gap: '0.4rem', maxWidth: 'none' }}>
             <input type="checkbox" checked={withLogin} onChange={(event) => setWithLogin(event.target.checked)} />
-            Create login credentials for this person
+            Criar credenciais de login para esta pessoa
           </label>
           {withLogin && (
             <>
               <label>
-                CPF (11 digits)
+                CPF (11 dígitos)
                 <input
                   type="text"
                   inputMode="numeric"
@@ -106,13 +106,13 @@ export function UsersPage() {
                 />
               </label>
               <label>
-                Password
+                Senha
                 <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
               </label>
             </>
           )}
           <button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Creating…' : 'Create person'}
+            {mutation.isPending ? 'Criando…' : 'Criar pessoa'}
           </button>
         </form>
       </fieldset>

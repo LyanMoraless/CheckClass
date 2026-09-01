@@ -20,25 +20,25 @@ export function ApiKeyRevealModal({ apiKey, onConfirmed }: ApiKeyRevealModalProp
   }
 
   return (
-    <Modal title="Device API key — shown only once">
+    <Modal title="Chave de API do dispositivo — exibida apenas uma vez">
       <p>
-        This key authenticates the device against the ingestion API. It cannot be retrieved again after you close this
-        dialog — the backend only stores its hash.
+        Esta chave autentica o dispositivo perante a API de ingestão. Ela não pode ser recuperada novamente depois que
+        você fechar esta janela — o backend armazena apenas o seu hash.
       </p>
       <pre style={{ background: '#f4f4f4', padding: '0.75rem', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
         {apiKey}
       </pre>
       <button type="button" onClick={handleCopy}>
-        {copied ? 'Copied!' : 'Copy to clipboard'}
+        {copied ? 'Copiado!' : 'Copiar para a área de transferência'}
       </button>
       <p>
         <label style={{ flexDirection: 'row', alignItems: 'center', gap: '0.4rem', maxWidth: 'none' }}>
           <input type="checkbox" checked={confirmedCopy} onChange={(event) => setConfirmedCopy(event.target.checked)} />
-          I have copied this key somewhere safe
+          Copiei esta chave em um local seguro
         </label>
       </p>
       <button type="button" onClick={onConfirmed} disabled={!confirmedCopy}>
-        Done — close this dialog
+        Concluído — fechar esta janela
       </button>
     </Modal>
   );

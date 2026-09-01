@@ -7,11 +7,11 @@ import { PERMISSION_LABELS, type Permission } from '../types/permission';
 // callers still pass a single permission, unaffected by this.
 export function PermissionHint({ permission }: { permission: Permission | Permission[] }) {
   const permissions = Array.isArray(permission) ? permission : [permission];
-  const labels = permissions.map((p) => `"${PERMISSION_LABELS[p]}"`).join(' or ');
+  const labels = permissions.map((p) => `"${PERMISSION_LABELS[p]}"`).join(' ou ');
   return (
     <small>
-      Requires {permissions.length > 1 ? 'one of ' : 'the '}
-      {labels} permission{permissions.length > 1 ? 's' : ''}.
+      Requer {permissions.length > 1 ? 'uma das permissões ' : 'a permissão '}
+      {labels}.
     </small>
   );
 }

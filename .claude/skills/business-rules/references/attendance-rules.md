@@ -194,6 +194,14 @@ liderança direta (ex: secretaria) não estão cobertos por esta regra.
 **Source of confirmation:** Confirmado pelo usuário via clarificação do
 Business Analyst, 2026-08-21.
 
+> **Nota de atualização (2026-08-31):** para o tipo de instituição
+> **faculdade**, os nomes/níveis exatos de cargo citados como pendentes na
+> ressalva de "Exceptions" acima foram fechados — ver "Hierarquia de
+> liderança — Faculdade" em `business-domain/references/actors.md`:
+> Professor → Coordenador de Curso → Direção/Reitoria (Aluno é o ator
+> sujeito à apuração, não um nível de autoridade). A ressalva de
+> "Exceptions" continua válida, sem alteração, para escola e empresa.
+
 ### RULE-ATT-13: Instituição pode cadastrar fatores de chamada próprios
 
 **Statement:** Além dos fatores de chamada padrão da plataforma

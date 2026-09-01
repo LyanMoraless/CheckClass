@@ -13,18 +13,18 @@ interface NavItem {
 // risked hiding the reason a feature seems "missing"; a labelled 403 is more
 // legible than a vanished nav entry.
 const NAV_ITEMS: NavItem[] = [
-  { to: '/courses', label: 'Courses' },
-  { to: '/rooms', label: 'Rooms' },
-  { to: '/class-groups', label: 'Class groups' },
-  { to: '/devices', label: 'Devices' },
-  { to: '/attendance-config', label: 'Attendance config' },
-  { to: '/register', label: 'Attendance register' },
-  { to: '/pending-reviews', label: 'Pending reviews' },
-  { to: '/users', label: 'Users' },
-  { to: '/permission-groups', label: 'Permission groups' },
-  { to: '/wristbands', label: 'Wristbands' },
-  { to: '/security-incidents', label: 'Security incidents' },
-  { to: '/cameras', label: 'Cameras' },
+  { to: '/courses', label: 'Cursos' },
+  { to: '/rooms', label: 'Salas' },
+  { to: '/class-groups', label: 'Turmas' },
+  { to: '/devices', label: 'Dispositivos' },
+  { to: '/attendance-config', label: 'Configuração de presença' },
+  { to: '/register', label: 'Registro de presença' },
+  { to: '/pending-reviews', label: 'Revisões pendentes' },
+  { to: '/users', label: 'Usuários' },
+  { to: '/permission-groups', label: 'Grupos de permissões' },
+  { to: '/wristbands', label: 'Pulseiras' },
+  { to: '/security-incidents', label: 'Incidentes de segurança' },
+  { to: '/cameras', label: 'Câmeras' },
 ];
 
 export function AppShell() {
@@ -44,7 +44,7 @@ export function AppShell() {
           ))}
         </ul>
         <button type="button" onClick={logout}>
-          Log out
+          Sair
         </button>
       </nav>
       <main className={styles.content}>

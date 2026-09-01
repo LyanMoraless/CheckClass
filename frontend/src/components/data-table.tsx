@@ -15,7 +15,7 @@ interface DataTableProps<T> {
 // Deliberately no sorting/pagination/filtering — out of scope for this
 // internal tool per the brief (minimal, functional tables, no design
 // system). Add those only if a real screen needs them.
-export function DataTable<T>({ rows, columns, getRowKey, emptyMessage = 'No records yet.' }: DataTableProps<T>) {
+export function DataTable<T>({ rows, columns, getRowKey, emptyMessage = 'Nenhum registro ainda.' }: DataTableProps<T>) {
   if (rows.length === 0) {
     return <p>{emptyMessage}</p>;
   }

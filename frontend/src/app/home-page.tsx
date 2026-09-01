@@ -6,13 +6,13 @@ export function HomePage() {
 
   return (
     <section>
-      <h1>Welcome</h1>
-      <p>Use the navigation on the left to manage the institution.</p>
-      <h2>Your permissions</h2>
+      <h1>Bem-vindo</h1>
+      <p>Use a navegação à esquerda para gerenciar a instituição.</p>
+      <h2>Suas permissões</h2>
       <ul>
         {PERMISSIONS.map((permission) => (
           <li key={permission}>
-            {PERMISSION_LABELS[permission]}: {permissions.has(permission) ? 'granted' : 'not granted'}
+            {PERMISSION_LABELS[permission]}: {permissions.has(permission) ? 'concedida' : 'não concedida'}
           </li>
         ))}
       </ul>

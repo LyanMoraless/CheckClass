@@ -91,10 +91,10 @@ export function WristbandsPage() {
 
   return (
     <section>
-      <h1>Wristbands</h1>
+      <h1>Pulseiras</h1>
 
       <fieldset disabled={!canManage}>
-        <legend>Categories</legend>
+        <legend>Categorias</legend>
         {!canManage && <PermissionHint permission="manage_users" />}
         {categoriesLoading && <Loading />}
         {categoriesError && <ErrorBanner message={errorMessage(categoriesError)} />}
@@ -102,33 +102,33 @@ export function WristbandsPage() {
           <DataTable<WristbandCategory>
             rows={categories}
             getRowKey={(category) => category.id}
-            columns={[{ header: 'Name', cell: (category) => category.name }]}
+            columns={[{ header: 'Nome', cell: (category) => category.name }]}
           />
         )}
         <form onSubmit={handleCategorySubmit}>
           {categoryMutation.isError && <ErrorBanner message={errorMessage(categoryMutation.error)} />}
           <label>
-            New category name
+            Nome da nova categoria
             <input type="text" value={categoryName} onChange={(event) => setCategoryName(event.target.value)} required />
           </label>
           <button type="submit" disabled={categoryMutation.isPending}>
-            {categoryMutation.isPending ? 'Creating…' : 'Create category'}
+            {categoryMutation.isPending ? 'Criando…' : 'Criar categoria'}
           </button>
         </form>
       </fieldset>
 
       <fieldset disabled={!canManage}>
-        <legend>Issue a wristband</legend>
+        <legend>Emitir pulseira</legend>
         {!canManage && <PermissionHint permission="manage_users" />}
         <form onSubmit={handleIssueSubmit}>
           {issueMutation.isError && <ErrorBanner message={errorMessage(issueMutation.error)} />}
-          {issueMutation.isSuccess && <p>Wristband issued.</p>}
-          <PersonIdField label="Person" value={issuePersonId} onChange={setIssuePersonId} required />
+          {issueMutation.isSuccess && <p>Pulseira emitida.</p>}
+          <PersonIdField label="Pessoa" value={issuePersonId} onChange={setIssuePersonId} required />
           <label>
-            Category
+            Categoria
             <select value={wristbandCategoryId} onChange={(event) => setWristbandCategoryId(event.target.value)} required>
               <option value="" disabled>
-                Select a category
+                Selecione uma categoria
               </option>
               {categories?.map((category) => (
                 <option key={category.id} value={category.id}>
@@ -138,20 +138,20 @@ export function WristbandsPage() {
             </select>
           </label>
           <label>
-            Tag code
+            Código da tag
             <input type="text" value={tagCode} onChange={(event) => setTagCode(event.target.value)} required />
           </label>
           <button type="submit" disabled={issueMutation.isPending || !issuePersonId || !wristbandCategoryId}>
-            {issueMutation.isPending ? 'Issuing…' : 'Issue wristband'}
+            {issueMutation.isPending ? 'Emitindo…' : 'Emitir pulseira'}
           </button>
         </form>
       </fieldset>
 
       <div>
-        <h2>Look up wristbands by person</h2>
+        <h2>Consultar pulseiras por pessoa</h2>
         <form onSubmit={handleLookupSubmit}>
-          <PersonIdField label="Person" value={lookupPersonId} onChange={setLookupPersonId} required />
-          <button type="submit">Look up</button>
+          <PersonIdField label="Pessoa" value={lookupPersonId} onChange={setLookupPersonId} required />
+          <button type="submit">Consultar</button>
         </form>
         {wristbandsFetching && <Loading />}
         {wristbandsError && <ErrorBanner message={errorMessage(wristbandsError)} />}
@@ -160,13 +160,13 @@ export function WristbandsPage() {
           <DataTable<Wristband>
             rows={wristbands}
             getRowKey={(wristband) => wristband.id}
-            emptyMessage="No wristbands found for this person."
+            emptyMessage="Nenhuma pulseira encontrada para esta pessoa."
             columns={[
-              { header: 'Tag code', cell: (wristband) => wristband.tagCode },
-              { header: 'Category', cell: (wristband) => categoryLabelFor(wristband.wristbandCategoryId) },
+              { header: 'Código da tag', cell: (wristband) => wristband.tagCode },
+              { header: 'Categoria', cell: (wristband) => categoryLabelFor(wristband.wristbandCategoryId) },
               { header: 'Status', cell: (wristband) => wristband.status },
               {
-                header: 'Actions',
+                header: 'Ações',
                 cell: (wristband) =>
                   wristband.status === 'active' ? (
                     <button
@@ -174,7 +174,7 @@ export function WristbandsPage() {
                       disabled={!canManage || revokeMutation.isPending}
                       onClick={() => revokeMutation.mutate(wristband.id)}
                     >
-                      Revoke
+                      Revogar
                     </button>
                   ) : (
                     '—'

@@ -20,7 +20,7 @@ import {
 export function AttendanceRegisterPage() {
   return (
     <section>
-      <h1>Attendance register</h1>
+      <h1>Registro de presença</h1>
       <SessionRegisterLookup />
       <PersonHistoryLookup />
       <ClassGroupSummaryLookup />
@@ -44,13 +44,13 @@ function SessionRegisterLookup() {
 
   return (
     <div>
-      <h2>Session roster</h2>
+      <h2>Lista de presença da aula</h2>
       <form onSubmit={handleSubmit}>
         <label>
-          Class session ID
+          ID da aula
           <input type="text" value={classSessionId} onChange={(event) => setClassSessionId(event.target.value)} required />
         </label>
-        <button type="submit">Look up</button>
+        <button type="submit">Consultar</button>
       </form>
       {isFetching && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -58,13 +58,13 @@ function SessionRegisterLookup() {
         <DataTable<SessionRegisterEntry>
           rows={data}
           getRowKey={(entry) => entry.personId}
-          emptyMessage="No enrolled students found for this session."
+          emptyMessage="Nenhum aluno matriculado encontrado para esta aula."
           columns={[
-            { header: 'Student', cell: (entry) => entry.fullName },
-            { header: 'Status', cell: (entry) => entry.status ?? 'not yet evaluated' },
-            { header: 'Attendance %', cell: (entry) => entry.attendancePercentage ?? '—' },
-            { header: 'Presence minutes', cell: (entry) => entry.totalPresenceMinutes ?? '—' },
-            { header: 'Pending reason', cell: (entry) => entry.pendingReason ?? '—' },
+            { header: 'Aluno', cell: (entry) => entry.fullName },
+            { header: 'Status', cell: (entry) => entry.status ?? 'ainda não avaliado' },
+            { header: '% de presença', cell: (entry) => entry.attendancePercentage ?? '—' },
+            { header: 'Minutos de presença', cell: (entry) => entry.totalPresenceMinutes ?? '—' },
+            { header: 'Motivo pendente', cell: (entry) => entry.pendingReason ?? '—' },
           ]}
         />
       )}
@@ -89,17 +89,17 @@ function PersonHistoryLookup() {
 
   return (
     <div>
-      <h2>Person history</h2>
+      <h2>Histórico da pessoa</h2>
       <form onSubmit={handleSubmit}>
         <label>
-          Person ID
+          ID da pessoa
           <input type="text" value={personId} onChange={(event) => setPersonId(event.target.value)} required />
         </label>
         <label>
-          Class group ID (optional filter)
+          ID da turma (filtro opcional)
           <input type="text" value={classGroupId} onChange={(event) => setClassGroupId(event.target.value)} />
         </label>
-        <button type="submit">Look up</button>
+        <button type="submit">Consultar</button>
       </form>
       {isFetching && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -107,13 +107,13 @@ function PersonHistoryLookup() {
         <DataTable<PersonHistoryEntry>
           rows={data}
           getRowKey={(entry) => entry.classSessionId}
-          emptyMessage="No consolidated sessions found for this person."
+          emptyMessage="Nenhuma aula consolidada encontrada para esta pessoa."
           columns={[
-            { header: 'Session start', cell: (entry) => new Date(entry.scheduledStart).toLocaleString() },
-            { header: 'Session end', cell: (entry) => new Date(entry.scheduledEnd).toLocaleString() },
+            { header: 'Início da aula', cell: (entry) => new Date(entry.scheduledStart).toLocaleString() },
+            { header: 'Fim da aula', cell: (entry) => new Date(entry.scheduledEnd).toLocaleString() },
             { header: 'Status', cell: (entry) => entry.status },
-            { header: 'Attendance %', cell: (entry) => entry.attendancePercentage },
-            { header: 'Pending reason', cell: (entry) => entry.pendingReason ?? '—' },
+            { header: '% de presença', cell: (entry) => entry.attendancePercentage },
+            { header: 'Motivo pendente', cell: (entry) => entry.pendingReason ?? '—' },
           ]}
         />
       )}
@@ -137,13 +137,13 @@ function ClassGroupSummaryLookup() {
 
   return (
     <div>
-      <h2>Class group summary</h2>
+      <h2>Resumo da turma</h2>
       <form onSubmit={handleSubmit}>
         <label>
-          Class group ID
+          ID da turma
           <input type="text" value={classGroupId} onChange={(event) => setClassGroupId(event.target.value)} required />
         </label>
-        <button type="submit">Look up</button>
+        <button type="submit">Consultar</button>
       </form>
       {isFetching && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -151,14 +151,14 @@ function ClassGroupSummaryLookup() {
         <DataTable<ClassGroupSummaryEntry>
           rows={data}
           getRowKey={(entry) => entry.personId}
-          emptyMessage="No enrolled students found for this class group."
+          emptyMessage="Nenhum aluno matriculado encontrado para esta turma."
           columns={[
-            { header: 'Student', cell: (entry) => entry.fullName },
-            { header: 'Sessions evaluated', cell: (entry) => entry.sessionsEvaluated },
-            { header: 'Present', cell: (entry) => entry.presentCount },
-            { header: 'Absent', cell: (entry) => entry.absentCount },
-            { header: 'Pending', cell: (entry) => entry.pendingCount },
-            { header: 'Attendance rate', cell: (entry) => (entry.attendanceRate === null ? '—' : `${entry.attendanceRate.toFixed(1)}%`) },
+            { header: 'Aluno', cell: (entry) => entry.fullName },
+            { header: 'Aulas avaliadas', cell: (entry) => entry.sessionsEvaluated },
+            { header: 'Presente', cell: (entry) => entry.presentCount },
+            { header: 'Ausente', cell: (entry) => entry.absentCount },
+            { header: 'Pendente', cell: (entry) => entry.pendingCount },
+            { header: 'Taxa de presença', cell: (entry) => (entry.attendanceRate === null ? '—' : `${entry.attendanceRate.toFixed(1)}%`) },
           ]}
         />
       )}

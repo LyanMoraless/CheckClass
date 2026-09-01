@@ -94,7 +94,17 @@ so agents can find the referenced rule quickly without reading everything.
   emergency-safety exception), entry/exit counting caveats, configurable
   surveillance levels.
 - `references/multi-tenancy-rules.md` — RULE-TEN-01..02: total data
-  isolation between institutions, privacy/LGPD by design.
+  isolation between institutions, privacy/LGPD by design. Includes a
+  2026-08-31 correction note: deployment model changed to one dedicated
+  instance per institution, while the technical tenant_id+RLS isolation
+  mechanism stays as defense in depth.
+- `references/institution-management-rules.md` — RULE-INST-01..05
+  (added 2026-08-31, part of the institution-management structural
+  pivot): fixed institution-type enum (faculdade/escola/empresa) and what
+  each enables, self-service onboarding with single-instance lock,
+  Curso→Matéria→Turma academic modeling, automatic class-session
+  generation from a recurring schedule, automatic pending-review
+  resolution authority when a teacher is assigned to a class group.
 - `references/data-retention-rules.md` — RULE-RET-01..04: 60-day live
   data window before monthly closure archival, annual consolidation
   after 12 monthly closures, per-factor-type deduplication time windows

@@ -68,7 +68,7 @@ export function CamerasPage() {
 
   return (
     <section>
-      <h1>Cameras</h1>
+      <h1>Câmeras</h1>
 
       {!canView && <PermissionHint permission={[...VIEW_PERMISSIONS]} />}
       {canView && isLoading && <Loading />}
@@ -78,9 +78,9 @@ export function CamerasPage() {
           rows={cameras}
           getRowKey={(camera) => camera.id}
           columns={[
-            { header: 'Name', cell: (camera) => camera.name },
+            { header: 'Nome', cell: (camera) => camera.name },
             {
-              header: 'Area',
+              header: 'Área',
               cell: (camera) => {
                 const area = areasById.get(camera.areaId);
                 return area ? areaLabel(area, areasById) : <code>{camera.areaId}</code>;
@@ -92,25 +92,26 @@ export function CamerasPage() {
       )}
 
       <fieldset disabled={!canManage}>
-        <legend>Register a camera</legend>
+        <legend>Registrar câmera</legend>
         {!canManage && <PermissionHint permission="administer_camera_devices" />}
         <p>
           <small>
-            Metadata only: no camera protocol/stream is opened by the backend, this only records name/area/URL.
+            Apenas metadados: nenhum protocolo/transmissão de câmera é aberto pelo backend, isto apenas registra
+            nome/área/URL.
           </small>
         </p>
         <form onSubmit={handleSubmit}>
           {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
           <label>
-            Name
+            Nome
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} />
           </label>
           {areas && areas.length > 0 ? (
             <label>
-              Area
+              Área
               <select value={areaId} onChange={(event) => setAreaId(event.target.value)} required>
                 <option value="" disabled>
-                  Select an area
+                  Selecione uma área
                 </option>
                 {areas.map((area) => (
                   <option key={area.id} value={area.id}>
@@ -121,21 +122,21 @@ export function CamerasPage() {
             </label>
           ) : (
             <label>
-              Area ID
+              ID da área
               <input
                 type="text"
                 value={areaId}
                 onChange={(event) => setAreaId(event.target.value)}
                 required
-                placeholder="Area ID (UUID)"
+                placeholder="ID da área (UUID)"
               />
               {areasUnavailable && (
-                <small>No permission to look up areas — paste the target area's ID directly.</small>
+                <small>Sem permissão para consultar áreas — cole diretamente o ID da área desejada.</small>
               )}
             </label>
           )}
           <label>
-            Stream URL
+            URL da transmissão
             <input
               type="text"
               value={streamUrl}
@@ -145,7 +146,7 @@ export function CamerasPage() {
             />
           </label>
           <button type="submit" disabled={mutation.isPending || !name || !areaId || !streamUrl}>
-            {mutation.isPending ? 'Registering…' : 'Register camera'}
+            {mutation.isPending ? 'Registrando…' : 'Registrar câmera'}
           </button>
         </form>
       </fieldset>

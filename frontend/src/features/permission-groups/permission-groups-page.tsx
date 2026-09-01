@@ -60,7 +60,7 @@ export function PermissionGroupsPage() {
 
   return (
     <section>
-      <h1>Permission groups</h1>
+      <h1>Grupos de permissões</h1>
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -69,33 +69,33 @@ export function PermissionGroupsPage() {
           rows={groups}
           getRowKey={(group) => group.id}
           columns={[
-            { header: 'Name', cell: (group) => group.name },
-            { header: 'Permissions', cell: (group) => group.permissions.map((p) => PERMISSION_LABELS[p]).join(', ') },
+            { header: 'Nome', cell: (group) => group.name },
+            { header: 'Permissões', cell: (group) => group.permissions.map((p) => PERMISSION_LABELS[p]).join(', ') },
           ]}
         />
       )}
 
       <fieldset disabled={!canManage}>
-        <legend>New permission group</legend>
+        <legend>Novo grupo de permissões</legend>
         {!canManage && <PermissionHint permission="manage_users" />}
         <p>
-          <small>The server caps this to permissions you already hold yourself (no self-escalation).</small>
+          <small>O servidor limita isto às permissões que você já possui (sem autoescalação).</small>
         </p>
         <form onSubmit={handleCreateSubmit}>
           {createMutation.isError && <ErrorBanner message={errorMessage(createMutation.error)} />}
           <label>
-            Name
+            Nome
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} required />
           </label>
           <fieldset>
-            <legend>Permissions</legend>
+            <legend>Permissões</legend>
             {PERMISSIONS.map((permission) => {
               const ownedByCaller = ownPermissions.has(permission);
               return (
                 <label
                   key={permission}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: '0.4rem', maxWidth: 'none' }}
-                  title={ownedByCaller ? undefined : "You don't hold this permission yourself"}
+                  title={ownedByCaller ? undefined : 'Você mesmo não possui esta permissão'}
                 >
                   <input
                     type="checkbox"
@@ -104,28 +104,28 @@ export function PermissionGroupsPage() {
                     disabled={!ownedByCaller}
                   />
                   {PERMISSION_LABELS[permission]}
-                  {!ownedByCaller && ' (you do not hold this)'}
+                  {!ownedByCaller && ' (você não possui esta permissão)'}
                 </label>
               );
             })}
           </fieldset>
           <button type="submit" disabled={createMutation.isPending || !name}>
-            {createMutation.isPending ? 'Creating…' : 'Create group'}
+            {createMutation.isPending ? 'Criando…' : 'Criar grupo'}
           </button>
         </form>
       </fieldset>
 
       <fieldset disabled={!canManage}>
-        <legend>Assign a person to a group</legend>
+        <legend>Atribuir pessoa a um grupo</legend>
         {!canManage && <PermissionHint permission="manage_users" />}
         <form onSubmit={handleAssignSubmit}>
           {assignMutation.isError && <ErrorBanner message={errorMessage(assignMutation.error)} />}
-          {assignMutation.isSuccess && <p>Assigned.</p>}
+          {assignMutation.isSuccess && <p>Atribuído.</p>}
           <label>
-            Group
+            Grupo
             <select value={groupId} onChange={(event) => setGroupId(event.target.value)} required>
               <option value="" disabled>
-                Select a group
+                Selecione um grupo
               </option>
               {groups?.map((group) => (
                 <option key={group.id} value={group.id}>
@@ -134,9 +134,9 @@ export function PermissionGroupsPage() {
               ))}
             </select>
           </label>
-          <PersonIdField label="Person" value={personId} onChange={setPersonId} required />
+          <PersonIdField label="Pessoa" value={personId} onChange={setPersonId} required />
           <button type="submit" disabled={assignMutation.isPending || !groupId || !personId}>
-            {assignMutation.isPending ? 'Assigning…' : 'Assign'}
+            {assignMutation.isPending ? 'Atribuindo…' : 'Atribuir'}
           </button>
         </form>
       </fieldset>

@@ -63,7 +63,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (response.status === 401) {
     clearStoredToken();
     unauthorizedListener?.();
-    throw new ApiError(401, 'Your session has expired — please log in again');
+    throw new ApiError(401, 'Sua sessão expirou — faça login novamente');
   }
 
   if (!response.ok) {
@@ -105,5 +105,5 @@ export function errorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
-  return 'Something went wrong';
+  return 'Algo deu errado';
 }

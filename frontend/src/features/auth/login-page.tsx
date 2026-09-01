@@ -36,7 +36,7 @@ export function LoginPage() {
   return (
     <main className={styles.page}>
       <form className={styles.form} onSubmit={handleSubmit}>
-        <h1>CheckClass admin</h1>
+        <h1>Administração CheckClass</h1>
         {error && <ErrorBanner message={error} />}
         <label>
           CPF
@@ -52,7 +52,7 @@ export function LoginPage() {
           />
         </label>
         <label>
-          Password
+          Senha
           <input
             type="password"
             value={password}
@@ -62,7 +62,7 @@ export function LoginPage() {
           />
         </label>
         <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
+          {isSubmitting ? 'Entrando…' : 'Entrar'}
         </button>
       </form>
     </main>

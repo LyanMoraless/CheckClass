@@ -277,3 +277,201 @@ Ainda não decidido: hardware/tecnologia de contagem de entrada-saída
 (RULE-SEC-05) e software de relay RTSP→HLS/WebRTC para as câmeras. Cada
 nova tecnologia continua exigindo proposta do Tech Decision Agent com
 aprovação explícita do usuário antes de ser tratada como decidida.
+
+## Correção — Prioridade de produto e modelo de implantação, pivot estrutural (2026-08-31)
+
+Ponteiro de rastreabilidade — o conteúdo substantivo está registrado em:
+- `business-domain/references/domain-overview.md` (inversão de
+  prioridade e restrição de tipos de instituição).
+- `business-rules/references/multi-tenancy-rules.md` (correção de modelo
+  de implantação).
+- `business-rules/references/institution-management-rules.md` (novas
+  regras RULE-INST-01 a 05).
+- `business-domain/references/actors.md` (hierarquia de liderança —
+  Faculdade).
+- `project-knowledge/references/architecture-overview.md` ("Escopo
+  confirmado — Pivot estrutural" e "Escopo confirmado — Tela Alunos
+  dedicada").
+
+## Resolvido (parcial, apenas Faculdade) — Papéis administrativos internos da instituição (2026-08-31)
+
+O gap "Gap — Papéis administrativos internos da instituição" (ver
+`business-domain/references/actors.md`) está fechado especificamente para
+o tipo **faculdade**: Aluno → Professor → Coordenador de Curso →
+Direção/Reitoria. **Continua em aberto, sem alteração, para escola e
+empresa.**
+
+## Correção — Conteúdo de interface para tipos de instituição além de escola/empresa (2026-08-31)
+
+O gap "Gap — Conteúdo de interface para tipos de instituição além de
+escola/empresa" está **superado**, não apenas resolvido: universidade,
+curso, igreja, hospital e evento deixaram de ser "não detalhados ainda" e
+passaram a estar **fora de escopo** (ver correção em
+`business-domain/references/domain-overview.md`, 2026-08-31).
+
+## Gaps novos identificados pelo pivot estrutural (2026-08-31)
+
+- **Gap — Posicionamento de Salas, Usuários e Revisões pendentes na nova
+  IA.** Nenhuma das 13 decisões confirmadas menciona essas três telas
+  existentes; não presumir Configurações nem Sistema principal.
+- **Gap — Formato de validação de CNPJ** (máscara, dígito verificador,
+  unicidade) não discutido.
+- **Gap — Provedor exato de consulta de CEP** (ex.: ViaCEP foi citado
+  apenas como exemplo pelo usuário, não como decisão de tecnologia) —
+  cabe ao Tech Decision Agent.
+- **Gap — Exceções de calendário no cronograma automático** (feriados,
+  cancelamento/edição pontual de uma sessão já gerada) — RULE-INST-04.
+- **Gap — Revogação de autoridade de resolução de pendência** ao remover
+  um professor de uma turma (RULE-INST-05 trata só a concessão) — e
+  comportamento se um professor for atribuído por múltiplos
+  coordenadores/múltiplas vezes.
+- **Gap — Migração de `class_group.courseId`** (vínculo direto hoje
+  existente) para o novo modelo via Matéria (RULE-INST-03) — Database
+  Agent.
+- **Gap — Continuidade do script CLI `tenant-create.ts`** como via
+  alternativa de criação de tenant (ex.: testes/CI) após a introdução da
+  tela de onboarding self-service com trava de instância única
+  (RULE-INST-02).
+- **Gap — App Mobile para faculdade.** O escopo de app mobile hoje cobre
+  apenas conteúdo Escola/Aluno (ver "Escopo deferido... App Mobile"
+  acima). Com faculdade virando o tipo de instituição foco desta rodada,
+  não foi perguntado nem confirmado se/quando um conteúdo específico de
+  app mobile para faculdade entra em escopo — não assumir.
+
+## Resolvido — Fechamento de gaps do pivot estrutural, segunda rodada (2026-08-31)
+
+Em resposta a uma segunda rodada de perguntas do Product Definition Agent
+sobre os gaps deixados abertos após o registro inicial do pivot estrutural
+(ver "Gaps novos identificados pelo pivot estrutural (2026-08-31)" acima),
+o usuário confirmou:
+
+- **Posicionamento de Salas, Usuários e Revisões pendentes na nova IA** —
+  resolvido. Ver addendum em
+  `project-knowledge/references/architecture-overview.md`, seção "Escopo
+  confirmado — Pivot estrutural...".
+- **Formato de validação de CNPJ** — resolvido: deve incluir dígito
+  verificador (algoritmo oficial da Receita). Ver RULE-INST-02
+  (`business-rules/references/institution-management-rules.md`).
+- **Provedor exato de consulta de CEP** — resolvido: ViaCEP. Ver
+  RULE-INST-02, mesmo arquivo (nota de processo: seleção de fornecedor
+  externo confirmada diretamente pelo usuário, fora do fluxo formal do
+  Tech Decision Agent — mesmo padrão já registrado para o mecanismo de
+  autenticação de dispositivo, ver entrada "Resolvido — Mecanismo de
+  autenticação por dispositivo" acima).
+- **Exceções de calendário no cronograma automático** — resolvido: a
+  funcionalidade já nasce com suporte a feriados e a edição/cancelamento
+  pontual de sessão, desde a primeira versão. Ver RULE-INST-04.
+- **Revogação de autoridade de resolução de pendência** — resolvido:
+  revogação automática e simétrica à concessão; autoridade sempre por
+  turma específica, nunca geral. Ver RULE-INST-05.
+- **Continuidade do script CLI `tenant-create.ts`** — resolvido: mantido,
+  restrito a ambientes de teste/CI, nunca produção. Ver RULE-INST-02.
+- **Migração de `class_group.courseId`** — **continua em aberto**, não
+  endereçado nesta rodada.
+
+## Escopo confirmado, arquitetura/tecnologia pendente — App Mobile para Faculdade (2026-08-31)
+
+Atualiza o status do gap "Gap — App Mobile para faculdade" acima: o
+**escopo de produto** foi confirmado pelo usuário (entra nesta rodada, não
+fica mais adiado) — mas isto **não fecha o gap por completo**. Ver
+`project-knowledge/references/architecture-overview.md`, "Escopo
+confirmado (arquitetura/tecnologia ainda pendente) — App Mobile para
+Faculdade": não existe hoje decisão de arquitetura nem de tecnologia
+cobrindo conteúdo de faculdade no app mobile (a decisão já aprovada de
+React Native/Expo foi escopada apenas para conteúdo Escola/Aluno). Precisa
+passar por Solution Architect + Tech Decision Agent, com aprovação
+explícita do usuário, antes de virar trabalho de Business Analyst ou
+implementação.
+
+## Resolvido — Sobreposição de turmas simultâneas no check-in via app (2026-09-01)
+
+Atualiza o gap "Gap — Sobreposição de turmas simultâneas no check-in via
+app" acima. Confirmado pelo usuário, como parte da arquitetura de App
+Mobile para Faculdade (ver
+`project-knowledge/references/architecture-overview.md`, "Decisão de
+arquitetura — App Mobile para Faculdade"): o modelo já existente é
+mantido, sem reabertura da decisão de segurança de RULE-ATT-06
+(`business-rules/references/attendance-rules.md`) — o servidor continua
+decidindo sozinho, sem seleção manual pelo aluno, qual sessão recebe o
+check-in quando há sobreposição. O critério de desempate exato (ex.:
+sessão mais próxima do fim, primeira encontrada) fica como detalhe
+técnico do Backend Agent, não decidido aqui.
+
+## Gap novo, explicitamente adiado — Paginação/filtro de data no cronograma do App Mobile (2026-09-01)
+
+Considerado prematuro sem dado real de volume de sessões por
+aluno/professor — mesmo raciocínio de "extrair/decidir quando houver
+evidência de necessidade" já usado em outras decisões do projeto (ex.:
+broker de mensagens do núcleo, entrega de alerta via polling na Segurança
+de Intrusão). Ver
+`project-knowledge/references/architecture-overview.md`, "Decisão de
+arquitetura — App Mobile para Faculdade". Explicitamente adiado, não
+rejeitado — retomar se o uso real mostrar necessidade.
+
+## Gaps novos identificados na terceira rodada do pivot estrutural (2026-09-01)
+
+- **Gap — Dados dependentes de Turma na exclusão em cascata.**
+  RULE-INST-08 (`business-rules/references/institution-management-rules.md`)
+  confirma que excluir Curso/Matéria cascateia até excluir a Turma, mas
+  não detalha o que acontece com matrículas, sessões já geradas e
+  registros de presença consolidados dependentes dessa Turma quando a
+  cascata a atinge.
+- **Gap — Autoridade de "montar turma" da Direção/Reitoria.**
+  RULE-INST-09 restringe a montagem de turma ao coordenador escopado ao
+  curso (`leadership_assignment.courseId`), mas não confirma se o topo da
+  hierarquia (Direção/Reitoria) herda automaticamente essa autoridade
+  para todos os cursos ou precisa de atribuição explícita por curso.
+- **Gap — Regras de transição de situação de matrícula.** RULE-INST-11
+  fixa o enum (Ativo, Trancado, Formado, Evadido), mas não confirma quem
+  pode alterar a situação nem se há validações de negócio por transição.
+- **Gap — Granularidade da detecção de conflito de agenda.**
+  RULE-INST-10 confirma que sala/professor não podem ter horários
+  sobrepostos, mas não define a granularidade exata de "sobreposição"
+  (ex.: minutos de tolerância entre o fim de uma aula e o início de outra
+  na mesma sala) — detalhe técnico do Backend Agent quando a
+  implementação começar.
+
+## Resolvido — Gaps de arquitetura fechados por delegação do usuário ao Orchestrator (2026-09-01)
+
+O usuário delegou explicitamente ao Orchestrator ("confiarei nas suas
+decisões", 2026-09-01) o fechamento dos pontos em aberto de arquitetura
+que o Solution Architect levantou ao propor a arquitetura de
+backend/dashboard web do Gerenciamento da Instituição (ver
+`project-knowledge/references/architecture-overview.md`, "Decisão de
+arquitetura — Gerenciamento da Instituição, Backend/Dashboard Web").
+Diferente das rodadas anteriores, estas decisões **não vieram de resposta
+direta a pergunta de múltipla escolha do usuário** — foram tomadas pelo
+Orchestrator dentro dessa delegação. Fecha:
+
+- **Gap — Dados dependentes de Turma na exclusão em cascata.** Resolvido:
+  política mista — matrículas e sessões futuras cascateiam normalmente,
+  mas a exclusão é **bloqueada** se a turma já tiver presença consolidada
+  registrada. Ver RULE-INST-13
+  (`business-rules/references/institution-management-rules.md`).
+- **Gap — Autoridade de "montar turma" da Direção/Reitoria.** Resolvido:
+  herança automática sobre todos os cursos, sem atribuição explícita por
+  curso. Ver addendum em RULE-INST-09.
+- **Gap — Regras de transição de situação de matrícula.** Resolvido:
+  transições livres entre os 4 valores, sem máquina de estado. Ver
+  addendum em RULE-INST-11.
+- **Gap — Granularidade da detecção de conflito de agenda.** Resolvido:
+  sobreposição exata, sem tolerância/margem de minutos. Ver addendum em
+  RULE-INST-10.
+- **Formato do período letivo e escopo do feriado** (mencionados
+  genericamente como pendentes no texto de RULE-INST-04, nunca
+  formalizados como bullets próprios nesta skill): resolvidos — datas de
+  período letivo vivem na Turma (`class_group`), não em entidade
+  separada; feriado é institucional, nova entidade `Holiday`. Ver
+  addendum em RULE-INST-04.
+
+## Nota técnica (não gap de produto) — Localizar autorização de RULE-ATT-12 antes de extrair `LeadershipScopeService`
+
+Registrado a pedido do Solution Architect, como nota de implementação —
+não uma decisão de negócio em aberto: quando a implementação real do
+`LeadershipScopeService` compartilhado (ver "Decisão de arquitetura —
+Gerenciamento da Instituição, Backend/Dashboard Web" em
+`architecture-overview.md`) começar, confirmar primeiro onde a checagem
+de autorização de RULE-ATT-12 vive hoje no código, antes de extrair a
+lógica para o novo serviço compartilhado — para não duplicar/divergir da
+implementação já existente. Tarefa do Backend Agent quando a
+implementação começar.

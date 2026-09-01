@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckClass — Visão Geral do Produto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --text: #1c1c1c;
+    --muted: #5a5a5a;
+    --bg: #ffffff;
+    --panel: #f6f6f4;
+    --line: #e2e2df;
+    --accent: #1c1c1c;
+    --pill-core: #1c1c1c;
+    --pill-2: #55524a;
+    --pill-3: #8a8a86;
+    --pill-4: #b7b7b3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  header.masthead {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 36px 48px 28px;
+    border-bottom: 3px solid var(--text);
+  }
+  header.masthead img {
+    height: 56px;
+    width: auto;
+  }
+  header.masthead .title-block h1 {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 28px;
+    margin: 0 0 4px;
+    letter-spacing: 0.5px;
+  }
+  header.masthead .title-block p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 48px 80px;
+  }
+  section {
+    margin-bottom: 56px;
+  }
+  h2.section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px;
+    letter-spacing: 1px;
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--line);
+  }
+  h3 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    margin: 28px 0 8px;
+  }
+  p { margin: 0 0 12px; }
+  .lead {
+    font-size: 17px;
+    color: var(--text);
+  }
+  .overview-box {
+    background: var(--panel);
+    border-left: 4px solid var(--text);
+    padding: 20px 24px;
+    border-radius: 4px;
+  }
+  .priority-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: priority;
+  }
+  .priority-list li {
+    counter-increment: priority;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .priority-list li:last-child { border-bottom: none; }
+  .priority-list .num {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 20px;
+    min-width: 28px;
+    color: var(--muted);
+  }
+  .priority-list strong { display: block; margin-bottom: 2px; }
+  .priority-list span.desc { color: var(--muted); font-size: 14px; }
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 100px;
+    margin-bottom: 10px;
+  }
+  .pill.core { background: var(--pill-core); }
+  .pill.p2 { background: var(--pill-2); }
+  .pill.p3 { background: var(--pill-3); }
+  .pill.p4 { background: var(--pill-4); }
+  .feature-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+  .feature-card h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .feature-card p { margin: 0; color: var(--text); font-size: 14px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 8px 0 4px;
+  }
+  table th, table td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .status-card {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 18px 20px;
+  }
+  .status-card h4 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    margin: 0 0 8px;
+    font-size: 15px;
+  }
+  .status-card ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13.5px;
+    color: var(--text);
+  }
+  .status-card ul li { margin-bottom: 4px; }
+  .gap-list {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 14px;
+  }
+  .gap-list li { margin-bottom: 8px; color: var(--text); }
+  .gap-list li .tag {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+  footer {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 48px 60px;
+    color: var(--muted);
+    font-size: 12.5px;
+    border-top: 1px solid var(--line);
+  }
+  @media print {
+    header.masthead { border-bottom: 2px solid #000; }
+    .feature-card, .status-card { break-inside: avoid; }
+    section { break-inside: avoid-page; }
+  }
+  @media (max-width: 600px) {
+    header.masthead, main, footer { padding-left: 20px; padding-right: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <img src="assets/logo.png" alt="LGI Morales">
+  <div class="title-block">
+    <h1>CheckClass</h1>
+    <p>Visão geral do produto — funcionalidades e regras de negócio</p>
+  </div>
+</header>
+
+<main>
+
+  <section id="overview">
+    <h2 class="section-title">Visão Geral</h2>
+    <div class="overview-box lead">
+      <p><strong>CheckClass</strong> é uma plataforma de gerenciamento inteligente de instituições, cujo núcleo apura <strong>presença de forma multifatorial</strong>: em vez de confiar num único sinal (como um simples check-in), ela combina identificação, entrada, permanência, saída, sensores, câmeras e horário para decidir, com confiabilidade, quem está presente, onde, e se está autorizado a estar ali.</p>
+      <p>A plataforma se adapta a diferentes tipos de instituição — escola, universidade, empresa, igreja, hospital, evento — mantendo o mesmo núcleo de apuração de presença como base comum. Hoje o sistema é multi-tenant (cada instituição isolada) e conta com três frentes de interface: um <strong>backend</strong> central, um <strong>painel web</strong> administrativo e um <strong>app mobile</strong> para alunos/professores.</p>
+    </div>
+  </section>
+
+  <section id="priorities">
+    <h2 class="section-title">Prioridades do Produto</h2>
+    <p>A ordem abaixo é oficial e não deve ser alterada silenciosamente — nenhuma decisão de escopo pode tratar segurança ou IA como núcleo do sistema.</p>
+    <ul class="priority-list">
+      <li>
+        <span class="num">1</span>
+        <div>
+          <span class="pill core">Núcleo</span>
+          <strong>Apuração de Presença Multifatorial</strong>
+          <span class="desc">O CORE do produto — combina múltiplos fatores para decidir presença/falta com confiabilidade.</span>
+        </div>
+      </li>
+      <li>
+        <span class="num">2</span>
+        <div>
+          <span class="pill p2">Prioridade 2</span>
+          <strong>Gerenciamento da Instituição</strong>
+          <span class="desc">Cadastro de pessoas, turmas, cursos, salas, dispositivos, permissões e o app mobile.</span>
+        </div>
+      </li>
+      <li>
+        <span class="num">3</span>
+        <div>
+          <span class="pill p3">Prioridade 3</span>
+          <strong>Segurança de Intrusão</strong>
+          <span class="desc">Camada complementar de segurança física — nunca o foco principal do sistema.</span>
+        </div>
+      </li>
+      <li>
+        <span class="num">4</span>
+        <div>
+          <span class="pill p4">Prioridade 4</span>
+          <strong>Demais funcionalidades</strong>
+          <span class="desc">Inteligência artificial futura e outras ideias ainda não definidas.</span>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <section id="attendance">
+    <h2 class="section-title">Apuração de Presença (Núcleo)</h2>
+    <p>É o coração do sistema: decide, aula a aula, quem esteve presente — nunca com base em um único sinal.</p>
+
+    <div class="feature-card">
+      <h4>Presença ≠ check-in</h4>
+      <p>Fazer check-in não é, por si só, sinônimo de "estar presente". O sistema também considera horário de entrada/saída, permanência na sala, e as regras específicas da instituição antes de decidir presença ou falta.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Fatores configuráveis por instituição</h4>
+      <p>Cada instituição escolhe quais fatores são obrigatórios para sua chamada (check-in, pulseira/tag, proximidade, reconhecimento facial, entrada/saída de sala, sensores, contagem por câmera, horário) e pode ainda cadastrar seus próprios fatores personalizados.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Percentual mínimo de permanência</h4>
+      <p>Cada aula tem um percentual mínimo de tempo de permanência (definido pela instituição) para o aluno ser considerado presente. Se o aluno sai e volta à sala várias vezes, o tempo de todos os intervalos é somado.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Tolerância de atraso configurável</h4>
+      <p>A instituição define um período de tolerância após o início da aula em que o check-in ainda é aceito. Depois desse prazo, apenas três comportamentos são possíveis (a instituição escolhe um): bloquear o check-in, recusar a presença, ou apenas registrar o evento sem contá-lo.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Pendência de revisão manual (nunca decide sozinho)</h4>
+      <p>Quando falta um fator obrigatório (ex.: o aluno se identificou, mas o sistema não captou a saída da sala), o registro fica <strong>pendente de revisão manual</strong> — nunca vira falta automática, e nunca expira sozinho. Só é resolvido por alguém na cadeia de liderança direta da aula (professor, coordenador, diretor, ou o cargo máximo da instituição).</p>
+    </div>
+    <div class="feature-card">
+      <h4>Deduplicação de check-in</h4>
+      <p>Se a mesma pessoa é identificada mais de uma vez em curto intervalo (ex.: tag lida duas vezes seguidas), só a primeira leitura conta — as demais são descartadas como duplicatas.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Check-in pelo app mobile</h4>
+      <p>Alunos também podem fazer check-in pelo próprio app, autenticado por login pessoal (CPF + senha). Nesse caso, o sistema descobre sozinho qual aula está em andamento (pela matrícula do aluno + horário atual no servidor) — o aluno não escolhe manualmente a aula, e não é possível manipular esse check-in informando um horário falso pelo celular.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Consulta do próprio histórico</h4>
+      <p>Qualquer pessoa autenticada pode sempre consultar sua própria presença, faltas e horários — mesmo sem nenhuma permissão administrativa. Essa consulta é o que alimenta o app mobile do aluno.</p>
+    </div>
+  </section>
+
+  <section id="access-control">
+    <h2 class="section-title">Controle de Acesso Físico</h2>
+    <p>Regula quem pode estar em qual área da instituição, e como as câmeras apoiam esse controle.</p>
+
+    <div class="feature-card">
+      <h4>Pulseira/tag como identidade física</h4>
+      <p>Cada pulseira (RFID/NFC/proximidade) identifica uma única pessoa e carrega suas permissões. Pode ser usada por alunos, professores, funcionários, visitantes e VIPs.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Categorias de pulseira configuráveis</h4>
+      <p>A instituição define categorias de pulseira (ex.: "aluno de Enfermagem", "visitante", "VIP"), cada uma com seu próprio conjunto de permissões de área, bloco e período — não são categorias fixas do sistema.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Decisão de acesso a uma área</h4>
+      <p>Para liberar uma porta, o sistema avalia, em ordem: quem é a pessoa → qual sua categoria → se tem permissão para aquele local → se o horário é permitido → se há alguma regra adicional específica. Tentativas de acesso não autorizado ficam registradas e podem gerar alertas.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Reconhecimento facial (opcional)</h4>
+      <p>Pode ser usado como fator adicional de identificação, sozinho ou combinado com a pulseira — não é obrigatório em toda instituição ou ambiente.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Câmeras com finalidade específica</h4>
+      <p>Cada câmera tem um propósito (contagem de pessoas, monitoramento, apoio à presença, segurança, acompanhamento de intrusos) — é essa finalidade que determina a tecnologia usada, não o contrário. Nem toda câmera precisa de inteligência artificial.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Permissões granulares de câmera</h4>
+      <p>Seis capacidades independentes controlam o que cada pessoa pode fazer com câmeras: visualizar uma câmera específica, visualizar câmeras de um setor, colocar em tela cheia, acompanhar eventos automaticamente, acessar gravações, e administrar os dispositivos.</p>
+    </div>
+  </section>
+
+  <section id="security">
+    <h2 class="section-title">Segurança de Intrusão</h2>
+    <p>Camada complementar (3ª prioridade) que detecta pessoas não autorizadas nas instalações e acompanha seus movimentos — nunca substitui o foco principal de presença.</p>
+
+    <div class="feature-card">
+      <h4>Detecção de intrusão</h4>
+      <p>Uma pessoa é considerada "não autorizada" numa área quando não porta pulseira, ou porta uma cuja categoria não tem permissão válida para aquele local. O objetivo é detectar essa presença e acompanhar seu deslocamento.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Localização interna por barreiras infravermelhas</h4>
+      <p>Barreiras posicionadas estrategicamente (ex.: uma por andar) estimam em qual região do prédio está o intruso. Quanto maior a cobertura de sensores, maior a precisão.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Câmeras seguem o intruso automaticamente</h4>
+      <p>Conforme a localização estimada do intruso muda, a câmera mais próxima da nova região assume a tela cheia automaticamente, facilitando o acompanhamento pela equipe de segurança.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Um incidente por intrusão em andamento</h4>
+      <p>Novos sinais referentes à mesma invasão em curso atualizam o mesmo incidente aberto (somando pontos à trilha de deslocamento), em vez de abrir um novo incidente a cada detecção.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Fechamento de incidente</h4>
+      <p>Qualquer pessoa da Equipe de Segurança pode fechar um incidente, classificando-o como <strong>resolvido</strong> (intrusão real, tratada) ou <strong>falso positivo</strong> (ex.: pessoa legítima cuja pulseira falhou na leitura) — em ambos os casos é obrigatório registrar uma justificativa.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Bloqueio automático de portas (adiado)</h4>
+      <p>A ideia de bloquear portas automaticamente durante uma intrusão existe no desenho do produto, mas fica explicitamente adiada para uma rodada futura — a regra de que situações de emergência (incêndio, evacuação) nunca podem ser impedidas por um bloqueio automático é inegociável e ainda não há hardware de bloqueio no projeto.</p>
+    </div>
+  </section>
+
+  <section id="cross-cutting">
+    <h2 class="section-title">Regras Transversais</h2>
+
+    <h3>Multi-tenancy e Privacidade</h3>
+    <p>Cada instituição (tenant) tem seus próprios usuários, dados, salas, dispositivos, regras e relatórios — totalmente isolados dos de qualquer outra instituição, desde a concepção da arquitetura. Como o sistema lida com localização, identificação e possivelmente dados biométricos, toda funcionalidade nessa área deve considerar privacidade e LGPD desde o design, não como ajuste posterior.</p>
+
+    <h3>Retenção e Arquivamento de Dados</h3>
+    <p>Os dados detalhados de chamada ficam disponíveis "vivos" no sistema por até <strong>60 dias</strong>. Depois disso, o sistema gera um fechamento mensal consolidado e os dados detalhados saem da base operacional (a instituição é orientada a arquivar essa cópia). Após 12 fechamentos mensais, o sistema gera um único fechamento anual, que passa a ser o registro de longo prazo. Pendências de revisão manual não seguem esse prazo — continuam abertas indefinidamente até serem resolvidas.</p>
+
+    <h3>Atores do Sistema</h3>
+    <table>
+      <tr><th>Ator</th><th>Papel</th></tr>
+      <tr><td>Aluno</td><td>Faz check-in, é submetido à apuração de presença, consulta seu histórico e calendário pelo app mobile.</td></tr>
+      <tr><td>Professor</td><td>Participa das aulas/turmas e resolve pendências de chamada da sua cadeia de liderança direta, inclusive pelo app.</td></tr>
+      <tr><td>Funcionário</td><td>Colaborador da instituição, pode portar pulseira com categoria própria.</td></tr>
+      <tr><td>Visitante</td><td>Acesso temporário, restrito a áreas e período previamente autorizados.</td></tr>
+      <tr><td>VIP</td><td>Categoria de pulseira com acesso amplo, usada em eventos.</td></tr>
+      <tr><td>Equipe de Segurança</td><td>Acompanha alertas de intrusão, visualiza/controla câmeras e fecha incidentes.</td></tr>
+      <tr><td>Instituição (tenant)</td><td>Configura as regras — percentuais, tolerâncias, categorias, permissões de câmera etc.</td></tr>
+    </table>
+    <p>Existe também uma cadeia de liderança direta (ex.: Professor → Coordenador → Diretor → cargo máximo da instituição) responsável por resolver pendências de chamada, e um papel de <strong>administrador técnico</strong>, separado dessa hierarquia, com acesso a dados brutos de dispositivo apenas para auditoria.</p>
+  </section>
+
+  <section id="status">
+    <h2 class="section-title">Estado Atual da Implementação</h2>
+    <p>O que já existe hoje, construído sobre as regras acima:</p>
+    <div class="status-grid">
+      <div class="status-card">
+        <h4>Painel Web (administrativo)</h4>
+        <ul>
+          <li>Login</li>
+          <li>Cursos e turmas</li>
+          <li>Salas e áreas</li>
+          <li>Dispositivos e câmeras</li>
+          <li>Pessoas/usuários e pulseiras</li>
+          <li>Grupos de permissão</li>
+          <li>Configuração de regras de presença</li>
+          <li>Registro de presença (consulta)</li>
+          <li>Pendências de revisão</li>
+          <li>Incidentes de segurança</li>
+        </ul>
+      </div>
+      <div class="status-card">
+        <h4>App Mobile (aluno/professor)</h4>
+        <ul>
+          <li>Login</li>
+          <li>Check-in (com fila offline)</li>
+          <li>Consulta de presença/faltas</li>
+          <li>Agenda/horários</li>
+          <li>Resolução de pendências (professor)</li>
+          <li>Conta pessoal</li>
+        </ul>
+      </div>
+      <div class="status-card">
+        <h4>Backend</h4>
+        <ul>
+          <li>Ingestão de eventos de dispositivo (pulseira, facial, sensores)</li>
+          <li>Motor de apuração multifatorial de presença</li>
+          <li>Deduplicação de eventos</li>
+          <li>Multi-tenancy com isolamento de dados</li>
+          <li>Autenticação de dispositivos por API key</li>
+          <li>Detecção e alerta de intrusão</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="gaps">
+    <h2 class="section-title">Ainda em Aberto</h2>
+    <p>Pontos conscientemente adiados ou ainda não definidos — não devem ser tratados como decisão fechada:</p>
+    <ul class="gap-list">
+      <li><span class="tag">Adiado</span>Bloqueio automático de portas durante intrusão.</li>
+      <li><span class="tag">Não definido</span>Escopo e finalidade exata da Inteligência Artificial no produto.</li>
+      <li><span class="tag">Não definido</span>Implementação exata dos níveis de vigilância (básico/intermediário/avançado).</li>
+      <li><span class="tag">Não definido</span>Tecnologia de contagem de entrada/saída de pessoas.</li>
+      <li><span class="tag">Gap</span>Hierarquia administrativa interna detalhada (além de professor → coordenador → diretor).</li>
+      <li><span class="tag">Gap</span>Conteúdo de interface para tipos de instituição além de escola e empresa (universidade, igreja, hospital, evento).</li>
+      <li><span class="tag">Fora desta rodada</span>App mobile ainda não cobre "Atividades" (escola) nem o conteúdo voltado a empresas.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  Documento gerado a partir das regras de negócio confirmadas do projeto CheckClass (business-rules, business-domain, project-knowledge). Fonte de verdade: <code>.claude/skills/business-rules/</code> e <code>.claude/skills/business-domain/</code>.
+</footer>
+
+</body>
+</html>

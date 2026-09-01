@@ -426,6 +426,18 @@ do Business Analyst:
   variante de conteúdo "Empresa" — ver
   `project-knowledge/references/pending-decisions.md`.
 
+> **Correção de escopo (2026-09-01):** o bullet acima ("nenhum uso mais
+> amplo confirmado") está **superado para o tipo de instituição
+> faculdade** — não apagado, pois continua descrevendo corretamente o
+> escopo original de 2026-08-22 (Escola/Aluno) e permanece válido, sem
+> alteração, para escola e empresa. Para faculdade, confirmado em
+> 2026-09-01 como parte da arquitetura de App Mobile para Faculdade (ver
+> "Decisão de arquitetura — App Mobile para Faculdade" mais abaixo): o
+> Professor passa também a ver, pelo app, a presença/falta dos alunos das
+> turmas onde leciona (incluindo co-docência, RULE-INST-05,
+> `business-rules/references/institution-management-rules.md`) — não mais
+> restrito apenas à resolução de pendências.
+
 ## Decisão de arquitetura — Segurança de Intrusão, primeira rodada (aprovada em 2026-08-23)
 
 Proposta do Solution Architect, aprovada pelo usuário sem alterações.
@@ -640,6 +652,266 @@ RULE-SEC-04; mecânica dos níveis de vigilância de RULE-SEC-06; tecnologia
 de contagem de entrada/saída de RULE-SEC-05; software de relay
 RTSP→HLS/WebRTC (dimensionamento futuro de IoT/DevOps); schema exato do
 vínculo categoria de pulseira → área (Database Agent).
+
+## Escopo confirmado — Pivot estrutural: Gerenciamento da Instituição como foco principal (2026-08-31)
+
+Registra apenas escopo/IA — a mudança de prioridade de produto está em
+`business-domain/references/domain-overview.md`; as regras de negócio
+novas estão em `business-rules/references/institution-management-rules.md`.
+
+A navegação do Frontend Web (hoje uma lista plana em `app-shell.tsx`)
+passa a se reorganizar em áreas distintas. **Apenas os posicionamentos
+abaixo foram confirmados explicitamente pelo usuário** — qualquer tela não
+listada aqui permanece como gap (ver `pending-decisions.md`), não deve ser
+posicionada por suposição.
+
+1. **Onboarding da instituição** (novo, pré-login) — tela pública de
+   criação de instituição (RULE-INST-02), ativa apenas até a primeira
+   criação bem-sucedida em cada instância/deploy.
+2. **Sistema principal** (nova área, pós-login, novo foco principal do
+   produto) — confirmado: Cronograma de aulas (RULE-INST-04) e a tela já
+   existente de **Registro de presença** (reexposta aqui, não em
+   Configurações).
+3. **Cadastro de informações** (nova área) — Cursos (já existe), Matéria
+   (nova, RULE-INST-03), Turmas (já existe, passa a se vincular à Matéria
+   em vez de diretamente ao Curso), Alunos (nova tela dedicada — ver
+   "Escopo confirmado — Tela Alunos dedicada" abaixo).
+4. **Configurações** (nova área) — confirmado apenas: Dispositivos,
+   Pulseiras, Grupos de permissões, Configuração de presença (parâmetros
+   de % mínimo/tolerância).
+5. **Segurança de Intrusão** — confirmado como área própria, separada de
+   Configurações (Incidentes de segurança, Câmeras).
+
+**Não confirmado nesta rodada (gap, ver `pending-decisions.md`):**
+posicionamento de Salas, Usuários e Revisões pendentes — nenhuma das três
+foi mencionada nas decisões do pivot.
+
+> **Atualização (2026-08-31 — segunda rodada de fechamento de gaps):** os
+> três posicionamentos deixados como gap acima foram confirmados:
+> - **Sistema principal** (item 2) passa a incluir também **Revisões
+>   pendentes**, junto com Registro de presença.
+> - **Configurações** (item 4) passa a incluir também **Usuários** e o
+>   **cadastro/CRUD de Sala** — com uma ressalva de negócio importante: a
+>   sala já atribuída a uma turma/sessão deve continuar **visível
+>   diretamente** nas telas operacionais (Cronograma, detalhe de turma),
+>   não escondida atrás de Configurações; isso é um requisito de
+>   exposição de dado, não uma reversão da posição de menu (ver
+>   RULE-INST-06,
+>   `business-rules/references/institution-management-rules.md`).
+>
+> **Source of confirmation:** Usuário, 2026-08-31 (segunda rodada de
+> fechamento de gaps, itens #1, #2 e #3).
+
+## Escopo confirmado — Tela Alunos dedicada (2026-08-31)
+
+Confirmado pelo usuário: a tela "Alunos" dentro de Cadastro de informações
+é dedicada (distinta da tela "Usuários" já existente), mostrando curso/
+turma atual e situação de matrícula do aluno, além dos dados básicos que
+"Usuários" já mostra. Detalhe exato de campos/telas fica para o Business
+Analyst quando a implementação real começar.
+
+## Decisão de arquitetura — Gerenciamento da Instituição, Backend/Dashboard Web (aprovada em 2026-09-01)
+
+Proposta do Solution Architect, aprovada pelo usuário. Detalha a
+arquitetura de backend/dashboard web para o cadastro/gerenciamento
+institucional do pivot (RULE-INST-01 a 13,
+`business-rules/references/institution-management-rules.md`) — não altera
+nem substitui a arquitetura já aprovada do App Mobile para Faculdade
+(seção abaixo), que trata de um componente diferente (leitura no app, não
+os módulos de escrita/administração aqui descritos).
+
+**Padrão arquitetural:** módulos de domínio com serviços de
+aplicação/orquestração **síncronos** — ao contrário do núcleo de
+presença/segurança (pipeline orientado a eventos), aqui não há borda de
+dispositivo não confiável a desacoplar. RLS + `tenant_id` mantidos como
+defesa em profundidade em todas as tabelas novas (mesmo padrão já
+estabelecido). Nenhuma permissão nova no enum `Permission` — RULE-INST-12
+já fechava isso.
+
+**1. Onboarding (RULE-INST-02) — módulo `institution-onboarding`:** roda
+fora de autenticação/RLS (não há tenant ainda no momento da criação).
+Reaproveita `TenantBootstrapService` já existente
+(`backend/src/modules/auth/tenant-bootstrap.service.ts`), estendido com
+CNPJ/endereço, em vez de duplicar a lógica de criação de tenant. A trava
+de instância única (RULE-INST-02) é implementada como **regra de
+aplicação no controller público** (checagem de "já existe algum tenant
+nesta instância?"), não como constraint de RLS. O script CLI de
+teste/CI (`backend/src/scripts/tenant-create.ts`) continua chamando o
+serviço diretamente, **sem ficar sujeito a essa trava** — caminho
+separado, consistente com o addendum já registrado em RULE-INST-02
+("continua existindo, mas exclusivamente para ambientes de teste/CI").
+**Consulta ao ViaCEP acontece direto do frontend, não pelo backend** —
+primeira exceção do projeto ao padrão de "todo dado de terceiro passa
+pelo backend". Justificativa aprovada pelo usuário: é dado público sem
+segredo (endereço a partir de CEP), puramente de UX de autopreenchimento
+de formulário — não há credencial, dado sensível nem lógica de negócio
+envolvida na chamada ao ViaCEP. Tratar como exceção pontual e explícita,
+não como precedente geral para outras integrações externas futuras.
+
+**2. Estrutura acadêmica (RULE-INST-03/07/08/09/11/12/13) — novo módulo
+`subject` (Matéria):** espelha o módulo `course` já existente
+(`backend/src/database/entities/course.entity.ts`). `class_group` passa a
+referenciar `subjectId` em vez de `courseId` diretamente — o curso fica
+**derivado** via `subject.courseId`, nunca duplicado em `class_group`.
+Sala (RULE-INST-07) vira **coluna em `class_group`**, com override
+opcional por `class_session` para a edição pontual de uma sessão
+específica (RULE-INST-04). Situação de matrícula (RULE-INST-11) vira
+**coluna enum em `class_group_enrollment`**, com transições livres entre
+os 4 valores (sem máquina de estado). Exclusão em cascata a partir da
+Turma segue a política mista de RULE-INST-13 (bloqueio se houver presença
+consolidada), implementada como um `ClassGroupDeletionOrchestrator`
+dedicado.
+
+**3. Montar turma (RULE-INST-05/06/09/10):** atribuir ou remover um
+professor de uma turma cria/remove um `leadership_assignment` escopado a
+`classGroupId`, **numa única transação** (não pipeline de eventos — não
+há borda de dispositivo não confiável neste fluxo). Co-docência
+(RULE-INST-05) não exige mudança de schema: são múltiplas linhas
+independentes de `leadership_assignment` para a mesma turma. Novo serviço
+compartilhado **`LeadershipScopeService`** centraliza a checagem de
+autoridade escopada (curso/turma) — reaproveitável pela resolução de
+pendência já existente (RULE-ATT-12,
+`business-rules/references/attendance-rules.md`), em vez de duas
+implementações paralelas da mesma checagem. RULE-INST-09 exige essa
+checagem **cumulativamente** com a permissão de grupo
+(`MANAGE_INSTITUTION_STRUCTURE`) — nunca como alternativa uma à outra.
+Direção/Reitoria herda automaticamente a autoridade sobre todos os
+cursos, sem atribuição explícita por curso.
+
+**4. Cronograma automático (RULE-INST-04/07/10) — novo módulo
+`class-schedule`:** `ScheduleConflictDetectionService` detecta
+sobreposição **exata** de sala/professor (sem tolerância/margem) sobre
+instâncias concretas de sessão, antes de persistir a grade recorrente ou
+uma edição pontual (RULE-INST-10). `ScheduleRegenerationService` recalcula
+sessões futuras ainda não tocadas manualmente ao editar a grade
+recorrente, preservando sessões passadas e sessões já editadas/canceladas
+pontualmente (RULE-INST-04). Datas de período letivo vivem na própria
+Turma (`class_group`), não em entidade separada. Feriado é institucional
+(nova entidade `Holiday`/`holiday`), não por sala/turma.
+
+**Fora desta decisão (não decidido aqui):** nomes/paths exatos de
+endpoints REST; formato de migration; query/índice exato usado pelo
+`ScheduleConflictDetectionService`. Todos ficam para o Backend/Database
+Agent quando a implementação real começar.
+
+**Source of confirmation:** Solution Architect, com decisões finais de
+negócio tomadas pelo Orchestrator sob delegação explícita do usuário
+("confiarei nas suas decisões", 2026-09-01) para os pontos que ainda
+estavam em aberto — ver detalhamento de cada decisão nas regras
+correspondentes em
+`business-rules/references/institution-management-rules.md`.
+
+## Escopo confirmado (arquitetura/tecnologia ainda pendente) — App Mobile para Faculdade (2026-08-31)
+
+Registra **apenas escopo de produto**, explicitamente **não** uma decisão
+de arquitetura/tecnologia. Confirmado pelo usuário, na segunda rodada de
+fechamento de gaps do pivot estrutural, contra a recomendação em
+contrário do Product Definition Agent (que sugeria adiar): conteúdo de
+app mobile para o tipo de instituição **faculdade** entra em escopo já
+nesta rodada — não fica mais adiado como as demais expansões de app
+mobile ainda pendentes (ver "Escopo deferido... App Mobile" em
+`pending-decisions.md`).
+
+**Importante — o que isto NÃO significa:** a "Decisão de tecnologia — App
+Mobile" já aprovada (React Native/Expo, ver seção acima) foi
+especificamente escopada para conteúdo Escola/Aluno. Não existe hoje
+decisão de arquitetura nem de tecnologia cobrindo conteúdo de faculdade no
+app mobile — isso precisa passar pelo Solution Architect e pelo Tech
+Decision Agent (com aprovação explícita do usuário) antes de virar
+trabalho de Business Analyst ou de implementação. Nenhum agente deve
+tratar este registro como se já estivesse pronto para detalhar
+fluxos/telas — apenas como confirmação de que a expansão de escopo em si
+foi aprovada.
+
+**Source of confirmation:** Usuário, 2026-08-31 (segunda rodada de
+fechamento de gaps, item #5).
+
+## Decisão de arquitetura — App Mobile para Faculdade (aprovada em 2026-09-01)
+
+Proposta do Solution Architect, aprovada pelo usuário. Fecha a lacuna
+deixada explicitamente pendente na seção "Escopo confirmado
+(arquitetura/tecnologia ainda pendente) — App Mobile para Faculdade"
+acima — **esta seção substitui aquele status**: a partir de agora há
+arquitetura aprovada para o conteúdo de faculdade no App Mobile.
+Tecnologia específica de implementação (nomes de endpoint definitivos,
+formato exato de payload, etc.) continua sendo trabalho futuro do Tech
+Decision Agent/Backend Agent quando a implementação real começar — esta
+decisão é de arquitetura, não o detalhamento técnico final.
+
+**Não há apps/builds separados por tipo de instituição.** É o mesmo
+aplicativo (mesma stack já aprovada — React Native/Expo/TypeScript, ver
+"Decisão de tecnologia — App Mobile" acima) para todos os tipos de
+instituição; a navegação se adapta em tempo de execução ao tipo de
+instituição do tenant e ao(s) papel(is) da pessoa autenticada.
+
+**Componente novo — contexto do usuário (tipo de instituição + papéis):**
+um componente novo, pequeno e **somente leitura**, dentro do bounded
+context Self-Service já existente (`backend/src/modules/self-service/`),
+no mesmo padrão de composição usado por `MyScheduleService`
+(`backend/src/modules/self-service/my-schedule.service.ts`) — não uma
+feature nova de autenticação/autorização, apenas uma leitura adicional
+composta a partir de dados já existentes (`tenant.institutionType`,
+`leadership_assignment`, `class_group_enrollment.role`). O app usa essa
+informação para decidir quais telas/seções mostrar.
+
+**Extensão de `GET /v1/me/schedule` para nomes legíveis:** hoje esse
+endpoint (`MyScheduleService.getMySchedule`) retorna apenas IDs
+(`classSessionId`, `classGroupId`, `roomId`, `scheduledStart`,
+`scheduledEnd`) — sem nome de matéria, turma ou sala. Para o app exibir
+informação legível (ex.: "Cálculo I — Turma A — Sala 101"), o endpoint
+precisa ser estendido para incluir esses nomes. **Esta extensão depende
+da implementação real de RULE-INST-03 (Matéria) e RULE-INST-04
+(cronograma automático), ainda não feita** — hoje não existe entidade
+Matéria no schema, então o endpoint não tem de onde buscar esse nome
+ainda. Não é uma decisão de arquitetura nova além do já registrado nas
+regras de negócio; é consequência natural delas.
+
+**Escopo do Professor ampliado — presença das turmas que leciona:**
+confirmado (ver correção datada na seção "Escopo confirmado — App Mobile,
+primeira rodada" acima): o professor passa a ver, no app, a
+presença/falta dos alunos das turmas onde está atribuído como professor
+(incluindo co-docência, RULE-INST-05,
+`business-rules/references/institution-management-rules.md`).
+Reaproveita a mesma composição já usada por `AttendanceRegisterService` no
+lado admin — não é uma feature de autorização nova, é mais uma leitura
+composta a partir de dados já existentes, mesmo raciocínio "somente
+leitura, sem novo estado persistido" já usado para `MyScheduleService`.
+
+**Check-in em turmas simultâneas — mantém o modelo já decidido, sem
+reabrir:** a decisão de segurança já registrada em
+`business-rules/references/attendance-rules.md` (nota em RULE-ATT-06:
+resolução automática pelo servidor, no momento da requisição, sem seleção
+manual do aluno) permanece válida também para faculdade. Isto fecha o
+"Gap — Sobreposição de turmas simultâneas no check-in via app" (ver
+`pending-decisions.md`): quando duas sessões do aluno estão ativas
+simultaneamente, o servidor decide sozinho qual sessão recebe o check-in;
+o critério de desempate exato (ex.: sessão mais próxima do fim, primeira
+encontrada) fica como detalhe técnico do Backend Agent, não decidido
+aqui.
+
+**Exceções de cronograma visíveis no app:** uma sessão cancelada
+(RULE-INST-04) ou um feriado devem aparecer **explicitamente marcados**
+(ex.: "aula cancelada") na lista de cronograma do aluno/professor no app —
+nunca simplesmente desaparecer da lista. Consequência direta de
+RULE-INST-04 já preservar status "cancelada" em vez de excluir; o app
+apenas precisa exibir esse status.
+
+**Paginação/filtro de data no cronograma do app — explicitamente adiado,
+não decidido:** considerado prematuro sem dado real de volume de sessões
+por aluno/professor. Mesmo raciocínio de "extrair/decidir quando houver
+evidência de necessidade" já usado em outras decisões do projeto (ex.:
+broker de mensagens do núcleo, entrega de alerta via polling na Segurança
+de Intrusão). Ver gap correspondente em `pending-decisions.md`.
+
+**Fora desta decisão (não decidido aqui):** payload/contrato exato da
+extensão de `GET /v1/me/schedule`; nome/path de qualquer endpoint novo
+necessário para a leitura de presença do professor; critério de desempate
+de check-in simultâneo (RULE-ATT-06). Todos ficam para o Backend
+Agent/Tech Decision Agent quando a implementação real começar.
+
+**Source of confirmation:** Usuário, 2026-09-01 (terceira rodada de
+fechamento de gaps — itens #17, #19, #20 e #21; decomposição de fluxos
+pelo Business Analyst e proposta de arquitetura pelo Solution Architect).
 
 ## Restrições/premissas confirmadas
 
