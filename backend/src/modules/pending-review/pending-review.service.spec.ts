@@ -1,24 +1,21 @@
-import { IsNull } from 'typeorm';
-import {
-  AttendancePendingReviewEntity,
-  ClassGroupEntity,
-  ClassSessionEntity,
-  LeadershipAssignmentEntity,
-  SessionAttendanceConsolidationEntity,
-} from '../../database/entities';
+import { AttendancePendingReviewEntity, ClassGroupEntity, ClassSessionEntity, SessionAttendanceConsolidationEntity, SubjectEntity } from '../../database/entities';
 import {
   createMockEntityManager,
   createMockRepository,
   createMockTenantContext,
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
+import { LeadershipScopeService } from '../leadership-scope/leadership-scope.service';
 import { PendingReviewService } from './pending-review.service';
 
 // RULE-ATT-11 (a resolved review stays resolved — no re-review workflow) and
 // RULE-ATT-12 (resolution authorized to anyone in the direct leadership
 // chain above the session's specific class_group: a class_group-scoped
 // assignment, a whole-course assignment, or an institution-wide
-// course_id-NULL assignment; unrelated people are not).
+// course_id-NULL assignment; unrelated people are not). The three-branch
+// scoping itself now lives in LeadershipScopeService — see
+// leadership-scope.service.spec.ts for that coverage; here it's mocked as a
+// single authorized/unauthorized boolean seam.
 describe('PendingReviewService', () => {
   const pendingReview = {
     id: 'pending-1',
@@ -32,38 +29,41 @@ describe('PendingReviewService', () => {
     createdAt: new Date(),
   };
   const session = { id: 'session-1', classGroupId: 'class-group-1' };
-  const classGroup = { id: 'class-group-1', courseId: 'course-1' };
+  const classGroup = { id: 'class-group-1', subjectId: 'subject-1' };
+  const subject = { id: 'subject-1', courseId: 'course-1' };
 
   function buildService(options: {
     pendingReview?: unknown;
-    leadershipCount?: number;
+    authorized?: boolean;
     pendingReviewRepo?: MockRepository;
-    leadershipRepo?: MockRepository;
   }) {
     const pendingReviewRepo =
       options.pendingReviewRepo ??
       createMockRepository({ findOneBy: jest.fn().mockResolvedValue(options.pendingReview ?? pendingReview) });
     const sessionRepo = createMockRepository({ findOneByOrFail: jest.fn().mockResolvedValue(session) });
     const classGroupRepo = createMockRepository({ findOneByOrFail: jest.fn().mockResolvedValue(classGroup) });
-    const leadershipRepo =
-      options.leadershipRepo ?? createMockRepository({ count: jest.fn().mockResolvedValue(options.leadershipCount ?? 0) });
+    const subjectRepo = createMockRepository({ findOneByOrFail: jest.fn().mockResolvedValue(subject) });
     const consolidationRepo = createMockRepository();
 
     const repositoriesByEntity = new Map<unknown, MockRepository>([
       [AttendancePendingReviewEntity, pendingReviewRepo],
       [ClassSessionEntity, sessionRepo],
       [ClassGroupEntity, classGroupRepo],
-      [LeadershipAssignmentEntity, leadershipRepo],
+      [SubjectEntity, subjectRepo],
       [SessionAttendanceConsolidationEntity, consolidationRepo],
     ]);
     const manager = createMockEntityManager(repositoriesByEntity);
     const tenantContext = createMockTenantContext(manager);
-    const service = new PendingReviewService(tenantContext as never);
-    return { service, pendingReviewRepo, leadershipRepo, consolidationRepo };
+    const leadershipScope = {
+      hasAuthorityOverClassGroup: jest.fn().mockResolvedValue(options.authorized ?? false),
+      hasAuthorityOverCourse: jest.fn(),
+    };
+    const service = new PendingReviewService(tenantContext as never, leadershipScope as never);
+    return { service, pendingReviewRepo, consolidationRepo, leadershipScope };
   }
 
   test('test_resolve_rejectsDecisionOtherThanPresentOrAbsent', async () => {
-    const { service } = buildService({ leadershipCount: 1 });
+    const { service } = buildService({ authorized: true });
 
     await expect(service.resolve('pending-1', 'leader-1', 'excused' as never)).rejects.toThrow(
       /decision must be "present" or "absent"/,
@@ -87,16 +87,15 @@ describe('PendingReviewService', () => {
   });
 
   test('test_resolve_unrelatedPerson_throwsForbidden', async () => {
-    // RULE-ATT-12 negative case: no leadership_assignment row at all for this
-    // person against this course (course-scoped or institution-wide).
-    const { service } = buildService({ leadershipCount: 0 });
+    // RULE-ATT-12 negative case: LeadershipScopeService reports no matching
+    // assignment for this person against this course/class_group.
+    const { service } = buildService({ authorized: false });
 
     await expect(service.resolve('pending-1', 'random-person', 'present')).rejects.toThrow(/not in the direct leadership chain/);
   });
 
-  test('test_resolve_courseScopedLeadershipAssignment_authorizesResolution', async () => {
-    // RULE-ATT-12: e.g. the professor of this exact course.
-    const { service, pendingReviewRepo } = buildService({ leadershipCount: 1 });
+  test('test_resolve_authorizedPerson_authorizesResolution', async () => {
+    const { service, pendingReviewRepo } = buildService({ authorized: true });
 
     await service.resolve('pending-1', 'professor-1', 'present');
 
@@ -106,55 +105,19 @@ describe('PendingReviewService', () => {
     );
   });
 
-  test('test_resolve_institutionWideAssignment_courseIdNull_authorizesResolution', async () => {
-    // RULE-ATT-12: e.g. the institution's top administrative role, whose
-    // leadership_assignment.course_id is NULL, reaching every course — even
-    // though this person has no assignment scoped to this exact course, the
-    // count query's second OR-branch (courseId IS NULL) is what the real DB
-    // would match, so returning 1 here simulates that.
-    const { service, pendingReviewRepo } = buildService({ leadershipCount: 1 });
+  test('test_resolve_delegatesAuthorizationToLeadershipScopeService_withCourseAndClassGroupDerivedFromSession', async () => {
+    // Verifies resolve() asks LeadershipScopeService using the courseId
+    // derived through session -> class_group -> subject.courseId (RULE-INST-03)
+    // and the class_group id itself — not just that SOME check happened.
+    const { service, leadershipScope } = buildService({ authorized: true });
 
     await service.resolve('pending-1', 'ceo-1', 'absent');
 
-    expect(pendingReviewRepo.update).toHaveBeenCalledWith(
-      { id: 'pending-1' },
-      expect.objectContaining({ resolvedByPersonId: 'ceo-1' }),
-    );
-  });
-
-  test('test_resolve_authorizationCheck_queriesAllThreeRuleAtt12Branches', async () => {
-    // Verifies the service asks the DB to check all three RULE-ATT-12
-    // branches: exact class_group match, whole-course (class_group_id NULL),
-    // and institution-wide (course_id NULL) — not just the course-scoped one.
-    const { service, leadershipRepo } = buildService({ leadershipCount: 1 });
-
-    await service.resolve('pending-1', 'ceo-1', 'absent');
-
-    expect(leadershipRepo.count).toHaveBeenCalledWith({
-      where: [
-        { personId: 'ceo-1', courseId: 'course-1', classGroupId: 'class-group-1' },
-        { personId: 'ceo-1', courseId: 'course-1', classGroupId: IsNull() },
-        { personId: 'ceo-1', courseId: IsNull() },
-      ],
-    });
-  });
-
-  test('test_resolve_classGroupScopedLeadershipAssignment_authorizesResolution', async () => {
-    // RULE-ATT-12 granularity fix: an assignment scoped to exactly this
-    // class_group (e.g. "professor of this specific turma") authorizes
-    // resolution even without a broader course-wide or institution-wide role.
-    const { service, pendingReviewRepo } = buildService({ leadershipCount: 1 });
-
-    await service.resolve('pending-1', 'turma-professor-1', 'present');
-
-    expect(pendingReviewRepo.update).toHaveBeenCalledWith(
-      { id: 'pending-1' },
-      expect.objectContaining({ resolvedByPersonId: 'turma-professor-1' }),
-    );
+    expect(leadershipScope.hasAuthorityOverClassGroup).toHaveBeenCalledWith('ceo-1', 'course-1', 'class-group-1');
   });
 
   test('test_resolve_updatesConsolidationStatusAndResolutionMetadata_onSuccess', async () => {
-    const { service, consolidationRepo } = buildService({ leadershipCount: 1 });
+    const { service, consolidationRepo } = buildService({ authorized: true });
 
     await service.resolve('pending-1', 'professor-1', 'absent', 'Confirmed absent after review');
 
@@ -199,7 +162,8 @@ describe('PendingReviewService', () => {
       const manager = createMockEntityManager();
       manager.query.mockResolvedValue(queryResult);
       const tenantContext = createMockTenantContext(manager);
-      return { service: new PendingReviewService(tenantContext as never), manager };
+      const leadershipScope = { hasAuthorityOverClassGroup: jest.fn(), hasAuthorityOverCourse: jest.fn() };
+      return { service: new PendingReviewService(tenantContext as never, leadershipScope as never), manager };
     }
 
     test('test_listUnresolvedForPerson_noAuthorizedReviews_returnsEmpty', async () => {

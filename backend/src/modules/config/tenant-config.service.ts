@@ -5,6 +5,7 @@ import {
   AttendanceConfigRequiredFactorEntity,
   AttendanceFactorTypeEntity,
   ClassGroupEntity,
+  SubjectEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { ConfigScopeType } from './config-scope-type.enum';
@@ -50,9 +51,13 @@ export class TenantConfigService {
       throw new NotFoundException(`class_group ${classGroupId} not found`);
     }
 
+    // RULE-INST-03: course is no longer on class_group directly — resolve it
+    // one hop up through the turma's subject.
+    const subject = await manager.getRepository(SubjectEntity).findOneByOrFail({ id: classGroup.subjectId });
+
     const config =
       (await this.findConfig(ConfigScopeType.CLASS_GROUP, classGroupId)) ??
-      (await this.findConfig(ConfigScopeType.COURSE, classGroup.courseId)) ??
+      (await this.findConfig(ConfigScopeType.COURSE, subject.courseId)) ??
       (await this.findConfig(ConfigScopeType.INSTITUTION, null));
 
     if (!config) {

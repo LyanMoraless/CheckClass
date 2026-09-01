@@ -8,11 +8,31 @@ export class ClassGroupEntity {
   @Column({ name: 'tenant_id', type: 'uuid' })
   tenantId: string;
 
-  @Column({ name: 'course_id', type: 'uuid' })
-  courseId: string;
+  // RULE-INST-03: class_group is now an offering of a Subject (Matéria), not
+  // a direct link to Course — course is derived via subject.courseId, never
+  // duplicated here. See MigrateClassGroupToSubject migration for the
+  // course_id -> subject_id backfill of pre-existing rows.
+  @Column({ name: 'subject_id', type: 'uuid' })
+  subjectId: string;
 
   @Column({ type: 'varchar', length: 255 })
   name: string;
+
+  // RULE-INST-07: the room is assigned once, here, at the turma level —
+  // class_session.roomId now only holds a per-session override (NULL =
+  // inherit this column). Nullable: turma composition can start before a
+  // room is picked; "required before publishing the schedule" is a
+  // montar-turma workflow rule (Backend Agent), not a DB invariant.
+  @Column({ name: 'room_id', type: 'uuid', nullable: true })
+  roomId: string | null;
+
+  // Approved architecture: the letivo period's start/end dates live on the
+  // turma itself (no separate "Período Letivo" entity this round).
+  @Column({ name: 'term_start_date', type: 'date', nullable: true })
+  termStartDate: Date | null;
+
+  @Column({ name: 'term_end_date', type: 'date', nullable: true })
+  termEndDate: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

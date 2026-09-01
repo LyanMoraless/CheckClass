@@ -16,12 +16,34 @@
 .nav ul {
   list-style: none;
   padding: 0;
-  margin: 0 0 1rem;
-  flex: 1;
+  margin: 0;
 }
 
 .nav li {
   margin-bottom: 0.4rem;
+}
+
+.navGroups {
+  flex: 1;
+  margin-bottom: 1rem;
+}
+
+.navGroup {
+  margin-bottom: 1.1rem;
+}
+
+.navGroup:last-child {
+  margin-bottom: 0;
+}
+
+.navGroupTitle {
+  margin: 0 0 0.4rem;
+  padding: 0 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8b8fa3;
 }
 
 .nav a {

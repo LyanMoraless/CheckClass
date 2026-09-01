@@ -1,7 +1,14 @@
 import { ConflictException } from '@nestjs/common';
 import { compare } from 'bcrypt';
 import { QueryFailedError } from 'typeorm';
-import { ActorTypeEntity, PersonCredentialEntity, PersonEntity, TenantEntity } from '../../database/entities';
+import {
+  ActorTypeEntity,
+  LeadershipAssignmentEntity,
+  LeadershipRoleEntity,
+  PersonCredentialEntity,
+  PersonEntity,
+  TenantEntity,
+} from '../../database/entities';
 import { createMockEntityManager, createMockRepository, MockRepository } from '../../../test/unit/support/mock-entity-manager';
 import { Permission } from './permission.enum';
 import { CreateTenantInput, TenantBootstrapService } from './tenant-bootstrap.service';
@@ -24,6 +31,8 @@ describe('TenantBootstrapService', () => {
       tenantRepo?: MockRepository;
       personRepo?: MockRepository;
       credentialRepo?: MockRepository;
+      leadershipRoleRepo?: MockRepository;
+      leadershipAssignmentRepo?: MockRepository;
       rootGroup?: { id: string };
     } = {},
   ) {
@@ -35,10 +44,23 @@ describe('TenantBootstrapService', () => {
     const personRepo =
       options.personRepo ?? createMockRepository({ save: jest.fn().mockResolvedValue({ id: 'root-person-1' }) });
     const credentialRepo = options.credentialRepo ?? createMockRepository();
+    // Simulates TypeORM assigning an id per row on a bulk save() of the 3
+    // seeded leadership_role rows — id derived from name so assertions don't
+    // depend on array order.
+    const leadershipRoleRepo =
+      options.leadershipRoleRepo ??
+      createMockRepository({
+        save: jest.fn((rows: Array<{ name: string; rank: number }>) =>
+          Promise.resolve(rows.map((row) => ({ ...row, id: `leadership-role-${row.name}` }))),
+        ),
+      });
+    const leadershipAssignmentRepo = options.leadershipAssignmentRepo ?? createMockRepository();
     const repositoriesByEntity = new Map([
       [ActorTypeEntity, actorTypeRepo],
       [PersonEntity, personRepo],
       [PersonCredentialEntity, credentialRepo],
+      [LeadershipRoleEntity, leadershipRoleRepo],
+      [LeadershipAssignmentEntity, leadershipAssignmentRepo],
     ]);
     const manager = createMockEntityManager(repositoriesByEntity);
 
@@ -59,7 +81,18 @@ describe('TenantBootstrapService', () => {
     };
 
     const service = new TenantBootstrapService(dataSource as never, tenantContext as never, permissionGroupService as never);
-    return { service, dataSource, tenantRepo, actorTypeRepo, personRepo, credentialRepo, tenantContext, permissionGroupService };
+    return {
+      service,
+      dataSource,
+      tenantRepo,
+      actorTypeRepo,
+      personRepo,
+      credentialRepo,
+      leadershipRoleRepo,
+      leadershipAssignmentRepo,
+      tenantContext,
+      permissionGroupService,
+    };
   }
 
   test('test_createTenant_savesTenantRowOutsideTenantContextThenRunsRestWithinIt', async () => {
@@ -72,6 +105,61 @@ describe('TenantBootstrapService', () => {
       expect.objectContaining({ name: input.institutionName, institutionType: input.institutionType }),
     );
     expect(tenantContext.runWithTenant).toHaveBeenCalledWith('tenant-1', expect.any(Function));
+  });
+
+  // RULE-INST-02: the public onboarding controller (institution-onboarding
+  // module) supplies CNPJ/address on top of the CLI-only fields above; the
+  // pre-existing tenant-create.ts CLI path doesn't, so these stay optional
+  // on CreateTenantInput (see the interface's own comment) and simply aren't
+  // passed when absent — covered by the base `input` fixture above having
+  // none of them and still saving successfully.
+  test('test_createTenant_withCnpjAndAddressFields_persistsThemOnTenantRow', async () => {
+    const { service, tenantRepo } = buildService();
+    const inputWithAddress: CreateTenantInput = {
+      ...input,
+      cnpj: '11222333000181',
+      addressStreet: 'Rua Exemplo',
+      addressNumber: '100',
+      addressComplement: 'Sala 2',
+      addressNeighborhood: 'Centro',
+      addressCity: 'São Paulo',
+      addressState: 'SP',
+      addressZipCode: '01310100',
+    };
+
+    await service.createTenant(inputWithAddress);
+
+    expect(tenantRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cnpj: '11222333000181',
+        addressStreet: 'Rua Exemplo',
+        addressNumber: '100',
+        addressComplement: 'Sala 2',
+        addressNeighborhood: 'Centro',
+        addressCity: 'São Paulo',
+        addressState: 'SP',
+        addressZipCode: '01310100',
+      }),
+    );
+  });
+
+  test('test_createTenant_withoutCnpjAndAddressFields_savesThemAsNull', async () => {
+    const { service, tenantRepo } = buildService();
+
+    await service.createTenant(input);
+
+    expect(tenantRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cnpj: null,
+        addressStreet: null,
+        addressNumber: null,
+        addressComplement: null,
+        addressNeighborhood: null,
+        addressCity: null,
+        addressState: null,
+        addressZipCode: null,
+      }),
+    );
   });
 
   test('test_createTenant_createsAdminActorTypeAndRootPerson', async () => {
@@ -148,5 +236,62 @@ describe('TenantBootstrapService', () => {
 
     await expect(service.createTenant(input)).rejects.toThrow('unexpected failure');
     expect(tenantRepo.delete).toHaveBeenCalledWith({ id: 'tenant-1' });
+  });
+
+  // RULE-INST-01 (only "faculdade" has a defined leadership hierarchy this
+  // round) + RULE-INST-09 (root admin needs a real leadership_assignment,
+  // not just MANAGE_INSTITUTION_STRUCTURE, to montar/editar turma from the
+  // very first login) — actors.md, "Hierarquia de liderança — Faculdade".
+  describe('faculdade leadership seeding', () => {
+    const faculdadeInput: CreateTenantInput = { ...input, institutionType: 'faculdade' };
+
+    test('test_createTenant_institutionTypeFaculdade_seedsThreeLeadershipRolesWithConfirmedNamesAndRanks', async () => {
+      const { service, leadershipRoleRepo } = buildService();
+
+      await service.createTenant(faculdadeInput);
+
+      expect(leadershipRoleRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({ tenantId: 'tenant-1', name: 'Professor', rank: 1 }),
+        expect.objectContaining({ tenantId: 'tenant-1', name: 'Coordenador de Curso', rank: 2 }),
+        expect.objectContaining({ tenantId: 'tenant-1', name: 'Direção/Reitoria', rank: 3 }),
+      ]);
+    });
+
+    test('test_createTenant_institutionTypeFaculdade_grantsRootPersonInstitutionWideDirecaoReitoriaAssignment', async () => {
+      const { service, leadershipAssignmentRepo } = buildService();
+
+      await service.createTenant(faculdadeInput);
+
+      expect(leadershipAssignmentRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          personId: 'root-person-1',
+          leadershipRoleId: 'leadership-role-Direção/Reitoria',
+          courseId: null,
+          classGroupId: null,
+        }),
+      );
+    });
+
+    test('test_createTenant_institutionTypeFaculdade_topRoleMissingAfterSeeding_throws', async () => {
+      // Defensive branch: if the seeded rows somehow don't include Direção/
+      // Reitoria (e.g. a future edit typo to the static role list), the root
+      // person must not silently end up without any leadership authority.
+      const leadershipRoleRepo = createMockRepository({
+        save: jest.fn().mockResolvedValue([{ id: 'role-1', name: 'Professor', rank: 1 }]),
+      });
+      const { service } = buildService({ leadershipRoleRepo });
+
+      await expect(service.createTenant(faculdadeInput)).rejects.toThrow(/Direção\/Reitoria.*missing/);
+    });
+
+    test('test_createTenant_institutionTypeNotFaculdade_doesNotSeedAnyLeadershipRoleOrAssignment', async () => {
+      const { service, leadershipRoleRepo, leadershipAssignmentRepo } = buildService();
+
+      await service.createTenant(input); // institutionType: 'SCHOOL'
+
+      expect(leadershipRoleRepo.save).not.toHaveBeenCalled();
+      expect(leadershipAssignmentRepo.save).not.toHaveBeenCalled();
+    });
   });
 });

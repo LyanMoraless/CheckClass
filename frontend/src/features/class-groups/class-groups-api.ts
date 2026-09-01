@@ -2,13 +2,19 @@ import { api, buildQuery } from '../../lib/api-client';
 
 export interface ClassGroup {
   id: string;
-  courseId: string;
+  subjectId: string;
   name: string;
+  roomId: string | null;
+  termStartDate: string | null;
+  termEndDate: string | null;
 }
 
 export interface CreateClassGroupInput {
-  courseId: string;
+  subjectId: string;
   name: string;
+  roomId?: string;
+  termStartDate?: string;
+  termEndDate?: string;
 }
 
 export interface Enrollment {
@@ -23,23 +29,8 @@ export interface EnrollPersonInput {
   role: 'student' | 'teacher';
 }
 
-export interface ClassSession {
-  id: string;
-  classGroupId: string;
-  roomId: string;
-  scheduledStart: string;
-  scheduledEnd: string;
-}
-
-export interface CreateClassSessionInput {
-  classGroupId: string;
-  roomId: string;
-  scheduledStart: string;
-  scheduledEnd: string;
-}
-
-export async function listClassGroups(courseId?: string): Promise<ClassGroup[]> {
-  return api.get(`/v1/class-groups${buildQuery({ courseId })}`);
+export async function listClassGroups(subjectId?: string): Promise<ClassGroup[]> {
+  return api.get(`/v1/class-groups${buildQuery({ subjectId })}`);
 }
 
 export async function createClassGroup(input: CreateClassGroupInput): Promise<ClassGroup> {
@@ -52,12 +43,4 @@ export async function listEnrollments(classGroupId: string): Promise<Enrollment[
 
 export async function enrollPerson(classGroupId: string, input: EnrollPersonInput): Promise<Enrollment> {
   return api.post(`/v1/class-groups/${classGroupId}/enrollments`, input);
-}
-
-export async function listClassSessions(classGroupId?: string): Promise<ClassSession[]> {
-  return api.get(`/v1/class-sessions${buildQuery({ classGroupId })}`);
-}
-
-export async function createClassSession(input: CreateClassSessionInput): Promise<{ classSessionId: string }> {
-  return api.post('/v1/class-sessions', input);
 }

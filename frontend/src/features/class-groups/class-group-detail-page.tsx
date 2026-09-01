@@ -8,33 +8,62 @@ import { PermissionHint } from '../../components/permission-hint';
 import { PersonIdField } from '../../components/person-id-field';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
+import { ClassSessionsSection } from '../class-schedule/class-sessions-section';
+import { ScheduleSlotsSection } from '../class-schedule/schedule-slots-section';
 import { listRooms } from '../rooms/rooms-api';
-import {
-  createClassSession,
-  enrollPerson,
-  listClassSessions,
-  listEnrollments,
-  type ClassSession,
-  type Enrollment,
-} from './class-groups-api';
+import { enrollPerson, listClassGroups, listEnrollments, type Enrollment } from './class-groups-api';
 
 export function ClassGroupDetailPage() {
   const { classGroupId } = useParams<{ classGroupId: string }>();
   if (!classGroupId) {
     return <ErrorBanner message="ID da turma ausente na URL" />;
   }
+  // Hooks below this point live in a child component, never here — calling
+  // them after the guard above would violate the rules of hooks (a
+  // conditional early return ahead of them in the same function body).
+  return <ClassGroupDetailContent classGroupId={classGroupId} />;
+}
+
+function ClassGroupDetailContent({ classGroupId }: { classGroupId: string }) {
+  // No GET /v1/class-groups/:id endpoint exists — resolved from the list,
+  // same lookup-from-list pattern already used by class-groups-page.tsx.
+  const { data: classGroups } = useQuery({ queryKey: ['class-groups'], queryFn: () => listClassGroups() });
+  const classGroup = classGroups?.find((group) => group.id === classGroupId);
+  const { data: rooms } = useQuery({ queryKey: ['rooms'], queryFn: listRooms });
+
+  // RULE-INST-06: the room already assigned to the turma must be visible
+  // directly on this operational screen (Cronograma de aulas, detalhe de
+  // turma), not only inside Configurações/Salas.
+  const roomLabel = classGroup?.roomId
+    ? (rooms?.find((room) => room.id === classGroup.roomId)?.name ?? classGroup.roomId)
+    : 'Nenhuma sala definida';
+  const termLabel =
+    classGroup?.termStartDate && classGroup?.termEndDate
+      ? `${new Date(`${classGroup.termStartDate}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} — ${new Date(`${classGroup.termEndDate}T00:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`
+      : 'Período letivo não definido';
 
   return (
     <section>
       <p>
         <Link to="/class-groups">&larr; Voltar para turmas</Link>
       </p>
-      <h1>Detalhes da turma</h1>
+      <h1>{classGroup ? classGroup.name : 'Detalhes da turma'}</h1>
       <p>
-        ID da turma: <code>{classGroupId}</code>
+        Sala: {roomLabel} · Período letivo: {termLabel}
+      </p>
+      <p>
+        <small>
+          ID da turma: <code>{classGroupId}</code>
+        </small>
       </p>
       <EnrollmentsSection classGroupId={classGroupId} />
-      <SessionsSection classGroupId={classGroupId} />
+      <ScheduleSlotsSection classGroupId={classGroupId} classGroup={classGroup} />
+      <ClassSessionsSection classGroupId={classGroupId} rooms={rooms} classGroupRoomId={classGroup?.roomId} />
+      <p>
+        <small>
+          Copie um ID de aula na lista de aulas acima para consultá-lo em <Link to="/register">Registro de presença</Link>.
+        </small>
+      </p>
     </section>
   );
 }
@@ -96,108 +125,6 @@ function EnrollmentsSection({ classGroupId }: { classGroupId: string }) {
           </label>
           <button type="submit" disabled={mutation.isPending || !personId}>
             {mutation.isPending ? 'Matriculando…' : 'Matricular'}
-          </button>
-        </form>
-      </fieldset>
-    </div>
-  );
-}
-
-function SessionsSection({ classGroupId }: { classGroupId: string }) {
-  const { hasPermission } = useAuth();
-  const canManage = hasPermission('manage_institution_structure');
-  const queryClient = useQueryClient();
-
-  const { data: rooms } = useQuery({ queryKey: ['rooms'], queryFn: listRooms });
-  const {
-    data: sessions,
-    isLoading,
-    error,
-  } = useQuery({ queryKey: ['class-sessions', classGroupId], queryFn: () => listClassSessions(classGroupId) });
-
-  const [roomId, setRoomId] = useState('');
-  const [scheduledStart, setScheduledStart] = useState('');
-  const [scheduledEnd, setScheduledEnd] = useState('');
-  const mutation = useMutation({
-    mutationFn: () =>
-      createClassSession({
-        classGroupId,
-        roomId,
-        scheduledStart: new Date(scheduledStart).toISOString(),
-        scheduledEnd: new Date(scheduledEnd).toISOString(),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['class-sessions', classGroupId] });
-      setScheduledStart('');
-      setScheduledEnd('');
-    },
-  });
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    mutation.mutate();
-  }
-
-  function roomName(id: string): string {
-    return rooms?.find((room) => room.id === id)?.name ?? id;
-  }
-
-  return (
-    <div>
-      <h2>Aulas</h2>
-      {isLoading && <Loading />}
-      {error && <ErrorBanner message={errorMessage(error)} />}
-      {sessions && (
-        <DataTable<ClassSession>
-          rows={sessions}
-          getRowKey={(session) => session.id}
-          columns={[
-            { header: 'Sala', cell: (session) => roomName(session.roomId) },
-            { header: 'Início', cell: (session) => new Date(session.scheduledStart).toLocaleString() },
-            { header: 'Fim', cell: (session) => new Date(session.scheduledEnd).toLocaleString() },
-            { header: 'ID da aula', cell: (session) => <code>{session.id}</code> },
-          ]}
-        />
-      )}
-      <p>
-        <small>
-          Copie um ID de aula acima para consultá-lo em <Link to="/register">Registro de presença</Link>.
-        </small>
-      </p>
-
-      <fieldset disabled={!canManage}>
-        <legend>Nova aula</legend>
-        {!canManage && <PermissionHint permission="manage_institution_structure" />}
-        <form onSubmit={handleSubmit}>
-          {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
-          <label>
-            Sala
-            <select value={roomId} onChange={(event) => setRoomId(event.target.value)} required>
-              <option value="" disabled>
-                Selecione uma sala
-              </option>
-              {rooms?.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Início programado
-            <input
-              type="datetime-local"
-              value={scheduledStart}
-              onChange={(event) => setScheduledStart(event.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Fim programado
-            <input type="datetime-local" value={scheduledEnd} onChange={(event) => setScheduledEnd(event.target.value)} required />
-          </label>
-          <button type="submit" disabled={mutation.isPending || !roomId}>
-            {mutation.isPending ? 'Criando…' : 'Criar aula'}
           </button>
         </form>
       </fieldset>

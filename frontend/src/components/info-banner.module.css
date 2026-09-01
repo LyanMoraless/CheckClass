@@ -1,0 +1,9 @@
+.banner {
+  background: #e8f1fc;
+  border: 1px solid #b8d4f5;
+  color: #14396b;
+  padding: 0.6rem 0.9rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ErrorBanner } from '../../components/error-banner';
+import { InfoBanner } from '../../components/info-banner';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from './auth-context';
 import styles from './login-page.module.css';
@@ -13,6 +14,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Populated e.g. by a redirect from /onboarding (RULE-INST-02) when the
+  // instance is already configured — `state` is otherwise only used to carry
+  // `from` for the post-login redirect below, so this is safe to read
+  // unconditionally.
+  const infoMessage = (location.state as { message?: string } | null)?.message ?? null;
 
   if (status === 'authenticated') {
     const redirectTo = (location.state as { from?: string } | null)?.from ?? '/';
@@ -37,6 +44,7 @@ export function LoginPage() {
     <main className={styles.page}>
       <form className={styles.form} onSubmit={handleSubmit}>
         <h1>Administração CheckClass</h1>
+        {infoMessage && <InfoBanner message={infoMessage} />}
         {error && <ErrorBanner message={error} />}
         <label>
           CPF

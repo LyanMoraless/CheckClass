@@ -17,6 +17,13 @@ export class ClassGroupEnrollmentEntity {
   @Column({ type: 'varchar', length: 50 })
   role: string;
 
+  // RULE-INST-11: fixed 4-value enum (Ativo/Trancado/Formado/Evadido), free
+  // transitions between all four (no state machine — confirmed). English
+  // naming favors actual academic-English terms over literal translation:
+  // active | on_leave | graduated | withdrawn.
+  @Column({ name: 'enrollment_status', type: 'varchar', length: 20, default: 'active' })
+  enrollmentStatus: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

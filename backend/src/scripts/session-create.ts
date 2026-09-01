@@ -7,9 +7,14 @@ import { ClassSessionService } from '../modules/class-session/class-session.serv
 // Dev-only: exercises the real ClassSessionService (config resolution +
 // snapshot), the only sanctioned way class_session rows should be created.
 async function main() {
-  const [tenantId, classGroupId, roomId, scheduledStart, scheduledEnd] = process.argv.slice(2);
-  if (!tenantId || !classGroupId || !roomId || !scheduledStart || !scheduledEnd) {
-    console.error('Usage: npm run session:create -- <tenantId> <classGroupId> <roomId> <scheduledStartISO> <scheduledEndISO>');
+  const [tenantId, classGroupId, roomId, scheduledStart, scheduledEnd, authenticatedPersonId] = process.argv.slice(2);
+  if (!tenantId || !classGroupId || !roomId || !scheduledStart || !scheduledEnd || !authenticatedPersonId) {
+    console.error(
+      'Usage: npm run session:create -- <tenantId> <classGroupId> <roomId> <scheduledStartISO> <scheduledEndISO> <authenticatedPersonId>',
+    );
+    console.error(
+      '  authenticatedPersonId must have leadership authority (RULE-INST-09) over the turma\'s course — e.g. the tenant\'s root admin, seeded with institution-wide authority at onboarding.',
+    );
     process.exitCode = 1;
     return;
   }
@@ -19,12 +24,15 @@ async function main() {
   const classSessionService = app.get(ClassSessionService);
 
   await tenantContext.runWithTenant(tenantId, async () => {
-    const session = await classSessionService.createSession({
-      classGroupId,
-      roomId,
-      scheduledStart: new Date(scheduledStart),
-      scheduledEnd: new Date(scheduledEnd),
-    });
+    const session = await classSessionService.createSession(
+      {
+        classGroupId,
+        roomId,
+        scheduledStart: new Date(scheduledStart),
+        scheduledEnd: new Date(scheduledEnd),
+      },
+      authenticatedPersonId,
+    );
     console.log('class_session id:', session.id);
     console.log('min_attendance_percentage_snapshot:', session.minAttendancePercentageSnapshot);
     console.log('tolerance_minutes_snapshot:', session.toleranceMinutesSnapshot);

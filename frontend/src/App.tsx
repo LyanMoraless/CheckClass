@@ -10,11 +10,15 @@ import { ClassGroupDetailPage } from './features/class-groups/class-group-detail
 import { ClassGroupsPage } from './features/class-groups/class-groups-page';
 import { CoursesPage } from './features/courses/courses-page';
 import { DevicesPage } from './features/devices/devices-page';
+import { HolidaysPage } from './features/holidays/holidays-page';
+import { InstitutionOnboardingPage } from './features/institution-onboarding/institution-onboarding-page';
 import { PendingReviewsPage } from './features/pending-reviews/pending-reviews-page';
 import { PermissionGroupsPage } from './features/permission-groups/permission-groups-page';
 import { RoomsPage } from './features/rooms/rooms-page';
 import { SecurityIncidentDetailPage } from './features/security-incidents/security-incident-detail-page';
 import { SecurityIncidentsPage } from './features/security-incidents/security-incidents-page';
+import { StudentsPage } from './features/students/students-page';
+import { SubjectsPage } from './features/subjects/subjects-page';
 import { UsersPage } from './features/users/users-page';
 import { WristbandsPage } from './features/wristbands/wristbands-page';
 
@@ -22,6 +26,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/onboarding" element={<InstitutionOnboardingPage />} />
       <Route
         path="/"
         element={
@@ -32,9 +37,11 @@ export function App() {
       >
         <Route index element={<HomePage />} />
         <Route path="courses" element={<CoursesPage />} />
+        <Route path="subjects" element={<SubjectsPage />} />
         <Route path="rooms" element={<RoomsPage />} />
         <Route path="class-groups" element={<ClassGroupsPage />} />
         <Route path="class-groups/:classGroupId" element={<ClassGroupDetailPage />} />
+        <Route path="students" element={<StudentsPage />} />
         <Route path="devices" element={<DevicesPage />} />
         <Route path="attendance-config" element={<AttendanceConfigPage />} />
         <Route path="register" element={<AttendanceRegisterPage />} />
@@ -42,6 +49,7 @@ export function App() {
         <Route path="users" element={<UsersPage />} />
         <Route path="permission-groups" element={<PermissionGroupsPage />} />
         <Route path="wristbands" element={<WristbandsPage />} />
+        <Route path="holidays" element={<HolidaysPage />} />
         <Route path="security-incidents" element={<SecurityIncidentsPage />} />
         <Route path="security-incidents/:incidentId" element={<SecurityIncidentDetailPage />} />
         <Route path="cameras" element={<CamerasPage />} />

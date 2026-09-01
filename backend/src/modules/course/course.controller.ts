@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Post, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { TenantContextInterceptor } from '../../database/tenant-context.interceptor';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthenticatedRequest, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionCheckInterceptor } from '../auth/permission-check.interceptor';
 import { Permission } from '../auth/permission.enum';
 import { RequirePermission } from '../auth/require-permission.decorator';
@@ -22,5 +22,13 @@ export class CourseController {
   @Get()
   list() {
     return this.courseService.list();
+  }
+
+  // RULE-INST-08/13: cascades to the course's subjects and their turmas,
+  // tudo-ou-nada blocked if any turma has recorded attendance activity.
+  @Delete(':courseId')
+  async delete(@Param('courseId', ParseUUIDPipe) courseId: string, @Req() request: AuthenticatedRequest) {
+    await this.courseService.delete(courseId, request.personId);
+    return { courseId };
   }
 }

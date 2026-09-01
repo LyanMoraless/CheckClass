@@ -30,11 +30,12 @@ export class MyScheduleService {
       SELECT
         cs.id AS "classSessionId",
         cs.class_group_id AS "classGroupId",
-        cs.room_id AS "roomId",
+        COALESCE(cs.room_id, cg.room_id) AS "roomId",
         cs.scheduled_start AS "scheduledStart",
         cs.scheduled_end AS "scheduledEnd"
       FROM class_group_enrollment cge
       JOIN class_session cs ON cs.class_group_id = cge.class_group_id
+      JOIN class_group cg ON cg.id = cs.class_group_id
       WHERE cge.tenant_id = $1 AND cge.person_id = $2
       ORDER BY cs.scheduled_start ASC
       `,

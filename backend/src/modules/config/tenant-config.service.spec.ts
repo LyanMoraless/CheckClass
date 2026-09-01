@@ -3,6 +3,7 @@ import {
   AttendanceConfigRequiredFactorEntity,
   AttendanceFactorTypeEntity,
   ClassGroupEntity,
+  SubjectEntity,
 } from '../../database/entities';
 import {
   createMockEntityManager,
@@ -21,8 +22,20 @@ describe('TenantConfigService', () => {
   const classGroup: ClassGroupEntity = {
     id: 'class-group-1',
     tenantId: 'tenant-a-id',
-    courseId: 'course-1',
+    subjectId: 'subject-1',
     name: 'Turma A',
+    roomId: null,
+    termStartDate: null,
+    termEndDate: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  const subject: SubjectEntity = {
+    id: 'subject-1',
+    tenantId: 'tenant-a-id',
+    courseId: 'course-1',
+    name: 'Cálculo I',
+    code: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -33,11 +46,14 @@ describe('TenantConfigService', () => {
     institutionConfig?: unknown;
     requiredFactors?: Array<{ attendanceFactorTypeId: string }>;
     classGroupRepo?: MockRepository;
+    subjectRepo?: MockRepository;
     configRepo?: MockRepository;
     factorTypeRepo?: MockRepository;
   }) {
     const classGroupRepo =
       options.classGroupRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue(classGroup) });
+    const subjectRepo =
+      options.subjectRepo ?? createMockRepository({ findOneByOrFail: jest.fn().mockResolvedValue(subject) });
     const configRepo =
       options.configRepo ??
       createMockRepository({
@@ -52,6 +68,7 @@ describe('TenantConfigService', () => {
 
     const repositoriesByEntity = new Map<unknown, MockRepository>([
       [ClassGroupEntity, classGroupRepo],
+      [SubjectEntity, subjectRepo],
       [AttendanceConfigEntity, configRepo],
       [AttendanceConfigRequiredFactorEntity, requiredFactorRepo],
       [AttendanceFactorTypeEntity, factorTypeRepo],
@@ -59,7 +76,7 @@ describe('TenantConfigService', () => {
     const manager = createMockEntityManager(repositoriesByEntity);
     const tenantContext = createMockTenantContext(manager);
     const service = new TenantConfigService(tenantContext as never);
-    return { service, classGroupRepo, configRepo, requiredFactorRepo, factorTypeRepo };
+    return { service, classGroupRepo, subjectRepo, configRepo, requiredFactorRepo, factorTypeRepo };
   }
 
   test('test_resolveEffectiveConfig_classGroupSpecificConfigWins_overCourseAndInstitution', async () => {
