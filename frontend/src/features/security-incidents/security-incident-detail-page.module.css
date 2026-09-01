@@ -1,0 +1,97 @@
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.backLink:hover {
+  color: var(--color-primary);
+}
+
+.summaryCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.summaryHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem 1.5rem;
+  margin: 0;
+}
+
+.summaryItem dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  margin: 0 0 0.2rem;
+}
+
+.summaryItem dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.suggestedCamera {
+  background: var(--color-area-security-soft);
+  border-left: 3px solid var(--color-area-security);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  margin: 0 0 1.5rem;
+}
+
+.suggestedCamera p {
+  margin: 0;
+}
+
+.historyHint {
+  margin: 0 0 0.75rem;
+}
+
+.historyList {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.historyIcon {
+  flex-shrink: 0;
+  color: var(--color-area-security);
+}
+
+.closeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}

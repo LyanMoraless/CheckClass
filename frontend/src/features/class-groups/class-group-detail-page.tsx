@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Plus, UserPlus, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { PersonIdField } from '../../components/person-id-field';
 import { errorMessage } from '../../lib/api-client';
@@ -12,6 +14,15 @@ import { ClassSessionsSection } from '../class-schedule/class-sessions-section';
 import { ScheduleSlotsSection } from '../class-schedule/schedule-slots-section';
 import { listRooms } from '../rooms/rooms-api';
 import { enrollPerson, listClassGroups, listEnrollments, type Enrollment } from './class-groups-api';
+import styles from './class-group-detail-page.module.css';
+
+// Same Portuguese labels already used in the "Matricular pessoa" form's own
+// <option> text below — just avoids showing the raw 'student'/'teacher'
+// value in the table.
+const ROLE_LABELS: Record<Enrollment['role'], string> = {
+  student: 'Aluno',
+  teacher: 'Professor',
+};
 
 export function ClassGroupDetailPage() {
   const { classGroupId } = useParams<{ classGroupId: string }>();
@@ -43,15 +54,18 @@ function ClassGroupDetailContent({ classGroupId }: { classGroupId: string }) {
       : 'Período letivo não definido';
 
   return (
-    <section>
-      <p>
-        <Link to="/class-groups">&larr; Voltar para turmas</Link>
-      </p>
-      <h1>{classGroup ? classGroup.name : 'Detalhes da turma'}</h1>
-      <p>
-        Sala: {roomLabel} · Período letivo: {termLabel}
-      </p>
-      <p>
+    <section className={styles.page}>
+      <Link to="/class-groups" className={styles.backLink}>
+        <ArrowLeft size={16} />
+        Voltar para turmas
+      </Link>
+      <PageHeader
+        icon={Users}
+        area="registry"
+        title={classGroup ? classGroup.name : 'Detalhes da turma'}
+        description={`Sala: ${roomLabel} · Período letivo: ${termLabel}`}
+      />
+      <p className={styles.idLine}>
         <small>
           ID da turma: <code>{classGroupId}</code>
         </small>
@@ -59,7 +73,7 @@ function ClassGroupDetailContent({ classGroupId }: { classGroupId: string }) {
       <EnrollmentsSection classGroupId={classGroupId} />
       <ScheduleSlotsSection classGroupId={classGroupId} classGroup={classGroup} />
       <ClassSessionsSection classGroupId={classGroupId} rooms={rooms} classGroupRoomId={classGroup?.roomId} />
-      <p>
+      <p className={styles.footerHint}>
         <small>
           Copie um ID de aula na lista de aulas acima para consultá-lo em <Link to="/register">Registro de presença</Link>.
         </small>
@@ -95,8 +109,11 @@ function EnrollmentsSection({ classGroupId }: { classGroupId: string }) {
   }
 
   return (
-    <div>
-      <h2>Matrículas</h2>
+    <div className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <UserPlus size={18} />
+        <h2>Matrículas</h2>
+      </div>
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
       {enrollments && (
@@ -104,8 +121,8 @@ function EnrollmentsSection({ classGroupId }: { classGroupId: string }) {
           rows={enrollments}
           getRowKey={(enrollment) => enrollment.id}
           columns={[
-            { header: 'ID da pessoa', cell: (enrollment) => enrollment.personId },
-            { header: 'Papel', cell: (enrollment) => enrollment.role },
+            { header: 'ID da pessoa', cell: (enrollment) => <code>{enrollment.personId}</code> },
+            { header: 'Papel', cell: (enrollment) => ROLE_LABELS[enrollment.role] },
           ]}
         />
       )}
@@ -123,7 +140,8 @@ function EnrollmentsSection({ classGroupId }: { classGroupId: string }) {
               <option value="teacher">Professor</option>
             </select>
           </label>
-          <button type="submit" disabled={mutation.isPending || !personId}>
+          <button type="submit" disabled={mutation.isPending || !personId} className={styles.iconButton}>
+            <Plus size={16} />
             {mutation.isPending ? 'Matriculando…' : 'Matricular'}
           </button>
         </form>

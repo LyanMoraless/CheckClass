@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Repeat, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
@@ -9,6 +10,7 @@ import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
 import type { ClassGroup } from '../class-groups/class-groups-api';
 import { createScheduleSlot, deleteScheduleSlot, generateSessions, listScheduleSlots, type ScheduleSlot } from './class-schedule-api';
+import styles from './schedule-slots-section.module.css';
 
 // JS Date.getDay() convention (0 = domingo .. 6 = sábado), matching the
 // backend's dayOfWeek — same convention documented on the entity/DTO.
@@ -85,9 +87,12 @@ export function ScheduleSlotsSection({ classGroupId, classGroup }: ScheduleSlots
   }
 
   return (
-    <div>
-      <h2>Grade recorrente</h2>
-      <p>
+    <div className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <Repeat size={18} />
+        <h2>Grade recorrente</h2>
+      </div>
+      <p className={styles.description}>
         <small>
           Cada slot é um dia da semana + horário que se repete durante todo o período letivo da turma. Adicionar ou
           remover um slot regenera automaticamente as aulas futuras ainda não tocadas — aulas passadas e aulas já
@@ -112,9 +117,11 @@ export function ScheduleSlotsSection({ classGroupId, classGroup }: ScheduleSlots
               cell: (slot) => (
                 <button
                   type="button"
+                  className={`danger ${styles.iconButton}`}
                   disabled={!canManage || deleteMutation.isPending}
                   onClick={() => deleteMutation.mutate(slot.id)}
                 >
+                  <Trash2 size={14} />
                   Remover
                 </button>
               ),
@@ -146,13 +153,14 @@ export function ScheduleSlotsSection({ classGroupId, classGroup }: ScheduleSlots
             Fim
             <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required />
           </label>
-          <button type="submit" disabled={createMutation.isPending || !startTime || !endTime}>
+          <button type="submit" disabled={createMutation.isPending || !startTime || !endTime} className={styles.iconButton}>
+            <Plus size={16} />
             {createMutation.isPending ? 'Adicionando…' : 'Adicionar slot'}
           </button>
         </form>
       </fieldset>
 
-      <div>
+      <div className={styles.generateBlock}>
         <h3>Gerar aulas a partir da grade</h3>
         {missingPrerequisites.length > 0 && (
           <p>

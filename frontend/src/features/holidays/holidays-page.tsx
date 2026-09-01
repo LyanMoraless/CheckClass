@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CalendarOff, Plus, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
+import { InfoBanner } from '../../components/info-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
 import { createHoliday, deleteHoliday, listHolidays, type Holiday } from './holidays-api';
+import styles from './holidays-page.module.css';
 
 // Institutional calendar CRUD (RULE-INST-04's holiday exception). Deliberately
 // its own top-level screen under Configurações, not nested under a turma —
@@ -49,13 +53,13 @@ export function HolidaysPage() {
 
   return (
     <section>
-      <h1>Feriados</h1>
-      <p>
-        <small>
-          Feriados são institucionais — se aplicam a toda a instituição, não a uma turma ou sala específica. Marcar um
-          feriado numa data que já tenha aulas geradas cancela automaticamente essas sessões.
-        </small>
-      </p>
+      <PageHeader
+        icon={CalendarOff}
+        area="settings"
+        title="Feriados"
+        description="Feriados são institucionais — se aplicam a toda a instituição, não a uma turma ou sala específica."
+      />
+      <InfoBanner message="Marcar um feriado numa data que já tenha aulas geradas cancela automaticamente essas sessões." />
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -72,9 +76,11 @@ export function HolidaysPage() {
               cell: (holiday) => (
                 <button
                   type="button"
+                  className={`danger ${styles.iconButton}`}
                   disabled={!canManage || deleteMutation.isPending}
                   onClick={() => deleteMutation.mutate(holiday.id)}
                 >
+                  <Trash2 size={16} />
                   Remover
                 </button>
               ),
@@ -96,7 +102,8 @@ export function HolidaysPage() {
             Nome
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} />
           </label>
-          <button type="submit" disabled={createMutation.isPending || !date || !name}>
+          <button type="submit" className={styles.iconButton} disabled={createMutation.isPending || !date || !name}>
+            <Plus size={16} />
             {createMutation.isPending ? 'Criando…' : 'Criar feriado'}
           </button>
         </form>

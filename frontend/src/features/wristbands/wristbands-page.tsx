@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Watch, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { Badge } from '../../components/badge';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
+import { InfoBanner } from '../../components/info-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { PersonIdField } from '../../components/person-id-field';
 import { errorMessage } from '../../lib/api-client';
@@ -16,6 +20,15 @@ import {
   type Wristband,
   type WristbandCategory,
 } from './wristbands-api';
+import styles from './wristbands-page.module.css';
+
+// wristband.status only ever comes back as 'active' or 'inactive' (see
+// WristbandService.revoke on the backend) — the badge just gives that raw
+// string a legible pt-BR label and color, it doesn't reinterpret it.
+function statusBadge(status: string) {
+  const isActive = status === 'active';
+  return <Badge label={isActive ? 'Ativa' : 'Inativa'} tone={isActive ? 'success' : 'neutral'} />;
+}
 
 export function WristbandsPage() {
   const { hasPermission } = useAuth();
@@ -91,7 +104,12 @@ export function WristbandsPage() {
 
   return (
     <section>
-      <h1>Pulseiras</h1>
+      <PageHeader
+        icon={Watch}
+        area="settings"
+        title="Pulseiras"
+        description="Gerencie categorias de pulseiras e a emissão/revogação de tags por pessoa."
+      />
 
       <fieldset disabled={!canManage}>
         <legend>Categorias</legend>
@@ -111,7 +129,8 @@ export function WristbandsPage() {
             Nome da nova categoria
             <input type="text" value={categoryName} onChange={(event) => setCategoryName(event.target.value)} required />
           </label>
-          <button type="submit" disabled={categoryMutation.isPending}>
+          <button type="submit" className={styles.iconButton} disabled={categoryMutation.isPending}>
+            <Plus size={16} />
             {categoryMutation.isPending ? 'Criando…' : 'Criar categoria'}
           </button>
         </form>
@@ -122,7 +141,7 @@ export function WristbandsPage() {
         {!canManage && <PermissionHint permission="manage_users" />}
         <form onSubmit={handleIssueSubmit}>
           {issueMutation.isError && <ErrorBanner message={errorMessage(issueMutation.error)} />}
-          {issueMutation.isSuccess && <p>Pulseira emitida.</p>}
+          {issueMutation.isSuccess && <InfoBanner message="Pulseira emitida." />}
           <PersonIdField label="Pessoa" value={issuePersonId} onChange={setIssuePersonId} required />
           <label>
             Categoria
@@ -141,17 +160,25 @@ export function WristbandsPage() {
             Código da tag
             <input type="text" value={tagCode} onChange={(event) => setTagCode(event.target.value)} required />
           </label>
-          <button type="submit" disabled={issueMutation.isPending || !issuePersonId || !wristbandCategoryId}>
+          <button
+            type="submit"
+            className={styles.iconButton}
+            disabled={issueMutation.isPending || !issuePersonId || !wristbandCategoryId}
+          >
+            <Plus size={16} />
             {issueMutation.isPending ? 'Emitindo…' : 'Emitir pulseira'}
           </button>
         </form>
       </fieldset>
 
-      <div>
+      <div className={styles.card}>
         <h2>Consultar pulseiras por pessoa</h2>
         <form onSubmit={handleLookupSubmit}>
           <PersonIdField label="Pessoa" value={lookupPersonId} onChange={setLookupPersonId} required />
-          <button type="submit">Consultar</button>
+          <button type="submit" className={styles.iconButton}>
+            <Search size={16} />
+            Consultar
+          </button>
         </form>
         {wristbandsFetching && <Loading />}
         {wristbandsError && <ErrorBanner message={errorMessage(wristbandsError)} />}
@@ -164,16 +191,18 @@ export function WristbandsPage() {
             columns={[
               { header: 'Código da tag', cell: (wristband) => wristband.tagCode },
               { header: 'Categoria', cell: (wristband) => categoryLabelFor(wristband.wristbandCategoryId) },
-              { header: 'Status', cell: (wristband) => wristband.status },
+              { header: 'Status', cell: (wristband) => statusBadge(wristband.status) },
               {
                 header: 'Ações',
                 cell: (wristband) =>
                   wristband.status === 'active' ? (
                     <button
                       type="button"
+                      className={`danger ${styles.iconButton}`}
                       disabled={!canManage || revokeMutation.isPending}
                       onClick={() => revokeMutation.mutate(wristband.id)}
                     >
+                      <X size={16} />
                       Revogar
                     </button>
                   ) : (

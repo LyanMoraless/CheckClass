@@ -1,3 +1,4 @@
+import { CheckCircle2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ErrorBanner } from '../../components/error-banner';
@@ -43,7 +44,11 @@ export function LoginPage() {
   return (
     <main className={styles.page}>
       <form className={styles.form} onSubmit={handleSubmit}>
-        <h1>Administração CheckClass</h1>
+        <div className={styles.brand}>
+          <CheckCircle2 size={26} />
+          <span>CheckClass</span>
+        </div>
+        <h1>Administração</h1>
         {infoMessage && <InfoBanner message={infoMessage} />}
         {error && <ErrorBanner message={error} />}
         <label>

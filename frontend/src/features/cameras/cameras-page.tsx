@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Info, Video } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { Badge } from '../../components/badge';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
 import { listAreas, type Area } from '../areas/areas-api';
 import { listCameras, registerCamera, type Camera } from './cameras-api';
+import styles from './cameras-page.module.css';
 
 // "Bloco A > Andar 1" — one level of parent context is enough to
 // disambiguate same-named areas in different blocos without building a
@@ -68,37 +72,51 @@ export function CamerasPage() {
 
   return (
     <section>
-      <h1>Câmeras</h1>
+      <PageHeader
+        icon={Video}
+        area="security"
+        title="Câmeras"
+        description="Inventário de câmeras de segurança e a área de cobertura de cada uma."
+      />
 
       {!canView && <PermissionHint permission={[...VIEW_PERMISSIONS]} />}
       {canView && isLoading && <Loading />}
       {canView && error && <ErrorBanner message={errorMessage(error)} />}
       {canView && cameras && (
-        <DataTable<Camera>
-          rows={cameras}
-          getRowKey={(camera) => camera.id}
-          columns={[
-            { header: 'Nome', cell: (camera) => camera.name },
-            {
-              header: 'Área',
-              cell: (camera) => {
-                const area = areasById.get(camera.areaId);
-                return area ? areaLabel(area, areasById) : <code>{camera.areaId}</code>;
+        <div className={styles.tableSection}>
+          <DataTable<Camera>
+            rows={cameras}
+            getRowKey={(camera) => camera.id}
+            columns={[
+              { header: 'Nome', cell: (camera) => camera.name },
+              {
+                header: 'Área',
+                cell: (camera) => {
+                  const area = areasById.get(camera.areaId);
+                  return area ? areaLabel(area, areasById) : <code>{camera.areaId}</code>;
+                },
               },
-            },
-            { header: 'Status', cell: (camera) => camera.status },
-          ]}
-        />
+              {
+                header: 'Status',
+                cell: (camera) => (
+                  <Badge
+                    label={camera.status === 'active' ? 'Ativa' : camera.status}
+                    tone={camera.status === 'active' ? 'success' : 'neutral'}
+                  />
+                ),
+              },
+            ]}
+          />
+        </div>
       )}
 
       <fieldset disabled={!canManage}>
         <legend>Registrar câmera</legend>
         {!canManage && <PermissionHint permission="administer_camera_devices" />}
-        <p>
-          <small>
-            Apenas metadados: nenhum protocolo/transmissão de câmera é aberto pelo backend, isto apenas registra
-            nome/área/URL.
-          </small>
+        <p className={styles.note}>
+          <Info size={14} />
+          Apenas metadados: nenhum protocolo/transmissão de câmera é aberto pelo backend, isto apenas registra
+          nome/área/URL.
         </p>
         <form onSubmit={handleSubmit}>
           {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}

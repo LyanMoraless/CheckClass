@@ -1,0 +1,32 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.form label {
+  flex: 1 1 14rem;
+  max-width: 20rem;
+  margin-bottom: 0;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}

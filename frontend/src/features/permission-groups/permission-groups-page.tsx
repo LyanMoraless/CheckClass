@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, ShieldCheck, UserPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
+import { InfoBanner } from '../../components/info-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { PersonIdField } from '../../components/person-id-field';
 import { errorMessage } from '../../lib/api-client';
@@ -14,6 +17,7 @@ import {
   listPermissionGroups,
   type PermissionGroup,
 } from './permission-groups-api';
+import styles from './permission-groups-page.module.css';
 
 export function PermissionGroupsPage() {
   const { hasPermission, permissions: ownPermissions } = useAuth();
@@ -60,7 +64,12 @@ export function PermissionGroupsPage() {
 
   return (
     <section>
-      <h1>Grupos de permissões</h1>
+      <PageHeader
+        icon={ShieldCheck}
+        area="settings"
+        title="Grupos de permissões"
+        description="Crie grupos de permissões e atribua pessoas a eles."
+      />
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -94,7 +103,7 @@ export function PermissionGroupsPage() {
               return (
                 <label
                   key={permission}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: '0.4rem', maxWidth: 'none' }}
+                  className={styles.checkboxRow}
                   title={ownedByCaller ? undefined : 'Você mesmo não possui esta permissão'}
                 >
                   <input
@@ -109,7 +118,8 @@ export function PermissionGroupsPage() {
               );
             })}
           </fieldset>
-          <button type="submit" disabled={createMutation.isPending || !name}>
+          <button type="submit" className={styles.iconButton} disabled={createMutation.isPending || !name}>
+            <Plus size={16} />
             {createMutation.isPending ? 'Criando…' : 'Criar grupo'}
           </button>
         </form>
@@ -120,7 +130,7 @@ export function PermissionGroupsPage() {
         {!canManage && <PermissionHint permission="manage_users" />}
         <form onSubmit={handleAssignSubmit}>
           {assignMutation.isError && <ErrorBanner message={errorMessage(assignMutation.error)} />}
-          {assignMutation.isSuccess && <p>Atribuído.</p>}
+          {assignMutation.isSuccess && <InfoBanner message="Atribuído." />}
           <label>
             Grupo
             <select value={groupId} onChange={(event) => setGroupId(event.target.value)} required>
@@ -135,7 +145,8 @@ export function PermissionGroupsPage() {
             </select>
           </label>
           <PersonIdField label="Pessoa" value={personId} onChange={setPersonId} required />
-          <button type="submit" disabled={assignMutation.isPending || !groupId || !personId}>
+          <button type="submit" className={styles.iconButton} disabled={assignMutation.isPending || !groupId || !personId}>
+            <UserPlus size={16} />
             {assignMutation.isPending ? 'Atribuindo…' : 'Atribuir'}
           </button>
         </form>

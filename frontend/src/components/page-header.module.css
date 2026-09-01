@@ -1,0 +1,60 @@
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.iconTile {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.core {
+  background: var(--color-area-core-soft);
+  color: var(--color-area-core);
+}
+
+.registry {
+  background: var(--color-area-registry-soft);
+  color: var(--color-area-registry);
+}
+
+.settings {
+  background: var(--color-area-settings-soft);
+  color: var(--color-area-settings);
+}
+
+.security {
+  background: var(--color-area-security-soft);
+  color: var(--color-area-security);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.375rem;
+}
+
+.description {
+  margin: 0.2rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding-top: 0.3rem;
+}

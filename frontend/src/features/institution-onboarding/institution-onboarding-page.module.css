@@ -2,16 +2,19 @@
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  padding: 2rem 1rem;
+  padding: 2.5rem 1rem;
+  background: radial-gradient(circle at 80% 0%, #f0fdfa 0%, var(--color-bg) 55%);
 }
 
 .form {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 2.25rem 2rem;
   width: 100%;
   max-width: 34rem;
+  height: fit-content;
 }
 
 .form label {
@@ -25,5 +28,5 @@
 .hint {
   margin: 0 0 0.6rem;
   font-size: 0.85rem;
-  color: #555;
+  color: var(--color-text-muted);
 }

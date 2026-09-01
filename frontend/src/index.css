@@ -1,12 +1,101 @@
+/* Design tokens — single source of truth for color/spacing/radius/shadow
+   across the app. Every component/page should reference these variables
+   instead of hardcoding hex values, so the visual identity stays coherent
+   as new screens are added. */
+:root {
+  /* Neutrals */
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-text-subtle: #94a3b8;
+
+  /* Brand */
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-primary-soft: #eef2ff;
+  --color-primary-contrast: #ffffff;
+
+  /* Area accents — one per top-level nav group, used for that area's page
+     header icon, nav active state, and any area-scoped emphasis. Keeps the
+     "which part of the app am I in" question answerable at a glance. */
+  --color-area-core: #4f46e5; /* Sistema principal */
+  --color-area-core-soft: #eef2ff;
+  --color-area-registry: #0d9488; /* Cadastro de informações */
+  --color-area-registry-soft: #f0fdfa;
+  --color-area-settings: #d97706; /* Configurações */
+  --color-area-settings-soft: #fffbeb;
+  --color-area-security: #dc2626; /* Segurança de Intrusão */
+  --color-area-security-soft: #fef2f2;
+
+  /* Semantic status */
+  --color-success: #16a34a;
+  --color-success-soft: #dcfce7;
+  --color-warning: #ca8a04;
+  --color-warning-soft: #fef9c3;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fee2e2;
+  --color-info: #2563eb;
+  --color-info-soft: #dbeafe;
+  --color-neutral: #64748b;
+  --color-neutral-soft: #f1f5f9;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05);
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  color-scheme: light;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: #1a1a1a;
-  background: #fafafa;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 1.25rem;
+}
+
+h2 {
+  font-size: 1.125rem;
+  margin: 0 0 0.75rem;
+}
+
+p {
+  line-height: 1.5;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 input,
@@ -16,29 +105,121 @@ button {
   font: inherit;
 }
 
+input[type='text'],
+input[type='password'],
+input[type='number'],
+input[type='date'],
+input[type='time'],
+input[type='email'],
+select,
+textarea {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.65rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--color-surface-alt);
+  color: var(--color-text-subtle);
+}
+
 label {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  margin-bottom: 0.6rem;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
   max-width: 28rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 
 fieldset {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  margin: 0.75rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: 1rem 0;
+  padding: 1rem 1.25rem 1.25rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+legend {
+  padding: 0 0.4rem;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 button {
   cursor: pointer;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  padding: 0.5rem 0.9rem;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
-a {
-  color: #1a5fb4;
+/* Secondary/ghost button — opt in via className="secondary" where a page
+   wants a lower-emphasis action next to a primary one. */
+button.secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+button.secondary:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+
+button.danger {
+  background: var(--color-danger);
+}
+
+button.danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+small {
+  color: var(--color-text-subtle);
+}
+
+code {
+  background: var(--color-surface-alt);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
 }

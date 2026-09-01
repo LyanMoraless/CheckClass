@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
@@ -11,6 +13,7 @@ import { listCourses } from '../courses/courses-api';
 import { listRooms } from '../rooms/rooms-api';
 import { listSubjects } from '../subjects/subjects-api';
 import { createClassGroup, listClassGroups, type ClassGroup } from './class-groups-api';
+import styles from './class-groups-page.module.css';
 
 export function ClassGroupsPage() {
   const { hasPermission } = useAuth();
@@ -106,10 +109,15 @@ export function ClassGroupsPage() {
   }
 
   return (
-    <section>
-      <h1>Turmas</h1>
+    <section className={styles.page}>
+      <PageHeader
+        icon={Users}
+        area="registry"
+        title="Turmas"
+        description="Cada turma reúne matrículas, grade recorrente e aulas geradas a partir dela."
+      />
 
-      <label>
+      <label className={styles.filter}>
         Filtrar por matéria
         <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
           <option value="">Todas as matérias</option>
@@ -200,7 +208,8 @@ export function ClassGroupsPage() {
             Fim do período letivo (opcional)
             <input type="date" value={termEndDate} onChange={(event) => setTermEndDate(event.target.value)} />
           </label>
-          <button type="submit" disabled={mutation.isPending || !subjectId}>
+          <button type="submit" disabled={mutation.isPending || !subjectId} className={styles.iconButton}>
+            <Plus size={16} />
             {mutation.isPending ? 'Criando…' : 'Criar turma'}
           </button>
         </form>

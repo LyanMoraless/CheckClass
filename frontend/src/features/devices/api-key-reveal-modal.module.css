@@ -1,0 +1,22 @@
+.keyBlock {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+}
+
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.confirmRow {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: none;
+}

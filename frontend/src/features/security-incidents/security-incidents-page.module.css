@@ -1,0 +1,12 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.filters label {
+  margin-bottom: 0;
+  max-width: 12rem;
+}

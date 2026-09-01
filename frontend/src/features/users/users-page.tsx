@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { UserCog, UserPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { Badge } from '../../components/badge';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
 import { createPerson, listPersons, type Person } from './users-api';
+import styles from './users-page.module.css';
 
 export function UsersPage() {
   const { hasPermission } = useAuth();
@@ -46,7 +50,12 @@ export function UsersPage() {
 
   return (
     <section>
-      <h1>Usuários</h1>
+      <PageHeader
+        icon={UserCog}
+        area="settings"
+        title="Usuários"
+        description="Cadastre pessoas na instituição e, opcionalmente, suas credenciais de login."
+      />
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -57,7 +66,12 @@ export function UsersPage() {
           columns={[
             { header: 'Nome completo', cell: (person) => person.fullName },
             { header: 'Tipo de ator', cell: (person) => person.actorTypeCode },
-            { header: 'Possui login', cell: (person) => (person.hasLoginCredential ? 'Sim' : 'Não') },
+            {
+              header: 'Possui login',
+              cell: (person) => (
+                <Badge label={person.hasLoginCredential ? 'Sim' : 'Não'} tone={person.hasLoginCredential ? 'success' : 'neutral'} />
+              ),
+            },
             { header: 'ID', cell: (person) => <code>{person.personId}</code> },
           ]}
         />
@@ -88,7 +102,7 @@ export function UsersPage() {
               placeholder="ex.: STUDENT, TEACHER"
             />
           </label>
-          <label style={{ flexDirection: 'row', alignItems: 'center', gap: '0.4rem', maxWidth: 'none' }}>
+          <label className={styles.checkboxRow}>
             <input type="checkbox" checked={withLogin} onChange={(event) => setWithLogin(event.target.checked)} />
             Criar credenciais de login para esta pessoa
           </label>
@@ -111,7 +125,8 @@ export function UsersPage() {
               </label>
             </>
           )}
-          <button type="submit" disabled={mutation.isPending}>
+          <button type="submit" className={styles.iconButton} disabled={mutation.isPending}>
+            <UserPlus size={16} />
             {mutation.isPending ? 'Criando…' : 'Criar pessoa'}
           </button>
         </form>

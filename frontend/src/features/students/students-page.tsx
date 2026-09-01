@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import { GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Badge, type BadgeTone } from '../../components/badge';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { errorMessage } from '../../lib/api-client';
 import { listStudents, type EnrollmentStatus, type Student, type StudentEnrollment } from './students-api';
+import styles from './students-page.module.css';
 
 // RULE-INST-11 (business-rules/references/institution-management-rules.md):
 // fixed 4-value enum — same Portuguese labels already used in the rule's own
@@ -16,6 +20,17 @@ const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
   withdrawn: 'Evadido',
 };
 
+// Visual tone only — the four statuses themselves and their labels are
+// RULE-INST-11's, unchanged. Ativo reads as the "good" ongoing state,
+// Trancado as a caution, Formado as a neutral/positive terminal state, and
+// Evadido as the one terminal state worth flagging for attention.
+const ENROLLMENT_STATUS_TONES: Record<EnrollmentStatus, BadgeTone> = {
+  active: 'success',
+  on_leave: 'warning',
+  graduated: 'info',
+  withdrawn: 'danger',
+};
+
 // Read-only view — gated MANAGE_USERS server-side (RULE-INST-12), same
 // permission already used by GET /v1/users. No form here: creating a person
 // stays exclusively a Usuários responsibility (see link below); this screen
@@ -25,9 +40,14 @@ export function StudentsPage() {
   const { data: students, isLoading, error } = useQuery({ queryKey: ['students'], queryFn: listStudents });
 
   return (
-    <section>
-      <h1>Alunos</h1>
-      <p>
+    <section className={styles.page}>
+      <PageHeader
+        icon={GraduationCap}
+        area="registry"
+        title="Alunos"
+        description="Curso/turma atual e situação de matrícula de cada aluno."
+      />
+      <p className={styles.hint}>
         <small>
           Visão dedicada de matrícula dos alunos — mostra curso/turma atual e situação de matrícula, além dos dados
           básicos já exibidos em Usuários. Para cadastrar uma nova pessoa, use a tela <Link to="/users">Usuários</Link>.
@@ -65,11 +85,14 @@ function EnrollmentsList({ enrollments }: { enrollments: StudentEnrollment[] }) 
     return <span>—</span>;
   }
   return (
-    <ul>
+    <ul className={styles.enrollmentsList}>
       {enrollments.map((enrollment) => (
-        <li key={enrollment.classGroupId}>
-          {enrollment.subjectName} — {enrollment.classGroupName} ({enrollment.courseName}):{' '}
-          {ENROLLMENT_STATUS_LABELS[enrollment.enrollmentStatus]}
+        <li key={enrollment.classGroupId} className={styles.enrollmentItem}>
+          {enrollment.subjectName} — {enrollment.classGroupName} ({enrollment.courseName})
+          <Badge
+            label={ENROLLMENT_STATUS_LABELS[enrollment.enrollmentStatus]}
+            tone={ENROLLMENT_STATUS_TONES[enrollment.enrollmentStatus]}
+          />
         </li>
       ))}
     </ul>

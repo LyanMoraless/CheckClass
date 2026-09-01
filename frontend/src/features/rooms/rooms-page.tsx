@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DoorOpen, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
 import { createRoom, listRooms, type Room } from './rooms-api';
+import styles from './rooms-page.module.css';
 
 export function RoomsPage() {
   const { hasPermission } = useAuth();
@@ -30,7 +33,7 @@ export function RoomsPage() {
 
   return (
     <section>
-      <h1>Salas</h1>
+      <PageHeader icon={DoorOpen} area="settings" title="Salas" description="Cadastre as salas físicas da instituição." />
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -47,7 +50,8 @@ export function RoomsPage() {
             Nome
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} />
           </label>
-          <button type="submit" disabled={mutation.isPending}>
+          <button type="submit" className={styles.iconButton} disabled={mutation.isPending}>
+            <Plus size={16} />
             {mutation.isPending ? 'Criando…' : 'Criar sala'}
           </button>
         </form>

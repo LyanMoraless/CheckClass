@@ -3,16 +3,47 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: radial-gradient(circle at 20% 20%, #eef2ff 0%, var(--color-bg) 55%);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  color: var(--color-primary);
+}
+
+.brand span {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--color-text);
 }
 
 .form {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 2rem;
-  width: 20rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 2.25rem 2rem;
+  width: 21rem;
+}
+
+.form h1 {
+  text-align: center;
+  font-size: 1.15rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  margin-bottom: 1.25rem;
 }
 
 .form label {
   max-width: none;
+}
+
+.form button {
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.6rem;
 }

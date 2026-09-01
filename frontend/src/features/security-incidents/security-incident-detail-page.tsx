@@ -1,18 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, ArrowLeft, CheckCircle, MapPin, XCircle } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Badge } from '../../components/badge';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { listCameras } from '../cameras/cameras-api';
 import { useAuth } from '../auth/auth-context';
+import { SECURITY_INCIDENT_OUTCOME_BADGE, SECURITY_INCIDENT_STATUS_BADGE } from './security-incident-labels';
 import {
   closeSecurityIncident,
   getSecurityIncident,
   type CloseSecurityIncidentInput,
   type SecurityIncidentOutcome,
 } from './security-incidents-api';
+import styles from './security-incident-detail-page.module.css';
 
 // This screen represents an OPEN alert that changes over time (RULE-SEC-03:
 // the "suggested camera" follows as the intruder moves between areas). The
@@ -32,7 +37,7 @@ export function SecurityIncidentDetailPage() {
   if (!canManage) {
     return (
       <section>
-        <h1>Detalhes do incidente de segurança</h1>
+        <PageHeader icon={AlertTriangle} area="security" title="Detalhes do incidente de segurança" />
         <PermissionHint permission="manage_security_incidents" />
       </section>
     );
@@ -80,62 +85,105 @@ function IncidentDetail({ incidentId }: { incidentId: string }) {
     return camera ? `${camera.name} — Área ${camera.areaId}` : cameraId;
   }
 
+  // Purely cosmetic reflection of the already-selected <select> value — the
+  // close action itself is still driven by that dropdown + the single submit
+  // button below, unchanged from before.
+  const OutcomeIcon = outcome === 'resolved' ? CheckCircle : XCircle;
+
   return (
     <section>
-      <p>
-        <Link to="/security-incidents">&larr; Voltar para incidentes de segurança</Link>
-      </p>
-      <h1>Detalhes do incidente de segurança</h1>
+      <Link to="/security-incidents" className={styles.backLink}>
+        <ArrowLeft size={16} />
+        Voltar para incidentes de segurança
+      </Link>
+
+      <PageHeader icon={AlertTriangle} area="security" title="Detalhes do incidente de segurança" />
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
 
       {data && (
         <>
-          <p>
-            Status: <strong>{data.incident.status}</strong>
-            {data.incident.status === 'open' && (
-              <small> — atualizando automaticamente a cada {OPEN_INCIDENT_POLL_INTERVAL_MS / 1000}s</small>
-            )}
-          </p>
-          <p>Aberto em: {new Date(data.incident.openedAt).toLocaleString()}</p>
-          {data.incident.currentAreaId && (
-            <p>
-              Área atual: <code>{data.incident.currentAreaId}</code>
-            </p>
-          )}
-          {data.incident.status === 'closed' && (
-            <>
-              <p>Resultado: {data.incident.outcome}</p>
-              <p>Nota de resolução: {data.incident.resolutionNote}</p>
-              {data.incident.closedAt && <p>Fechado em: {new Date(data.incident.closedAt).toLocaleString()}</p>}
-            </>
-          )}
+          <div className={styles.summaryCard}>
+            <div className={styles.summaryHeader}>
+              <Badge
+                label={SECURITY_INCIDENT_STATUS_BADGE[data.incident.status].label}
+                tone={SECURITY_INCIDENT_STATUS_BADGE[data.incident.status].tone}
+              />
+              {data.incident.status === 'open' && (
+                <small>Atualizando automaticamente a cada {OPEN_INCIDENT_POLL_INTERVAL_MS / 1000}s</small>
+              )}
+            </div>
+            <dl className={styles.summaryGrid}>
+              <div className={styles.summaryItem}>
+                <dt>Aberto em</dt>
+                <dd>{new Date(data.incident.openedAt).toLocaleString()}</dd>
+              </div>
+              {data.incident.currentAreaId && (
+                <div className={styles.summaryItem}>
+                  <dt>Área atual</dt>
+                  <dd>
+                    <code>{data.incident.currentAreaId}</code>
+                  </dd>
+                </div>
+              )}
+              {data.incident.status === 'closed' && (
+                <>
+                  {data.incident.outcome && (
+                    <div className={styles.summaryItem}>
+                      <dt>Resultado</dt>
+                      <dd>
+                        <Badge
+                          label={SECURITY_INCIDENT_OUTCOME_BADGE[data.incident.outcome].label}
+                          tone={SECURITY_INCIDENT_OUTCOME_BADGE[data.incident.outcome].tone}
+                        />
+                      </dd>
+                    </div>
+                  )}
+                  <div className={styles.summaryItem}>
+                    <dt>Nota de resolução</dt>
+                    <dd>{data.incident.resolutionNote}</dd>
+                  </div>
+                  {data.incident.closedAt && (
+                    <div className={styles.summaryItem}>
+                      <dt>Fechado em</dt>
+                      <dd>{new Date(data.incident.closedAt).toLocaleString()}</dd>
+                    </div>
+                  )}
+                </>
+              )}
+            </dl>
+          </div>
 
           <h2>Câmera sugerida</h2>
           {/* RULE-SEC-03's camera auto-follow, rendered as metadata only — the
               backend never provides a browser-playable stream (RTSP, no relay
               infra this round), so this is deliberately text, not a
               <video>/<img> pointed at the camera's streamUrl. */}
-          {data.suggestedCameraId ? (
-            <p>
-              <strong>Câmera sugerida: {cameraLabel(data.suggestedCameraId)}</strong>
-            </p>
-          ) : (
-            <p>Nenhuma câmera cobre atualmente a área estimada deste incidente.</p>
-          )}
+          <div className={styles.suggestedCamera}>
+            {data.suggestedCameraId ? (
+              <p>
+                <strong>Câmera sugerida: {cameraLabel(data.suggestedCameraId)}</strong>
+              </p>
+            ) : (
+              <p>Nenhuma câmera cobre atualmente a área estimada deste incidente.</p>
+            )}
+          </div>
 
           <h2>Histórico de localização</h2>
-          <p>
+          <p className={styles.historyHint}>
             <small>RULE-SEC-02: este é um rastro de movimentação, não uma posição única — ordenado do mais antigo ao mais recente.</small>
           </p>
           {data.locationHistory.length === 0 ? (
             <p>Nenhuma entrada de localização registrada ainda.</p>
           ) : (
-            <ol>
+            <ol className={styles.historyList}>
               {data.locationHistory.map((entry) => (
-                <li key={entry.id}>
-                  {new Date(entry.detectedAt).toLocaleString()} — área <code>{entry.areaId}</code>
+                <li key={entry.id} className={styles.historyItem}>
+                  <MapPin size={14} className={styles.historyIcon} />
+                  <span>
+                    {new Date(entry.detectedAt).toLocaleString()} — área <code>{entry.areaId}</code>
+                  </span>
                 </li>
               ))}
             </ol>
@@ -162,7 +210,8 @@ function IncidentDetail({ incidentId }: { incidentId: string }) {
                     placeholder="Obrigatório — descreva o motivo do fechamento"
                   />
                 </label>
-                <button type="submit" disabled={closeMutation.isPending || !note.trim()}>
+                <button type="submit" className={styles.closeButton} disabled={closeMutation.isPending || !note.trim()}>
+                  <OutcomeIcon size={16} />
                   {closeMutation.isPending ? 'Fechando…' : 'Fechar incidente'}
                 </button>
               </form>

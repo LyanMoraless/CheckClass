@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { BookOpen, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { useAuth } from '../auth/auth-context';
 import { errorMessage } from '../../lib/api-client';
 import { createCourse, listCourses, type Course } from './courses-api';
+import styles from './courses-page.module.css';
 
 export function CoursesPage() {
   const { hasPermission } = useAuth();
@@ -31,8 +34,13 @@ export function CoursesPage() {
   }
 
   return (
-    <section>
-      <h1>Cursos</h1>
+    <section className={styles.page}>
+      <PageHeader
+        icon={BookOpen}
+        area="registry"
+        title="Cursos"
+        description="Cursos oferecidos pela instituição — base para organizar matérias e turmas."
+      />
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -60,7 +68,8 @@ export function CoursesPage() {
             Código (opcional)
             <input type="text" value={code} onChange={(event) => setCode(event.target.value)} maxLength={50} />
           </label>
-          <button type="submit" disabled={mutation.isPending}>
+          <button type="submit" disabled={mutation.isPending} className={styles.iconButton}>
+            <Plus size={16} />
             {mutation.isPending ? 'Criando…' : 'Criar curso'}
           </button>
         </form>

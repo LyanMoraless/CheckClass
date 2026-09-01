@@ -3,15 +3,33 @@
   border-collapse: collapse;
   margin: 0.75rem 0;
   font-size: 0.9rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .table th,
 .table td {
   text-align: left;
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid #ddd;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .table th {
-  background: #f4f4f4;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--color-surface-alt);
 }

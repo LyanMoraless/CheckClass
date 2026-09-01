@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Layers, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
 import { listCourses } from '../courses/courses-api';
 import { createSubject, listSubjects, type Subject } from './subjects-api';
+import styles from './subjects-page.module.css';
 
 export function SubjectsPage() {
   const { hasPermission } = useAuth();
@@ -47,10 +50,15 @@ export function SubjectsPage() {
   }
 
   return (
-    <section>
-      <h1>Matérias</h1>
+    <section className={styles.page}>
+      <PageHeader
+        icon={Layers}
+        area="registry"
+        title="Matérias"
+        description="Matérias vinculadas a um curso, usadas para compor as turmas."
+      />
 
-      <label>
+      <label className={styles.filter}>
         Filtrar por curso
         <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)}>
           <option value="">Todos os cursos</option>
@@ -102,7 +110,8 @@ export function SubjectsPage() {
             Código (opcional)
             <input type="text" value={code} onChange={(event) => setCode(event.target.value)} maxLength={50} />
           </label>
-          <button type="submit" disabled={mutation.isPending || !courseId}>
+          <button type="submit" disabled={mutation.isPending || !courseId} className={styles.iconButton}>
+            <Plus size={16} />
             {mutation.isPending ? 'Criando…' : 'Criar matéria'}
           </button>
         </form>

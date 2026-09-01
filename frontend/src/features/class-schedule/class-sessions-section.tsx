@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ban, CalendarClock, Check, Pencil, Plus, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { Badge, type BadgeTone } from '../../components/badge';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
@@ -15,11 +17,21 @@ import {
   type ClassSession,
   type ClassSessionStatus,
 } from './class-schedule-api';
+import styles from './class-sessions-section.module.css';
 
 const STATUS_LABELS: Record<ClassSessionStatus, string> = {
   scheduled: 'Programada',
   edited: 'Editada pontualmente',
   cancelled: 'Cancelada',
+};
+
+// Visual tone only — the three statuses and their labels above are
+// unchanged. scheduled = untouched/on-track (info), edited = a pontual
+// change worth noticing (warning), cancelled = no longer happening (danger).
+const STATUS_TONES: Record<ClassSessionStatus, BadgeTone> = {
+  scheduled: 'info',
+  edited: 'warning',
+  cancelled: 'danger',
 };
 
 // "YYYY-MM-DDTHH:mm" (local time) <-> ISO conversion for <input type="datetime-local">.
@@ -115,8 +127,11 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
   }
 
   return (
-    <div>
-      <h2>Aulas geradas</h2>
+    <div className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <CalendarClock size={18} />
+        <h2>Aulas geradas</h2>
+      </div>
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
       {cancelMutation.isError && <ErrorBanner message={errorMessage(cancelMutation.error)} />}
@@ -167,7 +182,10 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
                   roomName(session.roomId)
                 ),
             },
-            { header: 'Status', cell: (session) => STATUS_LABELS[session.status] },
+            {
+              header: 'Status',
+              cell: (session) => <Badge label={STATUS_LABELS[session.status]} tone={STATUS_TONES[session.status]} />,
+            },
             {
               header: 'Ações',
               cell: (session) => {
@@ -176,33 +194,48 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
                 }
                 if (editingSessionId === session.id) {
                   return (
-                    <>
+                    <div className={styles.actionsCell}>
                       <button
                         type="button"
+                        className={styles.iconButton}
                         disabled={editMutation.isPending || !editStart || !editEnd}
                         onClick={() => editMutation.mutate(session.id)}
                       >
+                        <Check size={14} />
                         {editMutation.isPending ? 'Salvando…' : 'Salvar'}
-                      </button>{' '}
-                      <button type="button" onClick={() => setEditingSessionId(null)}>
+                      </button>
+                      <button
+                        type="button"
+                        className={`secondary ${styles.iconButton}`}
+                        onClick={() => setEditingSessionId(null)}
+                      >
+                        <X size={14} />
                         Cancelar edição
                       </button>
-                    </>
+                    </div>
                   );
                 }
                 return (
-                  <>
-                    <button type="button" disabled={!canManage} onClick={() => startEditing(session)}>
-                      Editar
-                    </button>{' '}
+                  <div className={styles.actionsCell}>
                     <button
                       type="button"
+                      className={`secondary ${styles.iconButton}`}
+                      disabled={!canManage}
+                      onClick={() => startEditing(session)}
+                    >
+                      <Pencil size={14} />
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      className={`danger ${styles.iconButton}`}
                       disabled={!canManage || cancelMutation.isPending}
                       onClick={() => cancelMutation.mutate(session.id)}
                     >
+                      <Ban size={14} />
                       Cancelar aula
                     </button>
-                  </>
+                  </div>
                 );
               },
             },
@@ -213,7 +246,7 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
       <fieldset disabled={!canManage}>
         <legend>Nova aula avulsa</legend>
         {!canManage && <PermissionHint permission="manage_institution_structure" />}
-        <p>
+        <p className={styles.description}>
           <small>Cria uma sessão isolada, fora da grade recorrente — útil para uma reposição pontual.</small>
         </p>
         <form onSubmit={handleManualSubmit}>
@@ -237,7 +270,12 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
             Fim programado
             <input type="datetime-local" value={manualEnd} onChange={(event) => setManualEnd(event.target.value)} required />
           </label>
-          <button type="submit" disabled={createMutation.isPending || !manualStart || !manualEnd}>
+          <button
+            type="submit"
+            disabled={createMutation.isPending || !manualStart || !manualEnd}
+            className={styles.iconButton}
+          >
+            <Plus size={16} />
             {createMutation.isPending ? 'Criando…' : 'Criar aula avulsa'}
           </button>
         </form>

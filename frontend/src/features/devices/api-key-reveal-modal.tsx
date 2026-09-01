@@ -1,5 +1,8 @@
+import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
+import { InfoBanner } from '../../components/info-banner';
 import { Modal } from '../../components/modal';
+import styles from './api-key-reveal-modal.module.css';
 
 interface ApiKeyRevealModalProps {
   apiKey: string;
@@ -21,18 +24,14 @@ export function ApiKeyRevealModal({ apiKey, onConfirmed }: ApiKeyRevealModalProp
 
   return (
     <Modal title="Chave de API do dispositivo — exibida apenas uma vez">
-      <p>
-        Esta chave autentica o dispositivo perante a API de ingestão. Ela não pode ser recuperada novamente depois que
-        você fechar esta janela — o backend armazena apenas o seu hash.
-      </p>
-      <pre style={{ background: '#f4f4f4', padding: '0.75rem', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
-        {apiKey}
-      </pre>
-      <button type="button" onClick={handleCopy}>
+      <InfoBanner message="Esta chave autentica o dispositivo perante a API de ingestão. Ela não pode ser recuperada novamente depois que você fechar esta janela — o backend armazena apenas o seu hash." />
+      <pre className={styles.keyBlock}>{apiKey}</pre>
+      <button type="button" className={styles.copyButton} onClick={handleCopy}>
+        {copied ? <Check size={16} /> : <Copy size={16} />}
         {copied ? 'Copiado!' : 'Copiar para a área de transferência'}
       </button>
       <p>
-        <label style={{ flexDirection: 'row', alignItems: 'center', gap: '0.4rem', maxWidth: 'none' }}>
+        <label className={styles.confirmRow}>
           <input type="checkbox" checked={confirmedCopy} onChange={(event) => setConfirmedCopy(event.target.checked)} />
           Copiei esta chave em um local seguro
         </label>

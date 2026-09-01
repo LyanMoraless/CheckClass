@@ -1,14 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Cpu, Plus, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { Badge } from '../../components/badge';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
 import { listRooms } from '../rooms/rooms-api';
 import { ApiKeyRevealModal } from './api-key-reveal-modal';
 import { listDevices, registerDevice, revokeDevice, type Device, type RegisteredDevice } from './devices-api';
+import styles from './devices-page.module.css';
+
+// device.status only ever comes back as 'active' or 'inactive' (see
+// DeviceService.revoke on the backend, which sets it to 'inactive' — there
+// is no distinct "revoked" value) — the badge just gives that raw string a
+// legible pt-BR label and color, it doesn't reinterpret it.
+function statusBadge(status: string) {
+  const isActive = status === 'active';
+  return <Badge label={isActive ? 'Ativo' : 'Inativo'} tone={isActive ? 'success' : 'neutral'} />;
+}
 
 export function DevicesPage() {
   const { hasPermission } = useAuth();
@@ -54,7 +67,12 @@ export function DevicesPage() {
 
   return (
     <section>
-      <h1>Dispositivos</h1>
+      <PageHeader
+        icon={Cpu}
+        area="settings"
+        title="Dispositivos"
+        description="Registre leitores e outros dispositivos vinculados às salas e gerencie suas chaves de API."
+      />
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -66,16 +84,18 @@ export function DevicesPage() {
             { header: 'Tipo', cell: (device) => device.deviceType },
             { header: 'Identificador externo', cell: (device) => device.externalIdentifier },
             { header: 'Sala', cell: (device) => roomName(device.roomId) },
-            { header: 'Status', cell: (device) => device.status },
+            { header: 'Status', cell: (device) => statusBadge(device.status) },
             {
               header: 'Ações',
               cell: (device) =>
                 device.status === 'active' ? (
                   <button
                     type="button"
+                    className={`danger ${styles.iconButton}`}
                     disabled={!canManage || revokeMutation.isPending}
                     onClick={() => revokeMutation.mutate(device.id)}
                   >
+                    <X size={16} />
                     Revogar
                   </button>
                 ) : (
@@ -124,7 +144,8 @@ export function DevicesPage() {
               ))}
             </select>
           </label>
-          <button type="submit" disabled={registerMutation.isPending}>
+          <button type="submit" className={styles.iconButton} disabled={registerMutation.isPending}>
+            <Plus size={16} />
             {registerMutation.isPending ? 'Registrando…' : 'Registrar dispositivo'}
           </button>
         </form>

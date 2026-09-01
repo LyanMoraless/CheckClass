@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Save, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
+import { Badge, type BadgeTone } from '../../components/badge';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
+import { InfoBanner } from '../../components/info-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
@@ -17,8 +21,23 @@ import {
   type ConfigScopeType,
   type PostToleranceBehavior,
 } from './attendance-config-api';
+import styles from './attendance-config-page.module.css';
 
 const POST_TOLERANCE_OPTIONS: PostToleranceBehavior[] = ['block_checkin', 'deny_presence', 'register_only'];
+
+// Display-only labels/tones for the raw enum values coming back from the
+// API — the underlying value sent to/received from the backend is untouched.
+const POST_TOLERANCE_LABELS: Record<PostToleranceBehavior, string> = {
+  block_checkin: 'Bloquear check-in',
+  deny_presence: 'Negar presença',
+  register_only: 'Apenas registrar',
+};
+
+const POST_TOLERANCE_TONES: Record<PostToleranceBehavior, BadgeTone> = {
+  block_checkin: 'danger',
+  deny_presence: 'warning',
+  register_only: 'info',
+};
 
 export function AttendanceConfigPage() {
   const { hasPermission } = useAuth();
@@ -63,7 +82,12 @@ export function AttendanceConfigPage() {
 
   return (
     <section>
-      <h1>Configuração de presença</h1>
+      <PageHeader
+        icon={SlidersHorizontal}
+        area="settings"
+        title="Configuração de presença"
+        description="Defina limites de presença, tolerância e fatores obrigatórios por instituição, curso ou turma."
+      />
 
       {isLoading && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -75,7 +99,15 @@ export function AttendanceConfigPage() {
             { header: 'Escopo', cell: scopeLabel },
             { header: '% mínimo de presença', cell: (config) => config.minAttendancePercentage },
             { header: 'Tolerância (min)', cell: (config) => config.toleranceMinutes },
-            { header: 'Comportamento pós-tolerância', cell: (config) => config.postToleranceBehavior },
+            {
+              header: 'Comportamento pós-tolerância',
+              cell: (config) => (
+                <Badge
+                  label={POST_TOLERANCE_LABELS[config.postToleranceBehavior]}
+                  tone={POST_TOLERANCE_TONES[config.postToleranceBehavior]}
+                />
+              ),
+            },
             { header: 'ID da configuração', cell: (config) => <code>{config.id}</code> },
           ]}
         />
@@ -84,12 +116,7 @@ export function AttendanceConfigPage() {
       <fieldset disabled={!canManage}>
         <legend>Criar / atualizar configuração</legend>
         {!canManage && <PermissionHint permission="configure_attendance_rules" />}
-        <p>
-          <small>
-            Ordem de resolução: a configuração da turma prevalece sobre a do seu curso, que prevalece sobre o padrão da
-            instituição. Enviar novamente para o mesmo escopo o atualiza (não há uma ação de edição separada).
-          </small>
-        </p>
+        <InfoBanner message="Ordem de resolução: a configuração da turma prevalece sobre a do seu curso, que prevalece sobre o padrão da instituição. Enviar novamente para o mesmo escopo o atualiza (não há uma ação de edição separada)." />
         <form onSubmit={handleUpsertSubmit}>
           {upsertMutation.isError && <ErrorBanner message={errorMessage(upsertMutation.error)} />}
           <label>
@@ -167,12 +194,17 @@ export function AttendanceConfigPage() {
             <select value={postToleranceBehavior} onChange={(event) => setPostToleranceBehavior(event.target.value as PostToleranceBehavior)}>
               {POST_TOLERANCE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {POST_TOLERANCE_LABELS[option]}
                 </option>
               ))}
             </select>
           </label>
-          <button type="submit" disabled={upsertMutation.isPending || (scopeType !== 'institution' && !scopeId)}>
+          <button
+            type="submit"
+            className={styles.iconButton}
+            disabled={upsertMutation.isPending || (scopeType !== 'institution' && !scopeId)}
+          >
+            <Save size={16} />
             {upsertMutation.isPending ? 'Salvando…' : 'Salvar configuração'}
           </button>
         </form>
@@ -226,7 +258,7 @@ function RequiredFactorsSection({
       {!canManage && <PermissionHint permission="configure_attendance_rules" />}
       <form onSubmit={handleSubmit}>
         {mutation.isError && <ErrorBanner message={errorMessage(mutation.error)} />}
-        {mutation.isSuccess && <p>Fatores obrigatórios salvos.</p>}
+        {mutation.isSuccess && <InfoBanner message="Fatores obrigatórios salvos." />}
         <label>
           Configuração
           <select value={configId} onChange={(event) => setConfigId(event.target.value)} required>
@@ -243,13 +275,14 @@ function RequiredFactorsSection({
         <fieldset>
           <legend>Fatores</legend>
           {factorTypes?.map((factor) => (
-            <label key={factor.id} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.4rem', maxWidth: 'none' }}>
+            <label key={factor.id} className={styles.checkboxRow}>
               <input type="checkbox" checked={selectedFactors.has(factor.id)} onChange={() => toggleFactor(factor.id)} />
               {factor.name}
             </label>
           ))}
         </fieldset>
-        <button type="submit" disabled={mutation.isPending || !configId}>
+        <button type="submit" className={styles.iconButton} disabled={mutation.isPending || !configId}>
+          <Save size={16} />
           {mutation.isPending ? 'Salvando…' : 'Salvar fatores obrigatórios'}
         </button>
       </form>

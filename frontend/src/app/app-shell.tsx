@@ -1,14 +1,39 @@
+import {
+  AlertTriangle,
+  BookOpen,
+  CalendarClock,
+  CalendarOff,
+  CheckCircle2,
+  ClipboardCheck,
+  ClipboardList,
+  Cpu,
+  DoorOpen,
+  GraduationCap,
+  Layers,
+  LogOut,
+  ShieldCheck,
+  SlidersHorizontal,
+  UserCog,
+  Users,
+  Video,
+  Watch,
+  type LucideIcon,
+} from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../features/auth/auth-context';
 import styles from './app-shell.module.css';
 
+type NavArea = 'core' | 'registry' | 'settings' | 'security';
+
 interface NavItem {
   to: string;
   label: string;
+  icon: LucideIcon;
 }
 
 interface NavGroup {
   title: string;
+  area: NavArea;
   items: NavItem[];
 }
 
@@ -20,7 +45,10 @@ interface NavGroup {
 //
 // Groups mirror the confirmed information architecture from the
 // institution-management pivot (see "Escopo confirmado — Pivot estrutural"
-// in project-knowledge/references/architecture-overview.md).
+// in project-knowledge/references/architecture-overview.md). Each group has
+// a signature accent color (see .module.css's --color-area-* usage) so which
+// part of the app you're in is answerable at a glance, not just by reading
+// the section label.
 //
 // Cronograma de aulas (RULE-INST-04) was confirmed for "Sistema principal",
 // but the recurring grade/session-generation UI itself lives inside the
@@ -35,38 +63,42 @@ interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Sistema principal',
+    area: 'core',
     items: [
-      { to: '/register', label: 'Registro de presença' },
-      { to: '/pending-reviews', label: 'Revisões pendentes' },
-      { to: '/class-groups', label: 'Cronograma de aulas' },
+      { to: '/register', label: 'Registro de presença', icon: ClipboardCheck },
+      { to: '/pending-reviews', label: 'Revisões pendentes', icon: ClipboardList },
+      { to: '/class-groups', label: 'Cronograma de aulas', icon: CalendarClock },
     ],
   },
   {
     title: 'Cadastro de informações',
+    area: 'registry',
     items: [
-      { to: '/courses', label: 'Cursos' },
-      { to: '/subjects', label: 'Matérias' },
-      { to: '/class-groups', label: 'Turmas' },
-      { to: '/students', label: 'Alunos' },
+      { to: '/courses', label: 'Cursos', icon: BookOpen },
+      { to: '/subjects', label: 'Matérias', icon: Layers },
+      { to: '/class-groups', label: 'Turmas', icon: Users },
+      { to: '/students', label: 'Alunos', icon: GraduationCap },
     ],
   },
   {
     title: 'Configurações',
+    area: 'settings',
     items: [
-      { to: '/devices', label: 'Dispositivos' },
-      { to: '/wristbands', label: 'Pulseiras' },
-      { to: '/permission-groups', label: 'Grupos de permissões' },
-      { to: '/attendance-config', label: 'Configuração de presença' },
-      { to: '/users', label: 'Usuários' },
-      { to: '/rooms', label: 'Salas' },
-      { to: '/holidays', label: 'Feriados' },
+      { to: '/devices', label: 'Dispositivos', icon: Cpu },
+      { to: '/wristbands', label: 'Pulseiras', icon: Watch },
+      { to: '/permission-groups', label: 'Grupos de permissões', icon: ShieldCheck },
+      { to: '/attendance-config', label: 'Configuração de presença', icon: SlidersHorizontal },
+      { to: '/users', label: 'Usuários', icon: UserCog },
+      { to: '/rooms', label: 'Salas', icon: DoorOpen },
+      { to: '/holidays', label: 'Feriados', icon: CalendarOff },
     ],
   },
   {
     title: 'Segurança de Intrusão',
+    area: 'security',
     items: [
-      { to: '/security-incidents', label: 'Incidentes de segurança' },
-      { to: '/cameras', label: 'Câmeras' },
+      { to: '/security-incidents', label: 'Incidentes de segurança', icon: AlertTriangle },
+      { to: '/cameras', label: 'Câmeras', icon: Video },
     ],
   },
 ];
@@ -77,7 +109,10 @@ export function AppShell() {
   return (
     <div className={styles.layout}>
       <nav className={styles.nav}>
-        <p className={styles.brand}>CheckClass</p>
+        <div className={styles.brand}>
+          <CheckCircle2 size={22} className={styles.brandIcon} />
+          <span>CheckClass</span>
+        </div>
         <div className={styles.navGroups}>
           {NAV_GROUPS.map((group) => (
             <div key={group.title} className={styles.navGroup}>
@@ -85,7 +120,11 @@ export function AppShell() {
               <ul>
                 {group.items.map((item) => (
                   <li key={item.to}>
-                    <NavLink to={item.to} className={({ isActive }) => (isActive ? styles.active : undefined)}>
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) => `${styles.navLink} ${styles[group.area]} ${isActive ? styles.active : ''}`}
+                    >
+                      <item.icon size={16} strokeWidth={2} className={styles.navIcon} />
                       {item.label}
                     </NavLink>
                   </li>
@@ -94,7 +133,8 @@ export function AppShell() {
             </div>
           ))}
         </div>
-        <button type="button" onClick={logout}>
+        <button type="button" className={`secondary ${styles.logoutButton}`} onClick={logout}>
+          <LogOut size={16} />
           Sair
         </button>
       </nav>

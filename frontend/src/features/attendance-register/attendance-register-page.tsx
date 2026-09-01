@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { ClipboardCheck, Search } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { Badge } from '../../components/badge';
 import { DataTable } from '../../components/data-table';
 import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
+import { PageHeader } from '../../components/page-header';
 import { errorMessage } from '../../lib/api-client';
 import {
   getClassGroupSummary,
@@ -12,6 +15,26 @@ import {
   type PersonHistoryEntry,
   type SessionRegisterEntry,
 } from './attendance-register-api';
+import styles from './attendance-register-page.module.css';
+
+type AttendanceStatus = 'present' | 'absent' | 'pending';
+
+// Shared status vocabulary for both lookups below that carry a per-person
+// status column. `null` only ever comes from the session register (a
+// session the rules engine hasn't evaluated yet), never from person
+// history — see the comment on SessionRegisterEntry.status in the api file.
+function statusBadge(status: AttendanceStatus | null) {
+  switch (status) {
+    case 'present':
+      return <Badge label="Presente" tone="success" />;
+    case 'absent':
+      return <Badge label="Ausente" tone="danger" />;
+    case 'pending':
+      return <Badge label="Pendente" tone="warning" />;
+    default:
+      return <Badge label="Ainda não avaliado" tone="neutral" />;
+  }
+}
 
 // Read-only views over VIEW_ATTENDANCE_REGISTER. There's no list endpoint
 // for "all sessions/people/class-groups I can see" — ids are copy-pasted in
@@ -20,10 +43,17 @@ import {
 export function AttendanceRegisterPage() {
   return (
     <section>
-      <h1>Registro de presença</h1>
-      <SessionRegisterLookup />
-      <PersonHistoryLookup />
-      <ClassGroupSummaryLookup />
+      <PageHeader
+        icon={ClipboardCheck}
+        area="core"
+        title="Registro de presença"
+        description="Consulte a lista de presença de uma aula, o histórico de uma pessoa ou o resumo consolidado de uma turma."
+      />
+      <div className={styles.stack}>
+        <SessionRegisterLookup />
+        <PersonHistoryLookup />
+        <ClassGroupSummaryLookup />
+      </div>
     </section>
   );
 }
@@ -43,14 +73,17 @@ function SessionRegisterLookup() {
   }
 
   return (
-    <div>
+    <div className={styles.card}>
       <h2>Lista de presença da aula</h2>
-      <form onSubmit={handleSubmit}>
+      <form className={styles.form} onSubmit={handleSubmit}>
         <label>
           ID da aula
           <input type="text" value={classSessionId} onChange={(event) => setClassSessionId(event.target.value)} required />
         </label>
-        <button type="submit">Consultar</button>
+        <button type="submit" className={styles.iconButton}>
+          <Search size={16} />
+          Consultar
+        </button>
       </form>
       {isFetching && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -61,7 +94,7 @@ function SessionRegisterLookup() {
           emptyMessage="Nenhum aluno matriculado encontrado para esta aula."
           columns={[
             { header: 'Aluno', cell: (entry) => entry.fullName },
-            { header: 'Status', cell: (entry) => entry.status ?? 'ainda não avaliado' },
+            { header: 'Status', cell: (entry) => statusBadge(entry.status) },
             { header: '% de presença', cell: (entry) => entry.attendancePercentage ?? '—' },
             { header: 'Minutos de presença', cell: (entry) => entry.totalPresenceMinutes ?? '—' },
             { header: 'Motivo pendente', cell: (entry) => entry.pendingReason ?? '—' },
@@ -88,9 +121,9 @@ function PersonHistoryLookup() {
   }
 
   return (
-    <div>
+    <div className={styles.card}>
       <h2>Histórico da pessoa</h2>
-      <form onSubmit={handleSubmit}>
+      <form className={styles.form} onSubmit={handleSubmit}>
         <label>
           ID da pessoa
           <input type="text" value={personId} onChange={(event) => setPersonId(event.target.value)} required />
@@ -99,7 +132,10 @@ function PersonHistoryLookup() {
           ID da turma (filtro opcional)
           <input type="text" value={classGroupId} onChange={(event) => setClassGroupId(event.target.value)} />
         </label>
-        <button type="submit">Consultar</button>
+        <button type="submit" className={styles.iconButton}>
+          <Search size={16} />
+          Consultar
+        </button>
       </form>
       {isFetching && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
@@ -111,7 +147,7 @@ function PersonHistoryLookup() {
           columns={[
             { header: 'Início da aula', cell: (entry) => new Date(entry.scheduledStart).toLocaleString() },
             { header: 'Fim da aula', cell: (entry) => new Date(entry.scheduledEnd).toLocaleString() },
-            { header: 'Status', cell: (entry) => entry.status },
+            { header: 'Status', cell: (entry) => statusBadge(entry.status) },
             { header: '% de presença', cell: (entry) => entry.attendancePercentage },
             { header: 'Motivo pendente', cell: (entry) => entry.pendingReason ?? '—' },
           ]}
@@ -136,14 +172,17 @@ function ClassGroupSummaryLookup() {
   }
 
   return (
-    <div>
+    <div className={styles.card}>
       <h2>Resumo da turma</h2>
-      <form onSubmit={handleSubmit}>
+      <form className={styles.form} onSubmit={handleSubmit}>
         <label>
           ID da turma
           <input type="text" value={classGroupId} onChange={(event) => setClassGroupId(event.target.value)} required />
         </label>
-        <button type="submit">Consultar</button>
+        <button type="submit" className={styles.iconButton}>
+          <Search size={16} />
+          Consultar
+        </button>
       </form>
       {isFetching && <Loading />}
       {error && <ErrorBanner message={errorMessage(error)} />}
