@@ -145,22 +145,56 @@ mesmo shape do `POST /v1/auth/login` de hoje) mais um refresh token
 opaco de alta entropia, gerado no servidor, com rotação e detecção de
 reuso, persistido com hash SHA-256 em nova tabela `refresh_token`.
 Distinto do modelo de JWT único do dashboard web, que não é afetado.
-Ainda em aberto, a cargo dos respectivos agentes quando a implementação
+~~Ainda em aberto, a cargo dos respectivos agentes quando a implementação
 real começar: o esquema exato de migration da tabela `refresh_token`
 (Database Agent) e o path/nome exato do endpoint de login
-mobile-specific (Backend Agent).
+mobile-specific (Backend Agent).~~
 
-## Pendente — Idempotency key no endpoint de check-in via app
+> **Correção (2026-09-02) — as duas pontas em aberto estão FECHADAS em
+> código:** a frase riscada acima está superada; ambos os itens existem no
+> repositório e são verificáveis:
+> - **Schema/migration da tabela `refresh_token`:**
+>   `backend/src/database/entities/refresh-token.entity.ts`, criada pela
+>   migration `1755842000000-AddRefreshToken.ts`.
+> - **Endpoint de login mobile-specific e ciclo de vida do token:**
+>   `backend/src/modules/auth/auth.controller.ts` — `POST /login/mobile`
+>   (l. 41), `POST /refresh` (l. 52) e `POST /logout` (l. 71), todos com
+>   `@Throttle` aplicado (o que também cobre o requisito de rate limiting
+>   registrado na própria decisão de segurança).
+>
+> Esta entrada deixa de ter qualquer ponta em aberto. Ver também a nota de
+> correção correspondente em "Decisão de segurança — Autenticação Mobile"
+> (`project-knowledge/references/architecture-overview.md`).
+> **Source of confirmation:** Verificação de código feita na reconciliação
+> da Frente 01, 2026-09-02 (fato observável no repositório).
+
+## ~~Pendente~~ Resolvido — Idempotency key no endpoint de check-in via app
 
 O design de tolerância a offline/retry do App Mobile (ver "Decisão de
 tecnologia — App Mobile" em `architecture-overview.md`, 2026-08-22)
 depende de o futuro endpoint de check-in via app aceitar uma idempotency
 key, para ser seguro contra submissão duplicada em reenvio — consistente
 com a abordagem de deduplicação de RULE-ATT-10, hoje aplicada aos eventos
-originados por dispositivo via `POST /v1/ingestion/events`. Detalhe de
+originados por dispositivo via `POST /v1/ingestion/events`. ~~Detalhe de
 contrato a cargo do Backend Agent/Solution Architect quando esse endpoint
 de check-in via app for implementado; o mecanismo exato não deve ser
-assumido antes disso.
+assumido antes disso.~~
+
+> **Correção (2026-09-02) — RESOLVIDO em código, deixa de ser pendência:**
+> a frase riscada tratava isto como contrato futuro a definir. O endpoint
+> já existe e já exige a chave: `POST /v1/app-checkin` recebe uma
+> `idempotencyKey` **obrigatória, gerada pelo cliente**
+> (`backend/src/modules/app-checkin/dto/app-checkin.dto.ts`, l. 9-19), e
+> reusa a mesma constraint `UNIQUE(tenant_id, idempotency_key)` já usada
+> pelo pipeline de ingestão por dispositivo — exatamente a consistência com
+> RULE-ATT-10 que esta entrada pedia, sem inventar um segundo mecanismo de
+> deduplicação.
+>
+> **Consequência de backlog:** este item também deve sair da lista de
+> "débitos técnicos menores" da **frente 11** (ver bloco HANDOFF ao final
+> desta skill, onde já foi removido nesta mesma correção).
+> **Source of confirmation:** Verificação de código feita na reconciliação
+> da Frente 01, 2026-09-02 (fato observável no repositório).
 
 ## Pendente — captured_at como coluna indexada
 
@@ -179,15 +213,37 @@ meses). Ainda falta o Database Agent desenhar o suporte de schema
 (jobs de expurgo/exportação, já que o modelo aprovado hoje não tem
 soft-delete nem mecanismo de fechamento) antes de produção.
 
-## Pendente — Mecanismo técnico do acesso auto-restrito (self-scoped access)
+## ~~Pendente~~ Resolvido — Mecanismo técnico do acesso auto-restrito (self-scoped access)
 
 RULE-ATT-15 (`business-rules/references/attendance-rules.md`) confirma o
 **conceito de negócio**: qualquer pessoa autenticada pode sempre ver seu
 próprio registro consolidado de presença/horários, independente de
-permissão de grupo. O **mecanismo técnico exato** (nova permissão
+permissão de grupo. ~~O **mecanismo técnico exato** (nova permissão
 dedicada, checagem direta de `personId`, ou outra abordagem) ainda não
 foi decidido — cabe ao Solution Architect/Backend quando o app mobile
-entrar em implementação real.
+entrar em implementação real.~~
+
+> **Correção (2026-09-02) — o mecanismo JÁ FOI DECIDIDO e está
+> IMPLEMENTADO:** a frase riscada está superada. O mecanismo é observável
+> em `backend/src/modules/self-service/me.controller.ts`:
+> - `@Controller('v1/me')` — uma **família de rotas separada**,
+>   com `GET /attendance` e `GET /schedule`.
+> - Guardado apenas por `JwtAuthGuard` + `TenantContextInterceptor`,
+>   **sem** `PermissionCheckInterceptor` — a ausência é deliberada e está
+>   explicada em comentário no próprio controller (l. 13-20).
+> - O `personId` é **sempre** derivado do JWT do requisitante, nunca
+>   aceito como parâmetro de entrada.
+>
+> Nenhuma das três alternativas originalmente listadas foi a escolhida:
+> não há permissão dedicada nova nem checagem de `personId` enxertada num
+> fluxo compartilhado com o lado administrativo. A abordagem foi uma
+> quarta: **isolamento por rota** — `/v1/me/*` só consegue, por
+> construção, enxergar os dados do próprio requisitante.
+>
+> Ver também a nota de correção em RULE-ATT-15
+> (`business-rules/references/attendance-rules.md`).
+> **Source of confirmation:** Verificação de código feita na reconciliação
+> da Frente 01, 2026-09-02 (fato observável no repositório).
 
 ## Resolvido — Estratégia de resolução de sessão de aula para check-in via app
 
@@ -350,6 +406,31 @@ vivo para o navegador) não precisa ser resolvida para esta rodada fechar.
 > silencioso de RULE-SEC-03 que este adiamento não elimina. Não presumir
 > nenhuma das duas leituras até confirmação explícita do usuário."
 
+> **Addendum — a câmera de RULE-SEC-03 abre AO VIVO; é a mesma dependência
+> técnica deste adiamento, confirmado pelo usuário em 2026-09-02:**
+> resolve a ambiguidade **A2** registrada no bloco HANDOFF ao final desta
+> skill. Citação literal do usuário: "Eu expliquei o que irá ocorrer (a
+> câmera vai abrir ao vivo) mas isso será feito em outro momento."
+>
+> - A intenção de produto de RULE-SEC-03 ("abrir a câmera do local que
+>   sinalizou a intrusão") **é vídeo ao vivo**, não snapshot/imagem
+>   estática. O termo "estática" no addendum de redução de escopo de
+>   RULE-SEC-03 refere-se a **não trocar de câmera** conforme o intruso se
+>   move — não a "imagem parada".
+> - A **implementação** disso fica adiada **dentro deste mesmo
+>   adiamento** (relay RTSP→HLS/WebRTC / vídeo ao vivo pelo navegador) —
+>   não é um adiamento novo.
+> - **Não há contradição** entre esta entrada e RULE-SEC-03: são a mesma
+>   dependência técnica. Consequência prática: a **frente 08** ("Segurança
+>   de Intrusão: fechar a primeira rodada", ver bloco HANDOFF) **não pode
+>   entregar "abrir a câmera do local" com imagem real enquanto o vídeo ao
+>   vivo estiver adiado**. Substituir por snapshot estático como solução
+>   intermediária **não foi confirmado** e não deve ser presumido.
+>
+> Ver addendum equivalente em RULE-SEC-03
+> (`business-rules/references/security-intrusion-rules.md`).
+> **Source of confirmation:** Usuário, 2026-09-02.
+
 **Source of confirmation:** Usuário, 2026-09-02.
 
 ## Instrução do usuário — Segurança de Intrusão deve virar seção/documento dedicado próprio (2026-09-02)
@@ -380,17 +461,85 @@ multidisciplinar nessa área do projeto." Isto é uma instrução de
 
 **Source of confirmation:** Usuário, 2026-09-02.
 
-## Gap — Vínculo categoria de pulseira → área (schema)
+## ~~Gap~~ FECHADO — Vínculo categoria de pulseira → área (schema)
 
 Confirmado pelo usuário em 2026-08-23: o conceito de "pessoa autorizada em
 uma área X" foi definido como "pulseira cuja categoria tem permissão
 válida de área/bloco/período para aquela área" (ver nota em RULE-SEC-01 e
-RULE-ACC-02 em `business-rules/references/`). Esse vínculo concreto
+RULE-ACC-02 em `business-rules/references/`). ~~Esse vínculo concreto
 categoria→área/bloco/período **não existe hoje no schema** — a tabela
 `wristband_category` atualmente só tem `id`/`tenant_id`/`name`. É uma
 lacuna real de modelagem a ser fechada pelo Database Agent quando a
 implementação começar; a forma exata (tabela associativa, colunas, etc.)
-não foi definida por esta confirmação.
+não foi definida por esta confirmação.~~
+
+> **GAP FECHADO (2026-09-02) — implementado em código e RATIFICADO pelo
+> usuário:** o texto riscado está factualmente errado em relação ao
+> repositório atual. O vínculo existe:
+> `backend/src/database/entities/wristband-category-area-permission.entity.ts`
+> — tabela associativa com `tenant_id`, `wristband_category_id`,
+> `area_id`, `valid_from` e `valid_until`, criada pela migration
+> `1755847000000`. A FK de `areaId` também está resolvida
+> (`raw-security-event.entity.ts`, l. 23-24, `area_id` NOT NULL → `area`).
+>
+> **Resolução do "bloco" da formulação original ("área/bloco/período"):**
+> "bloco" **não é** uma coluna própria, e essa ausência **não é uma
+> lacuna**. O modelo escolhido pelo Database Agent trata bloco e área como
+> dois níveis da **mesma hierarquia auto-referente** de `area`:
+> - **Bloco** = área **raiz** (`parent_area_id IS NULL`).
+> - **Área** (andar, corredor, laboratório) = área **filha**, com
+>   profundidade livre.
+> - Ver `backend/src/database/entities/area.entity.ts` (l. 3-5) e a
+>   justificativa registrada na própria migration
+>   `1755846000000-AddArea.ts` (l. 10-20).
+> - A autorização **já funciona em nível de bloco** por meio do walk de
+>   ancestrais implementado em `area-authorization.service.ts` (l. 57-72):
+>   uma permissão concedida na raiz vale para toda a subárvore.
+>
+> **Registro de processo — ratificação retroativa do usuário:** a
+> implementação avançou antes do registro formal desta decisão de
+> modelagem. Apresentado o modelo, o usuário o **ratificou
+> retroativamente**, sem alterações — mesmo padrão de processo já usado
+> para o mecanismo de API key por dispositivo em 2026-08-23 (ver
+> "Resolvido — Mecanismo de autenticação por dispositivo" acima nesta
+> skill). Registrado para consciência de processo (Project Guardian), não
+> como crítica ao modelo, que foi aprovado como está.
+>
+> **Consequência de backlog: este gap SAI do backlog da frente 08**
+> (Segurança de Intrusão). O item "Coluna 'bloco' ausente em
+> `wristband_category_area_permission`" listado na frente 08 no bloco
+> HANDOFF ao final desta skill foi removido nesta mesma correção.
+>
+> Ver a nota completa em RULE-SEC-01
+> (`business-rules/references/security-intrusion-rules.md`) e as correções
+> correspondentes em
+> `project-knowledge/references/architecture-overview.md`.
+> **Source of confirmation:** Usuário, 2026-09-02 (ratificação
+> retroativa); fatos de código verificados na reconciliação da Frente 01,
+> 2026-09-02 (fato observável no repositório).
+
+### Limitação conhecida (NÃO é gap novo de produto) — janela de validade absoluta vs. horário recorrente
+
+Levantada durante a reconciliação da Frente 01, **não decidida pelo
+usuário** e **não perguntada a ele**: as colunas `valid_from`/`valid_until`
+de `wristband_category_area_permission` modelam uma janela de validade
+**absoluta** — um intervalo único entre dois instantes. Elas **não**
+expressam horário semanal recorrente do tipo "segunda a sexta, das 08:00
+às 18:00".
+
+O termo "período" usado na formulação de RULE-ACC-02
+(`business-rules/references/access-control-rules.md`) **nunca foi
+confirmado** pelo usuário como incluindo recorrência. Pode ser que a
+janela absoluta baste para o uso real; pode ser que não. Nenhum agente
+deve presumir suporte a recorrência que não existe hoje, nem presumir que
+a ausência dele é um defeito.
+
+**Quando levantar:** como pergunta objetiva ao usuário no momento em que a
+**frente 08** (Segurança de Intrusão) tocar autorização de área — não
+antes, e não como escopo assumido.
+**Source of confirmation:** Verificação de código feita na reconciliação
+da Frente 01, 2026-09-02 (fato observável no repositório) — a pergunta
+derivada dele permanece não respondida.
 
 ## Resolvido — Semântica de deduplicação para sinais de segurança
 
@@ -592,8 +741,35 @@ o usuário confirmou:
   turma específica, nunca geral. Ver RULE-INST-05.
 - **Continuidade do script CLI `tenant-create.ts`** — resolvido: mantido,
   restrito a ambientes de teste/CI, nunca produção. Ver RULE-INST-02.
-- **Migração de `class_group.courseId`** — **continua em aberto**, não
-  endereçado nesta rodada.
+- ~~**Migração de `class_group.courseId`** — **continua em aberto**, não
+  endereçado nesta rodada.~~
+
+  > **Correção (2026-09-02) — gap FECHADO em código desde a migration
+  > `1755854000000`:** a afirmação riscada está factualmente errada em
+  > relação ao repositório atual. A migração foi feita e é observável:
+  > - `backend/src/database/entities/class-group.entity.ts` (l. 15-16)
+  >   declara `subject_id` **NOT NULL**; a coluna/relacionamento
+  >   `course_id` **não existe mais** na entidade — o curso é derivado via
+  >   `subject.courseId`, exatamente como a arquitetura aprovada previa.
+  > - O backfill/estrutura veio da migration
+  >   `backend/src/database/migrations/1755854000000-MigrateClassGroupToSubject.ts`,
+  >   **já aplicada**.
+  >
+  > **RESSALVA IMEDIATA, indissociável desta correção — não ler "gap
+  > fechado" isoladamente:** o modelo que foi migrado é de **uma matéria
+  > por turma**, e é justamente esse modelo que **RULE-INST-14 inverte**
+  > (Turma passa a ter **várias** Matérias — ver "Correção de modelo
+  > embutida nesta feature — Turma passa a ter várias Matérias" mais
+  > abaixo nesta skill e RULE-INST-14 em
+  > `business-rules/references/institution-management-rules.md`). Ou seja:
+  > o gap de migração está fechado, **mas a estrutura resultante será
+  > remodelada pela frente 05** (Turma com várias matérias), incluindo a
+  > necessidade de `class_group_schedule_slot` e `class_session` passarem a
+  > dizer de qual matéria são. Não tratar `class_group.subject_id` como
+  > modelo definitivo.
+  > **Source of confirmation:** Verificação de código feita na
+  > reconciliação da Frente 01, 2026-09-02 (fato observável no
+  > repositório).
 
 ## Escopo confirmado, arquitetura/tecnologia pendente — App Mobile para Faculdade (2026-08-31)
 
@@ -946,8 +1122,9 @@ Consolidação dos itens já sinalizados como fora de escopo durante o
 desenho técnico, para referência única (detalhamento de cada um permanece
 nas seções anteriores desta skill e em `exam-rules.md`):
 tentativas múltiplas por prova; obrigatoriedade de pergunta; múltiplas
-seções/páginas; acesso de Coordenador de Curso/Direção à trilha de
-auditoria (tratado como **negado por padrão** até confirmação); agente de
+seções/páginas; ~~acesso de Coordenador de Curso/Direção à trilha de
+auditoria (tratado como **negado por padrão** até confirmação)~~ (item
+superado — ver nota abaixo); agente de
 monitoramento nativo/desktop (`EXTERNAL_APPLICATION_FOCUS`); pausa de
 timer configurável (RULE-EXAM-10); configuração diferenciada por tipo de
 evento (RULE-EXAM-05); banco de questões reutilizável (já registrado
@@ -959,6 +1136,23 @@ acima).
 > "Escopo confirmado... Área de Provas: tipos de pergunta adicionais e
 > banco de questões" acima). O banco de questões reutilizável continua
 > fora de escopo desta rodada, sem alteração.
+
+> **Correção (2026-09-02) — "acesso de Coordenador de Curso/Direção à
+> trilha de auditoria" está SUPERADO, não é mais "negado por padrão":**
+> esta consolidação repetia uma posição já revogada na mesma data,
+> contradizendo o addendum de **RULE-EXAM-16**
+> (`business-rules/references/exam-rules.md`) e a seção "Resolvido — Gaps
+> do pivot Portal de autoatendimento web (2026-09-02)" desta mesma skill.
+> A posição vigente e confirmada pelo usuário é: **Coordenador de Curso vê
+> as provas dos cursos que coordena** (`leadership_assignment.courseId`,
+> mesmo escopo de RULE-INST-09) e **Direção/Reitoria vê todas** (herança
+> automática sobre todos os cursos). O "negado por padrão" era a suposição
+> conservadora anterior e não vale mais. A mesma contradição foi corrigida
+> em `project-knowledge/references/architecture-overview.md` ("Pontos em
+> aberto" da arquitetura da Área de Provas).
+> **Source of confirmation:** Usuário, 2026-09-02 (confirmação já
+> registrada no addendum de RULE-EXAM-16); contradição interna
+> identificada na reconciliação da Frente 01, 2026-09-02.
 
 ## Próximo passo pendente — Implementação real da Área de Provas
 
@@ -1243,11 +1437,19 @@ onde já há um ponteiro registrado sobre isso) e com RULE-TEN-02
 
 ### Gaps abertos — Justificativa de faltas (não confirmados, NÃO presumir resposta)
 
-- **Semântica exata de "retirar a falta"** no cálculo de frequência da
-  feature irmã (RULE-FREQ-01): a aula vira **presença** (entra no
-  numerador) ou vira **"falta justificada"** que **sai do denominador**? As
-  duas leituras mudam o resultado. **Dependência direta e não resolvida
-  entre as duas features.**
+> **RESOLVIDO (2026-09-02) — semântica exata de "retirar a falta":** este
+> item **deixa de ser gap**. Era o primeiro bullet desta lista ("a aula
+> vira presença (numerador) ou vira falta justificada que sai do
+> denominador?"). Confirmado pelo usuário: **conta como presença, entra no
+> numerador, NÃO sai do denominador** — mesmo cálculo de RULE-FREQ-01, sem
+> subtrair do total de aulas consideradas. Ver addendum em RULE-JUST-03
+> (`business-rules/references/absence-justification-rules.md`) e em
+> `business-rules/references/attendance-frequency-rules.md`. **Todos os
+> demais bullets desta lista continuam em aberto, sem alteração** — em
+> especial o recálculo retroativo, que **não foi respondido**.
+> **Source of confirmation:** Usuário, 2026-09-02 (ambiguidade A4 do bloco
+> HANDOFF ao final desta skill).
+
 - **Prazo para justificar** (o aluno pode justificar uma falta de 3 meses
   atrás?).
 - **Se o anexo é obrigatório ou opcional**; formatos e tamanho máximo
@@ -1316,6 +1518,224 @@ forma dispersa em rodadas de feature.
 Definition Agent, 2026-09-02 (fato observável no repositório, não uma
 decisão do usuário).
 
+> **Status (2026-09-02) — os 3 itens desta pendência foram endereçados nas
+> skills:** a passada dedicada de reconciliação foi executada como
+> **frente 01**. Os três itens listados acima (código de Segurança de
+> Intrusão existente; migração `class_group.courseId` já feita; vínculo
+> categoria de pulseira → área) estão corrigidos nos arquivos de
+> `.claude/skills/**` — ver "Resolvido — Frente 01, reconciliação
+> documentação ↔ código (2026-09-02)" ao final desta skill, que também
+> registra o que ficou para a etapa seguinte (`.doc/*.html`, Documentation
+> Agent). O item 3 em particular teve sua ressalva resolvida: "bloco" foi
+> de fato absorvido pelo conceito de área (área raiz), não é lacuna.
+
+## Resolvido — Ambiguidades A2, A3 e A4 do bloco HANDOFF formalizadas como addenda (2026-09-02)
+
+As três ambiguidades levantadas e **já respondidas pelo usuário** durante a
+sessão de organização em Frentes de Atuação (ver bloco HANDOFF abaixo)
+foram formalizadas como addenda nos arquivos de regra correspondentes,
+seguindo o padrão de citação literal + "Source of confirmation" usado no
+restante desta skill. Nenhuma pergunta nova foi feita ao usuário; nenhuma
+delas foi tratada como hipótese.
+
+- **A2 — "abrir a câmera do local" vs. vídeo ao vivo adiado.** Formalizado
+  em RULE-SEC-03 (`business-rules/references/security-intrusion-rules.md`)
+  e na seção "Confirmado-adiado — Vídeo ao vivo das câmeras..." acima
+  nesta skill. A intenção de produto **é vídeo ao vivo**; a implementação
+  fica adiada dentro do **mesmo** adiamento do relay RTSP→HLS/WebRTC.
+  **Não há contradição** entre as duas entradas de backlog — é a mesma
+  dependência técnica. A **frente 08** não pode entregar "abrir a câmera
+  do local" com imagem real enquanto o vídeo ao vivo estiver adiado.
+- **A3 — cascata de exclusão com turma multi-matéria.** Formalizado como
+  addendum em RULE-INST-08
+  (`business-rules/references/institution-management-rules.md`): sob
+  RULE-INST-14, excluir uma Matéria **não** exclui mais a Turma quando a
+  turma tiver outras matérias — a turma sobrevive, só as aulas/frequência
+  daquela matéria são afetadas. **Só passa a valer quando RULE-INST-14 for
+  implementada** (hoje o código ainda é `class_group.subject_id`, matéria
+  única). Abre um gap novo, ver seção seguinte.
+- **A4 — falta justificada no cálculo de frequência.** Formalizado como
+  addendum em RULE-JUST-03
+  (`business-rules/references/absence-justification-rules.md`), com
+  ponteiro atualizado em
+  `business-rules/references/attendance-frequency-rules.md`: a falta
+  justificada aprovada **conta como presença** (numerador) e **não sai do
+  denominador**. Fecha o gap crítico correspondente; os demais gaps da
+  feature de justificativa de faltas **continuam em aberto**, inclusive o
+  recálculo retroativo.
+
+**Source of confirmation:** Usuário, 2026-09-02 (respostas dadas na sessão
+registrada no bloco HANDOFF abaixo).
+
+### GAP NOVO em aberto (aberto por A3) — exclusão da ÚNICA matéria de uma turma
+
+Não foi perguntado ao usuário, **não presumir resposta**: sob o modelo de
+turma multi-matéria (RULE-INST-14), o que acontece quando a matéria
+excluída era a **única** matéria daquela turma? A turma sobrevive vazia
+(sem nenhuma matéria)? É excluída em cascata como no modelo atual
+(RULE-INST-08)? A exclusão é bloqueada?
+
+A resposta literal do usuário em A3 ("remove só a matéria da turma; a
+turma continua") foi dada no contexto de uma turma com **várias** matérias
+e **não** pode ser estendida a este caso. Também não foi discutida a
+interação com RULE-INST-13 (exclusão de Turma bloqueada quando há presença
+consolidada). Levantar com o usuário quando a **frente 05** (Turma com
+várias matérias) entrar em trabalho real. Ver addendum em RULE-INST-08
+(`business-rules/references/institution-management-rules.md`).
+
+## GAP NOVO — Não existe tela de gerenciamento de Áreas/Blocos (2026-09-02)
+
+**Fato verificado no código:** existe o CRUD de backend
+(`backend/src/modules/area/area.controller.ts`, com `POST /v1/areas` e
+`GET /v1/areas`) e existe o cliente de frontend
+(`frontend/src/features/areas/areas-api.ts`, já consumido por outras
+telas) — mas **não existe nenhuma página de gerenciamento de áreas** no
+frontend web, e **"Áreas" não aparece na navegação** do `app-shell.tsx`.
+Ou seja: a capacidade existe na API, mas é inalcançável pelo usuário
+final através do painel.
+
+**Decisão do usuário (2026-09-02):** *"É lacuna — abrir gap"*. Registrado
+aqui como **tela faltante a construir**, **item da frente 08 (Segurança de
+Intrusão)** — **não a construir agora**, seguindo o mesmo padrão "decisão
+primeiro, código depois" usado no projeto inteiro.
+
+**Por que isso importa (impacto de produto):** sem essa tela, a
+instituição **não consegue montar o próprio mapa de blocos/andares pelo
+painel**. Como toda a autorização de área da Segurança de Intrusão depende
+desse mapa (permissão de categoria de pulseira concedida sobre uma área,
+com herança para a subárvore), a consequência é que a **Segurança de
+Intrusão fica inconfigurável pelo usuário final** — só seria possível
+popular áreas por chamada direta à API ou por seed. É por isso que o item
+pertence à frente 08 e não a uma frente administrativa genérica.
+
+**O que são "Áreas" (contexto necessário para quem for construir a tela,
+para evitar confusão com Salas):**
+- Área é o **mapa físico** da instituição — uma hierarquia
+  auto-referente (`backend/src/database/entities/area.entity.ts`) onde a
+  **área raiz** (`parent_area_id IS NULL`) representa o **bloco/edifício**
+  e as **áreas filhas** representam andares, corredores, laboratórios,
+  etc., com profundidade livre.
+- Esse mapa é usado **exclusivamente pela Segurança de Intrusão**
+  (autorização de área, localização de incidente, cobertura de câmera).
+- `room.area_id` é um **link opcional** de sala para área
+  (`backend/src/database/entities/room.entity.ts`, l. 15-19) — e o
+  **pipeline de presença/chamada nunca lê esse campo**. Área **não** é
+  parte do núcleo de chamada e não deve ser tratada como se fosse um
+  "cadastro de salas alternativo".
+
+**Não presumir:** onde exatamente a tela fica na navegação (Segurança de
+Intrusão vs. Configurações vs. Cadastro de informações), qual a forma de
+edição da hierarquia (árvore, breadcrumb, seleção de pai), e o que
+acontece ao excluir uma área com filhas ou com permissões concedidas —
+**nada disso foi perguntado ao usuário**. Levantar quando a frente 08
+entrar em trabalho real.
+**Source of confirmation:** Usuário, 2026-09-02 (citação literal acima);
+fatos de código verificados na reconciliação da Frente 01, 2026-09-02
+(fato observável no repositório).
+
+## Resolvido — Frente 01, reconciliação documentação ↔ código (2026-09-02)
+
+A **frente 01** ("Reconciliação documentação ↔ código", ver o mapa das 11
+frentes no bloco HANDOFF abaixo e
+[`.doc/checkclass-frentes-de-atuacao.html`](../../../../.doc/checkclass-frentes-de-atuacao.html))
+foi executada. Cadeia: **Project Guardian** (levantamento dos fatos no
+código) → **Product Definition Agent** (correção dos arquivos de
+`.claude/skills/**`, esta etapa) → **Documentation Agent** (correção dos
+`.doc/*.html`, etapa seguinte).
+
+**Natureza destas correções:** salvo onde explicitamente indicado como
+decisão do usuário, tudo o que foi corrigido são **fatos observáveis no
+repositório**, não decisões novas de produto. Nenhuma regra de negócio foi
+criada ou alterada por inferência. **Nenhuma linha de código-fonte foi
+alterada nesta etapa** — apenas documentação de conhecimento do projeto.
+
+**Correções factuais aplicadas nas skills (afirmações falsas em relação ao
+código):**
+- Migração de `class_group.courseId` → `subject_id`: estava registrada
+  como "continua em aberto"; está **fechada** desde a migration
+  `1755854000000`, com a ressalva de que RULE-INST-14 (frente 05) inverte
+  esse modelo.
+- Vínculo categoria de pulseira → área: estava registrado como gap de
+  schema; está **implementado** e foi **ratificado retroativamente pelo
+  usuário**, incluindo a modelagem de "bloco" como área raiz. Corrigido em
+  `pending-decisions.md`, `business-rules/references/security-intrusion-rules.md`
+  (RULE-SEC-01) e `project-knowledge/references/architecture-overview.md`
+  (dois pontos).
+- Mecanismo do acesso auto-restrito (RULE-ATT-15): estava "não decidido";
+  está **decidido e implementado** como família de rotas `/v1/me/*` sem
+  permissão dedicada. Corrigido em `pending-decisions.md` e
+  `business-rules/references/attendance-rules.md`.
+- Refresh token / login mobile: os dois pontos "ainda em aberto" estão
+  **fechados** (`refresh_token` + `POST /login/mobile`, `/refresh`,
+  `/logout`). Corrigido em `pending-decisions.md` e
+  `architecture-overview.md`.
+- Idempotency key do check-in via app: **resolvida** em
+  `POST /v1/app-checkin`; removida também dos débitos técnicos menores da
+  frente 11.
+- Entidade Matéria e cronograma automático: `architecture-overview.md`
+  afirmava que não existiam; **existem** (RULE-INST-03 e RULE-INST-04
+  implementados). A extensão de `GET /v1/me/schedule` deixa de ser
+  bloqueada e vira tarefa de Backend pura.
+- Existência do app mobile: `architecture-overview.md` afirmava que
+  `mobile/` **não existe**; o app **existe e está construído** (Expo/Expo
+  Router, com telas e teste). Por decisão do usuário (*"Corrigir o fato,
+  manter o pivot"*), o fato foi corrigido e o custo real do pivot ficou
+  documentado, **mas a decisão de canal (Portal Web primário) NÃO foi
+  reaberta**.
+- Contagem de permissões de segurança: `manage_security_incidents` era
+  descrito como "7º código"; corrigido para **6º** (5 de câmera + 1), já
+  refletindo a remoção decidida de `follow_camera_events`, cuja execução em
+  código é da frente 02.
+- Contagem de migrations no bloco HANDOFF: de ~~31~~ para **32**.
+
+**Contradições internas resolvidas:**
+- Acesso de Coordenador de Curso/Direção à auditoria de provas: dois
+  pontos ainda diziam "negado por padrão", contradizendo o addendum de
+  RULE-EXAM-16 no mesmo arquivo. Marcados como superados em
+  `architecture-overview.md` e `pending-decisions.md`.
+- "Tipos de pergunta adicionais do Google Forms" ainda aparecia como
+  "adiado" em `architecture-overview.md`, apesar de o usuário já ter
+  pedido sua remoção do backlog. Marcado como superado.
+
+**Registros novos abertos nesta frente (nenhum é decisão técnica):**
+- **Gap novo:** não existe tela de gerenciamento de Áreas/Blocos — decisão
+  do usuário *"É lacuna — abrir gap"*, alocado à **frente 08**. Ver a
+  seção imediatamente acima.
+- **Ratificação retroativa:** a tela de **Feriados** fica em
+  **Configurações** — decisão do usuário *"Ratificar — fica em
+  Configurações"*, registrada na seção de navegação/IA confirmada em
+  `architecture-overview.md`.
+- **Limitação conhecida (não é gap de produto):** `valid_from`/`valid_until`
+  modelam janela **absoluta**, não horário semanal recorrente; a pergunta
+  sobre recorrência no "período" de RULE-ACC-02 **não foi feita ao
+  usuário** e deve ser levantada quando a frente 08 tocar autorização de
+  área.
+
+**O que NÃO foi tocado nesta etapa, por delimitação explícita de escopo:**
+- **`.doc/*.html`** — a correção dos documentos de apresentação é a
+  **etapa 3 desta mesma frente**, a cargo do **Documentation Agent**.
+  Enquanto ela não rodar, os `.doc/*.html` ainda contêm as mesmas
+  afirmações desatualizadas corrigidas aqui — as skills são a fonte
+  oficial, os documentos ainda não.
+- **Código-fonte** (`backend/`, `frontend/`, `mobile/`) — nada foi
+  alterado; as pendências de execução em código (remover "empresa",
+  remover `follow_camera_events`) continuam sendo da **frente 02**.
+
+**Verificado e confirmado como JÁ CORRETO** (não revisitar sem novo fato):
+RULE-ACC-07 em `access-control-rules.md` (5 códigos, com o histórico dos 6
+preservado/riscado); RULE-INST-03/08/14 em
+`institution-management-rules.md`; `business-domain/references/domain-overview.md`
+(faculdade + escola); a lista dos 4 arquivos com "empresa" e dos 2 com
+`follow_camera_events` da frente 02 (exata); a Área de Provas realmente
+tem **zero** código; `class_group_schedule_slot` e `class_session`
+realmente **não** têm vínculo com matéria; realmente **não** existe
+infraestrutura de notificação nem de upload de arquivo.
+
+**Source of confirmation:** Verificação de código feita na reconciliação da
+Frente 01, 2026-09-02 (fatos observáveis no repositório), mais três
+decisões explícitas do usuário na mesma data, citadas literalmente nas
+seções correspondentes.
+
 ## HANDOFF (2026-09-02) — Organização em Frentes de Atuação, sessão interrompida por limite de contexto
 
 Registro de continuidade: o usuário pediu para organizar todas as
@@ -1327,8 +1747,10 @@ levantado, para não se perder ao trocar de máquina/sessão.
 
 ### Levantamento de estado real feito (verificado no código em 2026-09-02)
 
-31 migrations aplicadas, 19 telas administrativas no frontend web, app
-mobile funcional. Confirma tudo que já está registrado na pendência de
+~~31~~ **32** migrations aplicadas (correção factual da reconciliação da
+Frente 01, 2026-09-02 — a mais recente é
+`backend/src/database/migrations/1755860000000-AddInstanceLock.ts`), 19
+telas administrativas no frontend web, app mobile funcional. Confirma tudo que já está registrado na pendência de
 reconciliação documentação↔código logo acima (Segurança de Intrusão
 construída, migração Matéria feita, acesso auto-restrito implementado em
 `/v1/me/*`). Adicionalmente, verificado nesta rodada:
@@ -1344,7 +1766,12 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
 
 ### As 11 frentes propostas (numeração = ordem de dependência, não prioridade de negócio)
 
-1. **Reconciliação documentação ↔ código** — pronta para começar. Escopo:
+1. **Reconciliação documentação ↔ código** — ~~pronta para começar~~
+   **EM EXECUÇÃO (2026-09-02): etapas 1 (Project Guardian) e 2 (Product
+   Definition — correção de `.claude/skills/**`) CONCLUÍDAS; falta a etapa
+   3 (Documentation Agent — correção dos `.doc/*.html`). Ver "Resolvido —
+   Frente 01, reconciliação documentação ↔ código (2026-09-02)" acima.**
+   Escopo:
    corrigir as afirmações falsas já listadas na pendência de reconciliação
    acima, mais varrer o resto de `pending-decisions.md`/`.doc/*.html` com o
    mesmo critério. Agentes: Project Guardian → Product Definition →
@@ -1373,15 +1800,28 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
 8. **Segurança de Intrusão: fechar a primeira rodada** — depende da
    resolução da ambiguidade A2 abaixo (câmera ao vivo). Contagem de
    entrada/saída (RULE-SEC-05) com os 4 gaps já registrados na seção
-   correspondente acima. Coluna "bloco" ausente em
-   `wristband_category_area_permission`.
+   correspondente acima. ~~Coluna "bloco" ausente em
+   `wristband_category_area_permission`.~~ **(removido em 2026-09-02 —
+   não era lacuna: "bloco" é área raiz na hierarquia auto-referente de
+   `area`, modelo ratificado pelo usuário; ver "FECHADO — Vínculo
+   categoria de pulseira → área (schema)" acima.)** **Item novo nesta
+   frente:** construir a **tela de gerenciamento de Áreas/Blocos**, que não
+   existe hoje — ver "GAP NOVO — Não existe tela de gerenciamento de
+   Áreas/Blocos (2026-09-02)" acima nesta skill. **Ponto a levantar com o
+   usuário quando esta frente começar:** se o "período" de RULE-ACC-02
+   precisa suportar horário semanal recorrente (hoje a janela é absoluta) —
+   ver "Limitação conhecida... janela de validade absoluta vs. horário
+   recorrente" acima.
 9. **App mobile** — pausado por decisão do usuário até o Portal web (03)
    estar pronto. Não é falta de trabalho.
 10. **Conformidade LGPD e retenção** — regras aprovadas desde agosto, nada
     construído. Falta soft-delete e mecanismo de fechamento mensal/anual.
     Único item que bloqueia produção independente de qualquer feature nova.
-11. **Débitos técnicos menores** — `captured_at` indexado, idempotency key
-    do check-in via app, localizar autorização de RULE-ATT-12 antes de
+11. **Débitos técnicos menores** — `captured_at` indexado, ~~idempotency key
+    do check-in via app~~ (**removido em 2026-09-02 — já resolvido em
+    código: `POST /v1/app-checkin` exige `idempotencyKey` obrigatória
+    gerada pelo cliente; ver "Resolvido — Idempotency key no endpoint de
+    check-in via app" acima**), localizar autorização de RULE-ATT-12 antes de
     extrair `LeadershipScopeService`, paginação do cronograma mobile
     (adiada). Não bloqueantes.
 
@@ -1433,15 +1873,41 @@ total de aulas consideradas.
 ### Próximo passo ao retomar (em outra máquina/sessão, sem memória deste chat)
 
 1. Ler este bloco inteiro primeiro.
-2. Rodar o Product Definition Agent para formalizar os addenda de A2, A3 e
-   A4 nos arquivos de regra correspondentes (`security-intrusion-rules.md`,
-   `institution-management-rules.md`, `absence-justification-rules.md`) e
-   em `pending-decisions.md`, com o mesmo padrão de citação literal +
-   "Source of confirmation" já usado o dia inteiro nesta sessão.
-3. Recriar o artifact "Frentes de Atuação" (HTML, publicado via Artifact
-   tool) com os 4 pontos de ambiguidade já fechados — ele existe no
-   histórico de artifacts do usuário (`action: "list"` no Artifact tool
-   pode recuperar a URL), não precisa ser refeito do zero.
+2. ~~Rodar o Product Definition Agent para formalizar os addenda de A2, A3
+   e A4 nos arquivos de regra correspondentes
+   (`security-intrusion-rules.md`, `institution-management-rules.md`,
+   `absence-justification-rules.md`) e em `pending-decisions.md`, com o
+   mesmo padrão de citação literal + "Source of confirmation" já usado o
+   dia inteiro nesta sessão.~~
+   **CONCLUÍDO em 2026-09-02.** Os três addenda foram escritos: RULE-SEC-03
+   (`business-rules/references/security-intrusion-rules.md`), RULE-INST-08
+   (`business-rules/references/institution-management-rules.md`) e
+   RULE-JUST-03 (`business-rules/references/absence-justification-rules.md`),
+   mais ponteiro atualizado em
+   `business-rules/references/attendance-frequency-rules.md` e os registros
+   correspondentes nesta skill (ver "Resolvido — Ambiguidades A2, A3 e A4
+   do bloco HANDOFF formalizadas como addenda (2026-09-02)" acima). **Gap
+   novo aberto no processo:** exclusão da **única** matéria de uma turma
+   (ver seção "GAP NOVO em aberto (aberto por A3)" acima) — não perguntado
+   ao usuário, não presumir. Nenhum código-fonte e nenhum `.doc/*.html`
+   foram alterados. **A1 já estava fechado no próprio texto deste bloco e
+   não exigia addendum novo.**
+3. ~~Recriar o artifact "Frentes de Atuação" (HTML, publicado via Artifact
+   tool) com os 4 pontos de ambiguidade já fechados.~~
+   **CONCLUÍDO em 2026-09-02, mas NÃO como artifact.** O usuário instruiu
+   explicitamente nesta sessão: *"Não utilize o Artifact sob hipótese
+   alguma sem que eu solicite. Tudo deve ser feito através de arquivos de
+   texto (.md, .txt, .html etc)"*. O mapa das 11 frentes passou a viver
+   **versionado no repositório**, em
+   [`.doc/checkclass-frentes-de-atuacao.html`](../../../../.doc/checkclass-frentes-de-atuacao.html),
+   no mesmo padrão visual dos demais documentos de `.doc/`, já com as
+   quatro ambiguidades marcadas como resolvidas e uma seção dedicada aos
+   gaps que continuam abertos.
+   **Regra permanente derivada disto:** nenhum entregável deste projeto
+   deve ser produzido via ferramenta Artifact sem pedido explícito do
+   usuário — sempre arquivo de texto no repositório.
+   **Source of confirmation:** Usuário, 2026-09-02 (citação literal
+   acima).
 4. Nenhum código-fonte foi alterado em nenhuma das 11 frentes — tudo
    listado acima é decisão/registro, seguindo o padrão "decisão primeiro,
    código depois" já usado no projeto inteiro.

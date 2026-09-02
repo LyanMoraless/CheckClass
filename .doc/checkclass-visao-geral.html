@@ -228,7 +228,7 @@
     <h2 class="section-title">Visão Geral</h2>
     <div class="overview-box lead">
       <p><strong>CheckClass</strong> é uma plataforma de gerenciamento inteligente de instituições, cujo núcleo apura <strong>presença de forma multifatorial</strong>: em vez de confiar num único sinal (como um simples check-in), ela combina identificação, entrada, permanência, saída, sensores, câmeras e horário para decidir, com confiabilidade, quem está presente, onde, e se está autorizado a estar ali.</p>
-      <p>A plataforma se adapta a diferentes tipos de instituição — escola, universidade, empresa, igreja, hospital, evento — mantendo o mesmo núcleo de apuração de presença como base comum. Hoje o sistema é multi-tenant (cada instituição isolada) e conta com três frentes de interface: um <strong>backend</strong> central, um <strong>painel web</strong> administrativo e um <strong>app mobile</strong> para alunos/professores.</p>
+      <p>A plataforma atende <strong>exatamente dois tipos de instituição — faculdade e escola</strong> — mantendo o mesmo núcleo de apuração de presença como base comum. Nenhum outro tipo (empresa, igreja, hospital, evento) faz parte do produto. Hoje o sistema é multi-tenant (cada instituição isolada) e conta com três frentes de interface: um <strong>backend</strong> central, um <strong>painel web</strong> administrativo e um <strong>app mobile</strong> para alunos/professores.</p>
     </div>
   </section>
 
@@ -335,7 +335,7 @@
     </div>
     <div class="feature-card">
       <h4>Permissões granulares de câmera</h4>
-      <p>Seis capacidades independentes controlam o que cada pessoa pode fazer com câmeras: visualizar uma câmera específica, visualizar câmeras de um setor, colocar em tela cheia, acompanhar eventos automaticamente, acessar gravações, e administrar os dispositivos.</p>
+      <p>Cinco capacidades independentes controlam o que cada pessoa pode fazer com câmeras: visualizar uma câmera específica, visualizar câmeras de um setor, colocar em tela cheia, acessar gravações, e administrar os dispositivos.</p>
     </div>
   </section>
 
@@ -400,16 +400,21 @@
         <h4>Painel Web (administrativo)</h4>
         <ul>
           <li>Login</li>
-          <li>Cursos e turmas</li>
-          <li>Salas e áreas</li>
+          <li>Onboarding da instituição</li>
+          <li>Cursos, matérias e turmas</li>
+          <li>Cronograma de aulas (dentro do detalhe da turma)</li>
+          <li>Alunos</li>
+          <li>Salas</li>
           <li>Dispositivos e câmeras</li>
           <li>Pessoas/usuários e pulseiras</li>
           <li>Grupos de permissão</li>
           <li>Configuração de regras de presença</li>
+          <li>Feriados (dentro de Configurações)</li>
           <li>Registro de presença (consulta)</li>
           <li>Pendências de revisão</li>
           <li>Incidentes de segurança</li>
         </ul>
+        <p style="font-size: 13.5px; margin-top: 10px;">São 19 telas no total. <strong>Não</strong> existe tela de Áreas/Blocos — só API.</p>
       </div>
       <div class="status-card">
         <h4>App Mobile (aluno/professor)</h4>
@@ -440,13 +445,13 @@
     <h2 class="section-title">Ainda em Aberto</h2>
     <p>Pontos conscientemente adiados ou ainda não definidos — não devem ser tratados como decisão fechada:</p>
     <ul class="gap-list">
-      <li><span class="tag">Adiado</span>Segurança de Intrusão (Prioridade 3): bloqueio automático de portas, vídeo ao vivo das câmeras pelo navegador, e tecnologia de contagem exata de entrada/saída (restrição de precisão confirmada; desde 2026-09-02 há também uma direção técnica mais concreta — câmera de sala de aula + visão computacional, cruzada com contagem de tags — mas a tecnologia final ainda não foi escolhida). Regras e arquitetura já aprovadas — ver <a href="checkclass-seguranca-intrusao.html">documento dedicado</a>.</li>
+      <li><span class="tag">Adiado</span>Segurança de Intrusão (Prioridade 3): bloqueio automático de portas, vídeo ao vivo das câmeras pelo navegador, e tecnologia de contagem exata de entrada/saída (restrição de precisão confirmada; desde 2026-09-02 há também uma direção técnica mais concreta — câmera de sala de aula + visão computacional, cruzada com contagem de tags — mas a tecnologia final ainda não foi escolhida). A primeira rodada da feature (ingestão, autorização de área, detecção, incidentes e cadastro de câmeras) já está implementada — ver <a href="checkclass-seguranca-intrusao.html">documento dedicado</a>.</li>
       <li><span class="tag disqualified">Desqualificado</span>Acompanhamento dinâmico de câmera entre zonas e níveis de vigilância (básico/intermediário/avançado) foram <strong>desqualificados por completo</strong> pelo usuário em 2026-09-02 — decisões permanentes, não itens adiados a retomar depois. Ver <a href="checkclass-seguranca-intrusao.html">documento dedicado</a>.</li>
       <li><span class="tag">Não definido</span>Escopo e finalidade exata da Inteligência Artificial no produto.</li>
       <li><span class="tag">Gap</span>Hierarquia administrativa interna detalhada (além de professor → coordenador → diretor).</li>
-      <li><span class="tag">Gap</span>Conteúdo de interface para tipos de instituição além de escola e empresa (universidade, igreja, hospital, evento).</li>
-      <li><span class="tag">Fora desta rodada</span>App mobile ainda não cobre "Atividades" (escola) nem o conteúdo voltado a empresas.</li>
-      <li><span class="tag">Adiado</span>Área de Provas (Prioridade 4, faculdade/escola): tipos de pergunta adicionais do Google Forms, banco de questões reutilizável, pausa de timer configurável e agente de monitoramento nativo/desktop. Design de arquitetura/dados já aprovado, implementação ainda não iniciada — ver <a href="checkclass-area-de-provas.html">documento dedicado</a>.</li>
+      <li><span class="tag">Gap</span>Tela de gerenciamento de Áreas/Blocos no painel — o backend já tem CRUD e o frontend já tem o cliente HTTP, mas não existe página. Sem ela a instituição não consegue montar o próprio mapa de blocos e andares, e a Segurança de Intrusão fica inconfigurável pelo usuário final.</li>
+      <li><span class="tag">Fora desta rodada</span>App mobile ainda não cobre "Atividades" (escola).</li>
+      <li><span class="tag">Adiado</span>Área de Provas (Prioridade 4, faculdade/escola): banco de questões reutilizável, pausa de timer configurável e agente de monitoramento nativo/desktop. Design de arquitetura/dados já aprovado, implementação ainda não iniciada — ver <a href="checkclass-area-de-provas.html">documento dedicado</a>.</li>
     </ul>
   </section>
 

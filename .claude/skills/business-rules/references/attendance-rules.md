@@ -290,7 +290,32 @@ por pessoa.
 de revisão manual (RULE-ATT-11 / RULE-ATT-12) — este acesso é somente de
 **leitura do próprio registro**; a resolução de pendências continua
 seguindo exclusivamente a cadeia de liderança direta (RULE-ATT-12), não é
-liberada por esta regra. O mecanismo técnico exato (nova permissão
+liberada por esta regra. ~~O mecanismo técnico exato (nova permissão
 dedicada, checagem direta de `personId`, ou outra abordagem) **não está
-decidido aqui** — é escopo do Solution Architect/Backend.
+decidido aqui** — é escopo do Solution Architect/Backend.~~ (ver nota de
+correção abaixo — o mecanismo já está decidido e implementado)
 **Source of confirmation:** Confirmado pelo usuário, 2026-08-22.
+
+**Nota de correção (2026-09-02) — mecanismo técnico já decidido E
+implementado, não está mais em aberto:** a frase riscada acima ("o
+mecanismo técnico exato não está decidido aqui") está **superada**. O
+mecanismo existe no código e é observável no repositório:
+`backend/src/modules/self-service/me.controller.ts` declara
+`@Controller('v1/me')` e expõe `GET /attendance` e `GET /schedule`,
+guardado apenas por `JwtAuthGuard` + `TenantContextInterceptor`,
+**sem** `PermissionCheckInterceptor` (a razão dessa ausência está
+explicada em comentário no próprio controller, linhas ~13-20), com
+`personId` sempre derivado do JWT do requisitante — nunca aceito como
+parâmetro de entrada.
+
+Ou seja, das três alternativas listadas originalmente, **nenhuma** foi a
+escolhida: não há permissão dedicada nova, e a checagem não é uma
+comparação de `personId` embutida num fluxo compartilhado com o lado
+administrativo. A abordagem adotada foi uma **quarta**: uma família de
+rotas separada (`/v1/me/*`) que, por construção, só consegue enxergar os
+dados do próprio requisitante, dispensando qualquer permissão de grupo.
+Isto materializa exatamente o conceito de acesso auto-restrito
+(self-scoped) desta regra — a regra de negócio **não muda**, apenas deixa
+de ter um mecanismo em aberto.
+**Source of confirmation:** Verificação de código feita na reconciliação
+da Frente 01, 2026-09-02 (fato observável no repositório).

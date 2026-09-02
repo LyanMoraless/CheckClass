@@ -25,10 +25,60 @@ potencial intrusão, sujeita à detecção desta regra. Esta é a primeira
 definição concreta desse conceito; até 2026-08-23 ele existia apenas na
 linguagem conceitual de RULE-ACC-02 ("permissões de acesso — áreas,
 blocos, período"), sem estar amarrado explicitamente à detecção de
-intrusão. **Gap de modelagem ainda aberto:** o vínculo concreto
+intrusão. ~~**Gap de modelagem ainda aberto:** o vínculo concreto
 categoria→área/bloco/período não existe hoje no schema (a tabela
 `wristband_category` só tem `id`/`tenant_id`/`name`) — ver
-`project-knowledge/references/pending-decisions.md`.
+`project-knowledge/references/pending-decisions.md`.~~ (ver nota de
+correção abaixo — o gap está fechado)
+
+> **Correção (2026-09-02) — gap de modelagem FECHADO, ratificado pelo
+> usuário:** a afirmação riscada acima é falsa em relação ao código atual.
+> O vínculo concreto existe no schema:
+> `backend/src/database/entities/wristband-category-area-permission.entity.ts`
+> declara `tenant_id`, `wristband_category_id`, `area_id`, `valid_from` e
+> `valid_until`, criada pela migration `1755847000000`. A FK de `areaId`
+> também já está resolvida — `raw-security-event.entity.ts` (l. 23-24)
+> tem `area_id` NOT NULL apontando para `area`.
+>
+> **Sobre o "bloco" da formulação original ("área/bloco/período"):** não é
+> uma coluna própria e **não precisa ser**. "Bloco" é modelado como uma
+> **área raiz** (`parent_area_id IS NULL`) dentro de uma hierarquia
+> auto-referente de áreas (`backend/src/database/entities/area.entity.ts`,
+> l. 3-5; justificativa registrada na própria migration
+> `1755846000000-AddArea.ts`, l. 10-20), e "área" no sentido cotidiano é a
+> área filha (andar, corredor, laboratório), com profundidade livre. A
+> autorização já funciona em nível de bloco por meio do **walk de
+> ancestrais** implementado em `area-authorization.service.ts` (l. 57-72):
+> uma permissão concedida na área raiz vale para toda a subárvore.
+> Portanto, "área" e "bloco" são o mesmo conceito em dois níveis da mesma
+> hierarquia, não duas dimensões independentes.
+>
+> Isto é registrado como **ratificação retroativa** do usuário à decisão do
+> Database Agent — mesmo padrão de processo já usado para o mecanismo de
+> API key por dispositivo em 2026-08-23 (ver "Resolvido — Mecanismo de
+> autenticação por dispositivo" em
+> `project-knowledge/references/pending-decisions.md`): a implementação
+> avançou antes do registro formal, e o usuário fechou a lacuna de processo
+> ratificando o modelo sem alterações. **O gap sai do backlog da frente
+> 08.**
+> **Source of confirmation:** Usuário, 2026-09-02 (ratificação retroativa);
+> fatos de código verificados na reconciliação da Frente 01, 2026-09-02.
+
+> **Limitação conhecida (NÃO é gap novo de produto, NÃO foi decidida pelo
+> usuário) — janela de validade é absoluta, não recorrente:** as colunas
+> `valid_from`/`valid_until` de `wristband_category_area_permission`
+> modelam uma janela de validade **absoluta** (um intervalo único entre
+> dois instantes). Elas **não** expressam horário semanal recorrente do
+> tipo "segunda a sexta, das 08:00 às 18:00". O termo "período" usado na
+> formulação de RULE-ACC-02 nunca foi confirmado pelo usuário como
+> incluindo recorrência — pode ser que a janela absoluta baste, pode ser
+> que não. Registrado aqui apenas para que nenhum agente presuma suporte a
+> recorrência que não existe. **Levantar como pergunta objetiva ao usuário
+> quando a frente 08 (Segurança de Intrusão) tocar autorização de área** —
+> não antes, e não como escopo assumido.
+> **Source of confirmation:** Verificação de código feita na reconciliação
+> da Frente 01, 2026-09-02 (fato observável no repositório) — a pergunta
+> derivada dele permanece não respondida.
 
 **Nota de esclarecimento (confirmado pelo usuário em 2026-08-23) — relação
 com RULE-ACC-04:** RULE-SEC-01 e RULE-ACC-04
@@ -156,6 +206,45 @@ sobre se RULE-SEC-03 precisaria ser ajustada em consequência do adiamento
 do vídeo ao vivo — a resposta é sim, e este addendum é esse ajuste.
 
 **Source of confirmation:** Usuário, 2026-09-02.
+
+**Addendum — "abrir a câmera do local" É vídeo ao vivo, mas a
+implementação fica adiada, confirmado pelo usuário em 2026-09-02:** foi
+levantada uma contradição aparente entre esta regra (o sistema abre
+automaticamente a câmera do local que sinalizou a intrusão) e a
+confirmação, na mesma data, de que **vídeo ao vivo das câmeras pelo
+navegador não é prioridade desta rodada** (ver "Confirmado-adiado — Vídeo
+ao vivo das câmeras não é prioridade desta rodada (2026-09-02)" em
+`project-knowledge/references/pending-decisions.md`). Mensagem literal do
+usuário: "Eu expliquei o que irá ocorrer (a câmera vai abrir ao vivo) mas
+isso será feito em outro momento."
+
+O que isso fecha, exatamente (não presumir além disto):
+
+- A **intenção de produto** de RULE-SEC-03 é, de fato, **vídeo ao vivo** —
+  a câmera do local abre **ao vivo**, não como snapshot/imagem estática.
+  Isso não é uma leitura inferida: é o que o usuário afirma literalmente.
+  (Atenção ao vocabulário: a palavra "estática" usada no addendum de
+  redução de escopo acima refere-se a **não trocar de câmera** conforme o
+  intruso se move — nunca a "imagem parada". São dimensões diferentes:
+  *qual* câmera é exibida, e *como* o vídeo dela é exibido.)
+- A **implementação** desse comportamento fica para depois, **dentro do
+  mesmo adiamento já registrado** do relay RTSP→HLS/WebRTC / vídeo ao vivo
+  — não é um adiamento novo nem separado.
+
+**Consequência registrada — não há contradição entre as duas entradas de
+backlog:** a frente de trabalho 08 ("Segurança de Intrusão: fechar a
+primeira rodada", ver bloco HANDOFF em
+`project-knowledge/references/pending-decisions.md`) **não pode entregar
+"abrir a câmera do local" com imagem real enquanto o vídeo ao vivo
+continuar adiado** — os dois itens do backlog são, na prática, **a mesma
+dependência técnica**, não dois requisitos conflitantes. Nenhum agente
+deve tratá-los como contradição a resolver, nem substituir o vídeo ao
+vivo por snapshot estático como "solução intermediária": essa
+substituição **não foi confirmada pelo usuário** e não deve ser presumida.
+
+**Source of confirmation:** Usuário, 2026-09-02 (citação literal acima),
+formalizado em sessão posterior da mesma data a partir do bloco HANDOFF de
+`project-knowledge/references/pending-decisions.md` (ambiguidade A2).
 
 ### RULE-SEC-04: Bloqueio automático de portas/ambientes em intrusão (com ressalva de emergência)
 

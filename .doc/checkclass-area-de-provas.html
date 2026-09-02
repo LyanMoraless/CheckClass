@@ -257,7 +257,7 @@
     <span class="pill status">Design aprovado · código não implementado</span>
     <div class="overview-box lead">
       <p>A <strong>Área de Provas</strong> é uma nova funcionalidade do CheckClass para criar e aplicar avaliações online. O <strong>professor</strong> monta a prova cadastrando perguntas — em um modelo enxuto, no estilo Google Forms — e configura, por prova, como o sistema reage a comportamentos suspeitos durante a aplicação (monitoramento/proctoring) e quanto tempo o aluno tem para responder. O <strong>aluno</strong> realiza a prova pelo navegador, com um cronômetro cuja fonte de verdade é sempre o backend, nunca o relógio do computador do aluno.</p>
-      <p>Pertence à <strong>Prioridade 4 — "Demais funcionalidades"</strong> do produto <span class="ref">RULE-EXAM-01</span> — não é um pilar do CheckClass, e não muda a ordem de prioridade de Apuração de Presença (núcleo), Gerenciamento da Instituição ou Segurança de Intrusão. Está disponível apenas para instituições dos tipos <strong>faculdade</strong> e <strong>escola</strong>; o tipo <strong>empresa</strong> fica fora de escopo por ora <span class="ref">RULE-EXAM-02</span>.</p>
+      <p>Pertence à <strong>Prioridade 4 — "Demais funcionalidades"</strong> do produto <span class="ref">RULE-EXAM-01</span> — não é um pilar do CheckClass, e não muda a ordem de prioridade de Apuração de Presença (núcleo), Gerenciamento da Instituição ou Segurança de Intrusão. Está disponível para os dois tipos de instituição do produto — <strong>faculdade</strong> e <strong>escola</strong> <span class="ref">RULE-EXAM-02</span>.</p>
       <p>Em 2026-09-02 foram aprovados: regras de negócio, arquitetura, tecnologia, modelo de dados lógico e revisão de segurança desta feature. <strong>Nenhum código foi escrito ainda</strong> — nem migration, nem backend, nem frontend. A implementação real é o próximo passo, tratado como uma rodada de trabalho futura e separada (ver "Status atual" ao final deste documento).</p>
     </div>
     <nav class="toc">
@@ -307,7 +307,7 @@
     <p>Cada prova nasce com suas próprias perguntas — não existe, nesta rodada, um banco de perguntas persistente e reutilizável entre provas (mesmo comportamento padrão do Google Forms) <span class="ref">RULE-EXAM-15</span>. Reutilização de perguntas fica como escopo futuro — ver <a href="#fora-de-escopo">Fora desta rodada</a>.</p>
 
     <h3>Vínculo com a turma</h3>
-    <p>Toda prova pertence a uma turma (<code>class_group</code>) <span class="ref">RULE-EXAM-16</span>. Esse vínculo define duas coisas: só pode realizar a prova o aluno com matrícula ativa na turma (mesmo critério já usado no check-in via app); e só o(s) professor(es) atribuído(s) à turma — incluindo co-docência — pode(m) criar/editar a prova e ver a trilha de auditoria, reaproveitando o <code>LeadershipScopeService</code> já usado no restante do produto para essa mesma checagem.</p>
+    <p>Toda prova pertence a uma turma (<code>class_group</code>) <span class="ref">RULE-EXAM-16</span>. Esse vínculo define duas coisas: só pode realizar a prova o aluno com matrícula ativa na turma (mesmo critério já usado no check-in via app); e o(s) professor(es) atribuído(s) à turma — incluindo co-docência — pode(m) criar/editar a prova e ver a trilha de auditoria. Isso não é exclusivo do professor: pelo addendum de <span class="ref">RULE-EXAM-16</span>, o <strong>Coordenador</strong> vê as provas dos cursos que coordena e a <strong>Direção/Reitoria</strong> vê todas, por herança do <code>LeadershipScopeService</code> — o mesmo serviço já usado no restante do produto para essa checagem de alcance.</p>
 
     <h3>O aluno nunca vê gabarito ou nota</h3>
     <p>Ao finalizar a prova, o aluno não vê o gabarito nem a pontuação das perguntas objetivas — só o professor tem acesso à correção <span class="ref">RULE-EXAM-17</span>. Nenhum payload servido ao aluno, durante ou depois da prova, pode conter o campo de resposta correta (<code>is_correct</code>) ou pontuação de qualquer pergunta.</p>
@@ -581,7 +581,6 @@
     <h2 class="section-title">Escopo Fora Desta Rodada</h2>
     <p>Itens explicitamente <strong>adiados, não rejeitados</strong> — não devem ser assumidos como escopo por nenhum agente até nova confirmação explícita do usuário.</p>
     <ul class="gap-list">
-      <li><span class="tag">Adiado</span>Tipos de pergunta adicionais do Google Forms: escala linear, grade de múltipla escolha, grade de caixas de seleção, data, hora, upload de arquivo.</li>
       <li><span class="tag">Adiado</span>Banco de questões reutilizável entre provas.</li>
       <li><span class="tag">Adiado</span>Pausa de timer configurável pelo professor.</li>
       <li><span class="tag">Adiado</span>Ação diferenciada por tipo de evento dentro da mesma prova (arquitetura já preparada para essa evolução, ver <code>ExamViolationPolicyService</code>).</li>

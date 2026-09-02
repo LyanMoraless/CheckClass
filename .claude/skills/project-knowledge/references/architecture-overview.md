@@ -432,10 +432,28 @@ Web" acima, item de autenticação) — o dashboard web continua com um
    que exija isso agora; sinalizado apenas como possível hardening futuro
    caso surja evidência concreta de abuso.
 
-**Ainda em aberto (não resolvido nesta decisão)** — ver
-`pending-decisions.md`:
-- Esquema exato de migration da tabela `refresh_token` (Database Agent).
-- Nome/path exato do endpoint de login mobile-specific (Backend Agent).
+~~**Ainda em aberto (não resolvido nesta decisão)** — ver
+`pending-decisions.md`:~~
+- ~~Esquema exato de migration da tabela `refresh_token` (Database Agent).~~
+- ~~Nome/path exato do endpoint de login mobile-specific (Backend Agent).~~
+
+> **Correção (2026-09-02) — os dois pontos acima estão FECHADOS em
+> código:** a lista riscada descrevia como "ainda em aberto" duas coisas
+> que já existem no repositório:
+> - **Schema da tabela `refresh_token`:**
+>   `backend/src/database/entities/refresh-token.entity.ts`, criada pela
+>   migration `1755842000000-AddRefreshToken.ts`.
+> - **Endpoint de login mobile-specific:**
+>   `backend/src/modules/auth/auth.controller.ts` expõe
+>   `POST /login/mobile` (l. 41), `POST /refresh` (l. 52) e
+>   `POST /logout` (l. 71), todos com `@Throttle` aplicado — o que também
+>   materializa o item 7 desta mesma decisão (rate limiting no endpoint de
+>   refresh).
+>
+> A decisão de segurança em si (modelo de dois tokens, rotação, detecção de
+> reuso) **não muda** — apenas deixa de ter pontas em aberto.
+> **Source of confirmation:** Verificação de código feita na reconciliação
+> da Frente 01, 2026-09-02 (fato observável no repositório).
 
 ## Escopo confirmado — App Mobile, primeira rodada (confirmado em 2026-08-22)
 
@@ -682,9 +700,25 @@ Escopo: mesmo recorte já aprovado nessa decisão de arquitetura
    | "AREA_READER_SCAN", capturedAt, areaId, data }` — `data` carrega
    `{ tagCode }` para `AREA_READER_SCAN`; `IR_BARRIER_CROSSING` pode não
    carregar nenhum dado de identidade (um corte de feixe é anônimo por
-   natureza). O destino exato de FK de `areaId` fica deliberadamente em
+   natureza). ~~O destino exato de FK de `areaId` fica deliberadamente em
    aberto — depende do gap ainda aberto "Vínculo categoria de pulseira →
-   área (schema)" do Database Agent, não resolvido aqui. MQTT foi
+   área (schema)" do Database Agent, não resolvido aqui.~~
+
+   > **Correção (2026-09-02) — FK de `areaId` resolvida em código:** a
+   > frase riscada acima está superada. `areaId` aponta para a entidade
+   > `area` (`backend/src/database/entities/area.entity.ts`) e o vínculo
+   > já está concretizado em
+   > `backend/src/database/entities/raw-security-event.entity.ts`
+   > (l. 23-24, `area_id` NOT NULL → `area`). O gap "Vínculo categoria de
+   > pulseira → área (schema)" do qual isto dependia também está fechado —
+   > ver nota de correção em RULE-SEC-01
+   > (`business-rules/references/security-intrusion-rules.md`) e a entrada
+   > correspondente em `pending-decisions.md`.
+   > **Source of confirmation:** Verificação de código feita na
+   > reconciliação da Frente 01, 2026-09-02 (fato observável no
+   > repositório).
+
+   MQTT foi
    avaliado e descartado de novo pelo mesmo motivo já estabelecido no
    núcleo (nenhum broker se justifica neste volume; o tráfego de barreira
    IR é de frequência mais baixa/ritmo humano, o mesmo raciocínio já
@@ -774,8 +808,22 @@ RULE-SEC-05 (agora com restrição de precisão confirmada e nova direção
 técnica de câmera + visão computacional confirmada em 2026-09-02 — ver
 addendum acima e em RULE-SEC-05); software de relay RTSP→HLS/WebRTC e
 vídeo ao vivo pelo navegador (confirmado-adiado em 2026-09-02, ver
-`pending-decisions.md`); schema exato do vínculo categoria de pulseira →
-área (Database Agent).
+`pending-decisions.md`); ~~schema exato do vínculo categoria de pulseira →
+área (Database Agent)~~.
+
+> **Correção (2026-09-02) — item riscado sai desta lista:** o "schema exato
+> do vínculo categoria de pulseira → área" **não está mais fora desta
+> rodada**: já existe em código
+> (`wristband-category-area-permission.entity.ts`, migration
+> `1755847000000`), com "bloco" modelado como área raiz na hierarquia
+> auto-referente de `area` e autorização em nível de bloco resolvida por
+> walk de ancestrais (`area-authorization.service.ts`, l. 57-72). O modelo
+> foi **ratificado retroativamente pelo usuário** em 2026-09-02. Ver a nota
+> completa em RULE-SEC-01
+> (`business-rules/references/security-intrusion-rules.md`), incluindo a
+> limitação conhecida sobre janela absoluta vs. horário recorrente.
+> **Source of confirmation:** Usuário, 2026-09-02 (ratificação retroativa);
+> fatos de código verificados na reconciliação da Frente 01, 2026-09-02.
 
 ## Escopo confirmado — Pivot estrutural: Gerenciamento da Instituição como foco principal (2026-08-31)
 
@@ -833,6 +881,26 @@ foi mencionada nas decisões do pivot.
 >
 > **Source of confirmation:** Usuário, 2026-08-31 (segunda rodada de
 > fechamento de gaps, itens #1, #2 e #3).
+
+> **Ratificação retroativa (2026-09-02) — Feriados fica em Configurações:**
+> o código posicionou a tela de **Feriados** dentro da área
+> **Configurações** (`frontend/src/app/app-shell.tsx`, l. 93) sem que esse
+> posicionamento constasse na lista de navegação confirmada acima — ou
+> seja, foi uma decisão de IA tomada durante a implementação, não uma
+> decisão registrada. Apresentado o fato ao usuário, ele respondeu:
+> *"Ratificar — fica em Configurações"*.
+>
+> **Configurações** (item 4 da lista acima) passa portanto a incluir,
+> oficialmente: Dispositivos, Pulseiras, Grupos de permissões, Configuração
+> de presença, Usuários, cadastro/CRUD de Sala **e Feriados**.
+>
+> Registrado no mesmo padrão de ratificação retroativa já usado para o
+> mecanismo de API key por dispositivo (2026-08-23) e para o vínculo
+> categoria de pulseira → área (2026-09-02): a implementação avançou antes
+> do registro formal, e o usuário fechou a lacuna de processo ratificando o
+> resultado sem alterações. Não é um gap novo.
+> **Source of confirmation:** Usuário, 2026-09-02 (citação literal acima);
+> fato de código verificado na reconciliação da Frente 01, 2026-09-02.
 
 ## Escopo confirmado — Tela Alunos dedicada (2026-08-31)
 
@@ -1000,12 +1068,42 @@ endpoint (`MyScheduleService.getMySchedule`) retorna apenas IDs
 (`classSessionId`, `classGroupId`, `roomId`, `scheduledStart`,
 `scheduledEnd`) — sem nome de matéria, turma ou sala. Para o app exibir
 informação legível (ex.: "Cálculo I — Turma A — Sala 101"), o endpoint
-precisa ser estendido para incluir esses nomes. **Esta extensão depende
+precisa ser estendido para incluir esses nomes. ~~**Esta extensão depende
 da implementação real de RULE-INST-03 (Matéria) e RULE-INST-04
 (cronograma automático), ainda não feita** — hoje não existe entidade
 Matéria no schema, então o endpoint não tem de onde buscar esse nome
-ainda. Não é uma decisão de arquitetura nova além do já registrado nas
+ainda.~~ Não é uma decisão de arquitetura nova além do já registrado nas
 regras de negócio; é consequência natural delas.
+
+> **Correção (2026-09-02) — a dependência bloqueante não existe mais:** a
+> afirmação riscada ("não existe entidade Matéria no schema") é **falsa**.
+> RULE-INST-03 (Matéria) e RULE-INST-04 (cronograma automático) **estão
+> implementados** e são observáveis no repositório:
+> - **Matéria:** `backend/src/database/entities/subject.entity.ts`,
+>   migration `1755853000000-AddSubject.ts`, módulo
+>   `backend/src/modules/subject/`, e a tela
+>   `frontend/src/features/subjects/subjects-page.tsx`.
+> - **Cronograma automático:** módulo
+>   `backend/src/modules/class-schedule/`, entidades
+>   `class-group-schedule-slot.entity.ts` e `holiday.entity.ts`, mais o
+>   módulo de detecção de conflitos
+>   `backend/src/modules/schedule-conflict-detection/`.
+>
+> Consequência prática: estender `GET /v1/me/schedule` para devolver nomes
+> legíveis (matéria, turma, sala) **não tem mais bloqueio de schema** —
+> deixa de ser uma dependência de feature não construída e vira uma
+> **tarefa de Backend pura** (compor os nomes a partir de dados que já
+> existem), a ser executada quando a frente correspondente entrar em
+> trabalho real.
+>
+> **Ressalva a não perder de vista:** o modelo hoje implementado é de
+> **uma** matéria por turma (`class_group.subject_id`) — exatamente o que
+> RULE-INST-14 inverte (turma com várias matérias, frente 05). Quando isso
+> for remodelado, o formato do nome de matéria devolvido por
+> `/v1/me/schedule` precisa ser revisitado, já que a matéria passará a
+> depender do slot/sessão e não mais da turma.
+> **Source of confirmation:** Verificação de código feita na reconciliação
+> da Frente 01, 2026-09-02 (fato observável no repositório).
 
 **Escopo do Professor ampliado — presença das turmas que leciona:**
 confirmado (ver correção datada na seção "Escopo confirmado — App Mobile,
@@ -1150,9 +1248,26 @@ pendência a corrigir.
 
 **Pontos em aberto (não decididos aqui, não bloqueiam implementação):**
 gatilho exato do estado `ABANDONED`; tentativas permitidas por prova;
-obrigatoriedade de pergunta; suporte a múltiplas seções/páginas; acesso de
-Coordenador de Curso/Direção à auditoria (default: negado). Ver detalhamento
+obrigatoriedade de pergunta; suporte a múltiplas seções/páginas; ~~acesso de
+Coordenador de Curso/Direção à auditoria (default: negado)~~. Ver detalhamento
 em `pending-decisions.md`.
+
+> **Correção (2026-09-02) — item riscado está SUPERADO, e contradizia este
+> mesmo arquivo:** "acesso de Coordenador de Curso/Direção à auditoria
+> (default: negado)" não é mais um ponto em aberto. Ele contradizia
+> diretamente o addendum de **RULE-EXAM-16** registrado neste mesmo
+> documento (seção "Pivot — Portal de autoatendimento (self-service)...",
+> bullet "Escopo da área do Coordenador de Curso"): **Coordenador de Curso
+> vê presença/provas das turmas dos cursos que coordena
+> (`leadership_assignment.courseId`, mesmo escopo de RULE-INST-09) e
+> Direção/Reitoria vê todas** (herança automática sobre todos os cursos).
+> Ver o addendum na própria regra
+> (`business-rules/references/exam-rules.md`, RULE-EXAM-16). O "negado por
+> padrão" era a posição conservadora anterior, já substituída por
+> confirmação explícita do usuário na mesma data.
+> **Source of confirmation:** Usuário, 2026-09-02 (confirmação já
+> registrada no addendum de RULE-EXAM-16); contradição interna identificada
+> na reconciliação da Frente 01, 2026-09-02.
 
 ## Decisão de tecnologia — Área de Provas (aprovada em 2026-09-02)
 
@@ -1180,8 +1295,19 @@ nova é introduzida neste round.
    de outra sessão através de rate limit compartilhado.
 
 **Fora desta rodada (não decidido):** qualquer mecanismo de agente
-desktop/nativo (`EXTERNAL_APPLICATION_FOCUS`); tipos de pergunta
-adicionais do Google Forms (RULE-EXAM-03, exceptions).
+desktop/nativo (`EXTERNAL_APPLICATION_FOCUS`); ~~tipos de pergunta
+adicionais do Google Forms (RULE-EXAM-03, exceptions)~~.
+
+> **Correção (2026-09-02) — item riscado está SUPERADO:** "tipos de
+> pergunta adicionais do Google Forms" **não é mais um item de backlog**,
+> nem sequer como "adiado". O usuário pediu explicitamente a remoção deste
+> item da lista de pendências — ele **saiu do radar do produto**, não está
+> "fora desta rodada". Ver "Superado (2026-09-02), item 'Tipos de pergunta
+> adicionais do Google Forms' apenas" em
+> `pending-decisions.md` e o addendum em RULE-EXAM-03
+> (`business-rules/references/exam-rules.md`). O conjunto enxuto de tipos
+> de pergunta de RULE-EXAM-03 é definitivo.
+> **Source of confirmation:** Usuário, 2026-09-02.
 
 ## Modelagem de dados — Área de Provas (aprovada em 2026-09-02)
 
@@ -1316,11 +1442,43 @@ provas, faltas etc e o mobile apenas reflita isso"):
   próprio portal, ou outra abordagem) é decisão técnica futura do Tech
   Decision Agent — explicitamente não decidida aqui, e não bloqueia este
   registro de escopo.
-- **Fato que reduz o risco desta mudança:** não existe hoje nenhum código
+- ~~**Fato que reduz o risco desta mudança:** não existe hoje nenhum código
   de App Mobile implementado no repositório (`mobile/` não existe; apenas
   `backend/` e `frontend/`) — a decisão de tecnologia (React Native/Expo)
   foi aprovada mas nunca chegou a ser construída. Este pivot redireciona
-  planejamento futuro, não desfaz código já escrito.
+  planejamento futuro, não desfaz código já escrito.~~
+
+  > **CORREÇÃO (2026-09-02) — a premissa acima é FALSA; a decisão de canal
+  > permanece válida:** o bullet riscado afirmava que `mobile/` não existe
+  > e que este pivot "não desfaz código já escrito". Ambas as afirmações
+  > estão erradas. O App Mobile **existe e está construído** — é um
+  > aplicativo Expo/React Native funcional, com Expo Router:
+  > - Estrutura de rotas: `mobile/src/app/_layout.tsx`,
+  >   `mobile/src/app/login.tsx` e o grupo autenticado
+  >   `mobile/src/app/(app)/` com `index.tsx`, `checkin.tsx`,
+  >   `schedule.tsx`, `pending-reviews.tsx` e `account.tsx`.
+  > - Features implementadas em `mobile/src/features/`: `auth`, `checkin`,
+  >   `schedule`, `attendance`, `pending-reviews`, `account`.
+  > - Há inclusive teste automatizado:
+  >   `mobile/src/lib/__tests__/api-client.test.ts`.
+  >
+  > **Consequência honesta a registrar:** o Portal de Autoatendimento web
+  > **duplica parte da funcionalidade já entregue no mobile** (login,
+  > check-in, cronograma, presença, pendências). O pivot **tem** um custo
+  > real de retrabalho — ele não é "de risco reduzido" como o texto
+  > original sugeria.
+  >
+  > **Decisão do usuário (2026-09-02):** *"Corrigir o fato, manter o
+  > pivot"*. Ou seja: **a decisão de canal não é reaberta** — o Frontend
+  > Web continua sendo o canal primário de autoatendimento e o App Mobile
+  > continua sendo cliente secundário, com desenvolvimento pausado até o
+  > portal web ficar pronto (ver bullet de cronograma mais abaixo nesta
+  > mesma seção). O que muda é apenas a **justificativa registrada**: o
+  > pivot é sustentado pela direção de produto, não pela premissa falsa de
+  > que nada havia sido construído. **Não abrir gap novo por isto.**
+  > **Source of confirmation:** Usuário, 2026-09-02 (citação literal
+  > acima); fatos de código verificados na reconciliação da Frente 01,
+  > 2026-09-02 (fato observável no repositório).
 - **Navegação do Frontend Web:** precisa ganhar uma nova área própria de
   "Portal do Aluno/Professor/Coordenador" (self-service), distinta das
   áreas administrativas já confirmadas no pivot estrutural de 2026-08-31

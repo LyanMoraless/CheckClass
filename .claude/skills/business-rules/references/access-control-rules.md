@@ -143,8 +143,22 @@ em `project-knowledge/references/pending-decisions.md`
 **Nota de referência cruzada (confirmado pelo usuário em 2026-08-23; contagem
 atualizada em 2026-09-02 — ver "Nota de remoção" acima, de seis para cinco
 códigos):** não confundir estes códigos de câmera com `manage_security_incidents`
-— um 7º código relacionado, mas conceitualmente separado, confirmado na
-mesma data para gatear visualização/fechamento de incidentes de intrusão
+— ~~um 7º código relacionado~~ **um 6º código relacionado**, mas
+conceitualmente separado, confirmado na mesma data para gatear
+visualização/fechamento de incidentes de intrusão
 (RULE-SEC-07, `business-rules/references/security-intrusion-rules.md`).
 Câmeras e gestão de incidentes são preocupações distintas mesmo estando
 ambas dentro do módulo de segurança.
+
+> **Correção de contagem (2026-09-02) — reconciliação da Frente 01:** o
+> texto acima dizia "um 7º código relacionado", contagem que ainda refletia
+> o conjunto original de **seis** códigos de câmera (5 de câmera + 1 = 6º,
+> não 7º). Após a remoção já decidida de `follow_camera_events` (ver "Nota
+> de remoção" acima nesta mesma regra), os códigos de câmera são **cinco**,
+> logo `manage_security_incidents` é o **6º** código relacionado. A
+> contagem corrigida **já reflete a remoção decidida** — a execução dessa
+> remoção no código-fonte continua pendente e é escopo da **frente 02**
+> ("Dívida de decisões já fechadas", ver
+> `project-knowledge/references/pending-decisions.md`).
+> **Source of confirmation:** Verificação de código feita na reconciliação
+> da Frente 01, 2026-09-02 (fato observável no repositório).

@@ -51,3 +51,21 @@ Múltiplas ações **dentro da mesma fase**, mesmo que troquem de agente (ex.:
 `product-definition` seguido de `documentation`, ambos Planejamento) não
 precisam de aviso a cada uma — só a **transição de fase** importa. Não
 repita o aviso se a fase não mudou desde a última mensagem.
+
+## Entregáveis: arquivo de texto, nunca Artifact
+
+**Não utilizar a ferramenta Artifact sob hipótese alguma sem que o usuário
+solicite explicitamente.** Todo entregável — relatório, mapa de frentes,
+documentação, plano, análise — deve ser produzido como **arquivo de texto
+versionado no repositório** (`.md`, `.txt`, `.html` etc.).
+
+Para documentação HTML do CheckClass, o lugar é `.doc/`, seguindo o padrão
+visual dos arquivos já existentes lá (masthead com `assets/logo.png`,
+Archivo Black / Bebas Neue / Montserrat).
+
+Motivo: o conteúdo do projeto precisa viver no repositório, versionado e
+disponível em qualquer máquina — não em páginas publicadas fora dele.
+Um mapa de trabalho já foi perdido uma vez por ter sido feito só como
+artifact.
+
+**Source of confirmation:** Usuário, 2026-09-02.

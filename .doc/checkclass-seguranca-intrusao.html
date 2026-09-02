@@ -210,7 +210,7 @@
   <img src="assets/logo.png" alt="LGI Morales">
   <div class="title-block">
     <h1>CheckClass — Segurança de Intrusão</h1>
-    <p>Documentação técnica da feature — regras e arquitetura aprovadas, implementação pendente</p>
+    <p>Documentação técnica da feature — regras e arquitetura aprovadas, primeira rodada implementada</p>
   </div>
 </header>
 
@@ -219,11 +219,11 @@
   <section id="overview">
     <h2 class="section-title">Visão Geral</h2>
     <span class="pill p3">Prioridade 3 do produto</span>
-    <span class="pill status">Regras, arquitetura e tecnologia aprovadas · nenhum código novo escrito ainda</span>
+    <span class="pill status">Regras, arquitetura e tecnologia aprovadas · primeira rodada implementada no backend e no painel</span>
     <div class="overview-box lead">
       <p><strong>Segurança de Intrusão</strong> é a camada de segurança física do CheckClass: detecta pessoas sem autorização circulando pela instituição e alerta a equipe de segurança. Uma pessoa é considerada "não autorizada" quando não porta pulseira, ou porta uma cuja categoria não tem permissão para aquela área. Ao detectar essa presença, o sistema estima em qual região do prédio ela está (por barreiras infravermelhas) e abre automaticamente, na tela do operador, a câmera fixa daquele local — para que a equipe de segurança veja o que está acontecendo sem precisar procurar a câmera certa.</p>
-      <p>É a <strong>3ª prioridade</strong> do produto <span class="ref">RULE-SEC-01</span> — uma extensão do sistema, nunca deve substituir ou se sobrepor ao foco principal, que é apuração de presença. Este documento existe como área própria e autocontida a pedido explícito do usuário em 2026-09-02: <em>"Importante que tudo isso seja separado em uma aba própria para que no momento correto possamos trabalhar de uma forma multidisciplinar nessa área do projeto."</em> É preparação de documentação para quando o trabalho técnico real (IoT, Visão Computacional, Backend, Security) começar nesta frente — ainda não é esse momento.</p>
-      <p>Regras de negócio, arquitetura e tecnologia da primeira rodada foram aprovadas em 2026-08-23, com revisões de escopo confirmadas em 2026-09-02 — inclusive uma segunda rodada de correções, no mesmo dia, que fechou em definitivo dois itens que antes pareciam abertos: o acompanhamento dinâmico entre câmeras e os níveis de vigilância foram <strong>desqualificados por completo</strong> (ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>), e a contagem de entrada/saída ganhou uma direção técnica nova e bem mais concreta (ver <a href="#contagem">Contagem de Entrada/Saída</a>). <strong>Nenhum código específico desta feature foi escrito ainda</strong> — nem migration, nem Gateway de Ingestão de Sinais de Segurança, nem Motor de Detecção de Intrusão, nem telas. A única peça que já existe em código hoje é o mecanismo de autenticação por dispositivo (API key), mas ele não é exclusivo desta feature — é compartilhado com o núcleo de presença (ver <a href="#status">Status Atual</a>).</p>
+      <p>É a <strong>3ª prioridade</strong> do produto <span class="ref">RULE-SEC-01</span> — uma extensão do sistema, nunca deve substituir ou se sobrepor ao foco principal, que é apuração de presença. Este documento existe como área própria e autocontida a pedido explícito do usuário em 2026-09-02: <em>"Importante que tudo isso seja separado em uma aba própria para que no momento correto possamos trabalhar de uma forma multidisciplinar nessa área do projeto."</em> A primeira rodada já foi construída; o trabalho multidisciplinar que continua nesta frente é o das partes ainda não cobertas — vídeo ao vivo, contagem de entrada/saída e a tela de gerenciamento de áreas.</p>
+      <p>Regras de negócio, arquitetura e tecnologia da primeira rodada foram aprovadas em 2026-08-23, com revisões de escopo confirmadas em 2026-09-02 — inclusive uma segunda rodada de correções, no mesmo dia, que fechou em definitivo dois itens que antes pareciam abertos: o acompanhamento dinâmico entre câmeras e os níveis de vigilância foram <strong>desqualificados por completo</strong> (ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>), e a contagem de entrada/saída ganhou uma direção técnica nova e bem mais concreta (ver <a href="#contagem">Contagem de Entrada/Saída</a>). <strong>A primeira rodada já está implementada</strong>: os 6 componentes lógicos da arquitetura aprovada existem em código, com 6 migrations aplicadas, 5 entidades, testes unitários e 2 telas no painel (Incidentes de Segurança e Câmeras). O que ainda falta é outra coisa — exibição de vídeo ao vivo, contagem de entrada/saída e a tela de gerenciamento de Áreas/Blocos (ver <a href="#status">Status Atual</a>).</p>
     </div>
     <nav class="toc">
       Neste documento:
@@ -413,7 +413,7 @@
     <p>Mesmo precedente já usado no núcleo — HTTPS REST POST (ex.: <code>POST /v1/security-ingestion/events</code>), autenticado por dispositivo, com <code>idempotencyKey</code> obrigatória gerada pelo cliente. <code>tenantId</code>/<code>deviceId</code> nunca são aceitos no corpo — sempre resolvidos pela credencial de autenticação. MQTT foi avaliado e descartado pelo mesmo motivo do núcleo (nenhum broker se justifica neste volume).</p>
     <div class="feature-card">
       <h4>Envelope aproximado</h4>
-      <p><code>{ idempotencyKey, eventType: "IR_BARRIER_CROSSING" | "AREA_READER_SCAN", capturedAt, areaId, data }</code> — <code>data</code> carrega <code>{ tagCode }</code> para <code>AREA_READER_SCAN</code>; <code>IR_BARRIER_CROSSING</code> pode não carregar nenhum dado de identidade (um corte de feixe é anônimo por natureza). O destino exato de FK de <code>areaId</code> fica em aberto — ver <a href="#gaps">Gaps em Aberto</a>.</p>
+      <p><code>{ idempotencyKey, eventType: "IR_BARRIER_CROSSING" | "AREA_READER_SCAN", capturedAt, areaId, data }</code> — <code>data</code> carrega <code>{ tagCode }</code> para <code>AREA_READER_SCAN</code>; <code>IR_BARRIER_CROSSING</code> pode não carregar nenhum dado de identidade (um corte de feixe é anônimo por natureza). <code>areaId</code> é FK para a tabela <code>area</code> (migration <code>1755846000000-AddArea</code>), resolvida na implementação da primeira rodada.</p>
     </div>
 
     <h3>Hardware/controle de câmera</h3>
@@ -500,7 +500,7 @@
 
   <section id="gaps">
     <h2 class="section-title">Gaps/Pendências Reais em Aberto</h2>
-    <p>Diferente da seção anterior, estes não são itens adiados por decisão de escopo — são lacunas técnicas que ainda precisam de trabalho antes da implementação real começar.</p>
+    <p>Diferente da seção anterior, estes não são itens adiados por decisão de escopo — são lacunas técnicas que continuam abertas depois da primeira rodada implementada.</p>
     <ul class="gap-list">
       <li><span class="tag">Gap</span><strong>Tecnologia de contagem de entrada/saída</strong> (RULE-SEC-05). Ver <a href="#contagem">seção dedicada</a> acima — a restrição de precisão está confirmada, e desde 2026-09-02 há uma direção técnica bem mais concreta (câmera vinculada à sala de aula + visão computacional, cruzando com a contagem de tags do leitor da sala), mas a tecnologia final (biblioteca, método) continua não escolhida — a cargo do Tech Decision Agent, agora também com o Computer Vision Agent.</li>
       <li><span class="tag">Gap</span><strong>Frequência exata da contagem periódica por câmera</strong> (novo, RULE-SEC-05). O exemplo do usuário sugere algo na faixa de 5–15 minutos (aula às 19:00, contagem às 19:15), mas não foi confirmado como regra geral.</li>
@@ -508,8 +508,14 @@
       <li><span class="tag">Gap</span><strong>Escopo do mecanismo de contagem por câmera — sala de aula ou também áreas gerais</strong> (novo, RULE-SEC-05). O exemplo dado pelo usuário é inteiramente de sala de aula/turma; não presumir que o mesmo mecanismo se estende a corredores ou zonas restritas sem contexto de aula.</li>
       <li><span class="tag">Gap</span><strong>Mesma câmera ou câmera adicional por sala</strong> (novo, RULE-SEC-05). Não confirmado se a câmera usada para contagem em sala de aula é a mesma câmera fixa já aprovada para Segurança de Intrusão, ou uma câmera adicional dedicada a cada sala — implicação real de hardware/custo, relevante para o Hardware Evaluation Agent.</li>
       <li><span class="tag">Gap</span><strong>Software de relay RTSP→HLS/WebRTC</strong> entre câmera e navegador. Necessário para qualquer exibição de vídeo pelo navegador (mesmo a exibição estática de uma única câmera desta rodada), mas nunca foi escolhido — sinalizado apenas como tarefa futura de dimensionamento de IoT/DevOps, sem urgência enquanto vídeo ao vivo continuar adiado.</li>
-      <li><span class="tag">Gap de modelagem</span><strong>Vínculo categoria de pulseira → área no schema</strong> (RULE-ACC-02). O conceito "categoria da pulseira tem permissão válida de área/bloco/período" é regra de negócio confirmada, mas o vínculo concreto (tabela/colunas) não existe hoje — a tabela <code>wristband_category</code> atualmente só tem <code>id</code>/<code>tenant_id</code>/<code>name</code>. Também afeta onde a FK de <code>areaId</code> do payload de barreira IR deveria apontar. Fica para o Database Agent quando a implementação começar.</li>
+      <li><span class="tag">Gap</span><strong>Tela de gerenciamento de Áreas/Blocos</strong> (novo, confirmado pelo usuário em 2026-09-02). O backend tem CRUD completo de área (<code>backend/src/modules/area/area.controller.ts</code>) e o frontend já tem o cliente HTTP (<code>frontend/src/features/areas/areas-api.ts</code>), mas <strong>não existe página no painel</strong>. Sem ela a instituição não consegue montar o próprio mapa de blocos e andares, e a Segurança de Intrusão fica inconfigurável pelo usuário final — a autorização por área depende inteiramente desse cadastro. Alocado à frente 08.</li>
     </ul>
+    <div class="note">
+      <span class="tag">Gap fechado — ratificado em 2026-09-02</span>
+      O <strong>vínculo categoria de pulseira → área</strong> (RULE-ACC-02) constava aqui como lacuna de schema. <strong>Não é mais</strong>: a tabela <code>wristband_category_area_permission</code> existe (<code>tenant_id</code>, <code>wristband_category_id</code>, <code>area_id</code>, <code>valid_from</code>, <code>valid_until</code>, migration <code>1755847000000-AddWristbandCategoryAreaPermission</code>). E <strong>"bloco" não é uma coluna</strong>: bloco é modelado como <em>área raiz</em> (<code>parent_area_id IS NULL</code>) numa hierarquia auto-referente de profundidade livre, sendo "área" a área filha (andar, corredor, laboratório). A autorização em nível de bloco já funciona pelo walk de ancestrais implementado em <code>backend/src/modules/area-authorization/</code>.
+      <br><br>
+      <strong>Limitação conhecida</strong> (não é gap de produto): <code>valid_from</code>/<code>valid_until</code> definem uma <em>janela absoluta</em> de datas, não um <em>horário semanal recorrente</em> (ex.: "terças, 18h–22h"). Se a instituição precisar de permissão por grade semanal, isso exige modelagem adicional — a levantar na frente 08.
+    </div>
     <p style="font-size: 13.5px; color: var(--muted); margin-top: 14px;">Os níveis de vigilância (RULE-SEC-06) <strong>não aparecem mais aqui</strong> — deixaram de ser um gap técnico e viraram uma decisão de produto fechada de exclusão. Ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>.</p>
   </section>
 
@@ -522,7 +528,7 @@
           <li>Regras de negócio — RULE-SEC-01 a 07 (2026-08-21 a 2026-09-02)</li>
           <li>Arquitetura (segundo pipeline orientado a eventos, 6 componentes) — 2026-08-23</li>
           <li>Tecnologia (hardware de barreira IR, autenticação, contrato de payload, hardware de câmera) — 2026-08-23</li>
-          <li>Permissões de câmera e de gestão de incidente (7 códigos) — 2026-08-23</li>
+          <li>Permissões de câmera e de gestão de incidente (6 códigos: 5 de câmera + <code>manage_security_incidents</code>) — 2026-08-23, ajustado em 2026-09-02</li>
           <li>RULE-SEC-03 definitivamente câmera estática (acompanhamento dinâmico entre câmeras desqualificado por completo) — 2026-09-02</li>
           <li>Níveis de vigilância (RULE-SEC-06) desqualificados por completo — 2026-09-02</li>
           <li>Permissão <code>follow_camera_events</code> removida (6 → 5 códigos de câmera) — 2026-09-02</li>
@@ -530,21 +536,33 @@
         </ul>
       </div>
       <div class="status-card">
+        <h4>O que já está implementado</h4>
+        <ul>
+          <li><strong>Gateway de Ingestão de Sinais de Segurança</strong> — <code>backend/src/modules/security-ingestion/</code>, <code>POST /v1/security-ingestion/events</code>, restrito por <code>@RequireDeviceType('ir_barrier','area_reader')</code></li>
+          <li><strong>Identidade por Pulseira</strong> — <code>backend/src/modules/wristband-identity/</code></li>
+          <li><strong>Autorização de Área</strong> — <code>backend/src/modules/area-authorization/</code>, incluindo o walk de ancestrais via <code>parent_area_id</code></li>
+          <li><strong>Motor de Detecção de Intrusão</strong> — <code>backend/src/modules/intrusion-detection/</code> (serviço, job e worker)</li>
+          <li><strong>Registro/Consulta de Alertas</strong> — <code>backend/src/modules/security-incident/</code>, <code>GET /v1/security-incidents</code> e <code>POST /:id/close</code>, protegidos por <code>manage_security_incidents</code></li>
+          <li><strong>Serviço de Câmeras</strong> — <code>backend/src/modules/camera/</code></li>
+          <li>6 migrations aplicadas (<code>1755846000000</code> a <code>1755851000000</code>), 5 entidades e testes unitários</li>
+          <li>2 telas no painel — <code>frontend/src/features/security-incidents/</code> (lista e detalhe) e <code>frontend/src/features/cameras/</code></li>
+        </ul>
+      </div>
+      <div class="status-card">
         <h4>O que ainda não existe</h4>
         <ul>
-          <li>Nenhuma migration desta feature aplicada</li>
-          <li>Nenhum Gateway de Ingestão de Sinais de Segurança</li>
-          <li>Nenhum Serviço de Identidade por Pulseira, Autorização de Área, Motor de Detecção de Intrusão, Registro de Alertas ou Serviço de Câmeras</li>
-          <li>Nenhuma tela de Incidentes de segurança/Câmeras no dashboard</li>
-          <li>Nenhum teste</li>
+          <li><strong>Exibição de câmera / vídeo ao vivo</strong> — depende do relay RTSP→HLS/WebRTC, ainda não escolhido e explicitamente adiado</li>
+          <li><strong>Contagem de entrada/saída</strong> (RULE-SEC-05) — tecnologia não escolhida, com 4 gaps abertos (ver <a href="#gaps">Gaps em Aberto</a>)</li>
+          <li><strong>Tela de gerenciamento de Áreas/Blocos</strong> — existe API e cliente HTTP, não existe página no painel (frente 08)</li>
+          <li><strong>Bloqueio automático de portas</strong> (RULE-SEC-04) — explicitamente adiado</li>
         </ul>
       </div>
     </div>
     <div class="note">
-      <span class="tag">Exceção parcial — não é código novo desta feature</span>
-      O mecanismo de autenticação por dispositivo (API key, hash SHA-256) já existe em código hoje (<code>device-auth.service.ts</code>, <code>device-auth.guard.ts</code>, migration <code>1755751000000-AddDeviceApiKey.ts</code>), mas foi construído originalmente para o núcleo de presença. Em 2026-08-23 o usuário ratificou retroativamente que este mesmo mecanismo, sem alteração, também cobre os novos dispositivos de segurança (barreira IR, leitor de área) — uma única decisão de tecnologia, não duas. Isso não significa que qualquer parte específica de Segurança de Intrusão já foi implementada; é reaproveitamento de uma peça já pronta do núcleo.
+      <span class="tag">Peça reaproveitada do núcleo, não construída nesta feature</span>
+      O mecanismo de autenticação por dispositivo (API key, hash SHA-256) já existia em código antes desta feature (<code>device-auth.service.ts</code>, <code>device-auth.guard.ts</code>, migration <code>1755751000000-AddDeviceApiKey.ts</code>), construído originalmente para o núcleo de presença. Em 2026-08-23 o usuário ratificou retroativamente que este mesmo mecanismo, sem alteração, também cobre os dispositivos de segurança (barreira IR, leitor de área) — uma única decisão de tecnologia, não duas. A migration <code>1755851000000-AddDeviceTypeToDeviceAuthResolver</code> apenas expõe o <code>device_type</code> na resolução da credencial, para permitir o <code>@RequireDeviceType</code> do gateway.
     </div>
-    <p>A implementação real (IoT, Visão Computacional, Backend, Database, Frontend, Security, Testing) é trabalho de uma rodada futura separada e multidisciplinar — exatamente o motivo pelo qual este documento existe como área própria, conforme pedido do usuário em 2026-09-02.</p>
+    <p>O que continua sendo trabalho multidisciplinar de uma rodada futura (IoT, Visão Computacional, Hardware, Frontend) são os quatro itens da coluna "o que ainda não existe" — não a feature inteira.</p>
   </section>
 
 </main>

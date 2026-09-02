@@ -10,9 +10,15 @@
 >
 > Fonte: texto original do usuário, 2026-09-02. Feature irmã de
 > `business-rules/references/attendance-frequency-rules.md` (frequência
-> acumulada por matéria) — há **dependência direta e não resolvida** entre
-> as duas, ver RULE-JUST-03 e os gaps em
+> acumulada por matéria) — há **dependência direta** entre as duas, ver
+> RULE-JUST-03 e os gaps em
 > `project-knowledge/references/pending-decisions.md`.
+>
+> **Atualização (2026-09-02):** a parte principal dessa dependência
+> (semântica de "retirar a falta") **foi resolvida** — a falta justificada
+> aprovada conta como **presença**, entra no numerador e **não** sai do
+> denominador. Ver addendum em RULE-JUST-03. Continua **em aberto** o
+> recálculo retroativo da frequência quando a justificativa é aprovada.
 
 ## Contexto factual verificado no código antes do registro (2026-09-02)
 
@@ -81,12 +87,9 @@ solicitação:
 **Applies to:** Área do professor; efeito sobre o registro de presença da
 sessão em questão e sobre a frequência acumulada do aluno
 (`business-rules/references/attendance-frequency-rules.md`).
+**Semântica de "retirar a falta" — CONFIRMADA, ver addendum abaixo.**
+
 **Exceptions / gaps críticos, não confirmados — não presumir:**
-- **Semântica exata de "retirar a falta"** no cálculo de frequência
-  acumulada (RULE-FREQ-01): a aula vira **presença** (entra no numerador)
-  ou vira **"falta justificada"** que **sai do denominador**? As duas
-  leituras produzem resultados diferentes. Dependência direta e **não
-  resolvida** entre as duas features.
 - Se a frequência acumulada é **recalculada retroativamente** quando uma
   justificativa é aprovada.
 - Quem, além do professor, pode ver/aprovar (ex.: Coordenador de
@@ -100,6 +103,40 @@ sessão em questão e sobre a frequência acumulada do aluno
 **Source of confirmation:** Usuário, 2026-09-02 (texto original — as duas
 ações e seus efeitos "retira a falta"/"mantém a falta" são literais do
 usuário; tudo listado em Exceptions **não** foi confirmado).
+
+**Addendum — a falta justificada aprovada CONTA COMO PRESENÇA (numerador),
+NÃO sai do denominador; confirmado pelo usuário em 2026-09-02:** fecha o
+gap crítico que estava registrado nas `Exceptions` desta regra (semântica
+exata de "retirar a falta" no cálculo de frequência acumulada), e a
+dependência não resolvida com a feature irmã
+`business-rules/references/attendance-frequency-rules.md`. Perguntado se a
+falta justificada conta como presença (numerador) ou sai do total de aulas
+(denominador), o usuário confirmou: **conta como presença (entra no
+numerador)**.
+
+Comportamento confirmado:
+
+- Aprovar uma justificativa **incrementa as presenças** do aluno naquela
+  matéria/período de apuração.
+- O cálculo é **exatamente o mesmo de RULE-FREQ-01** (Controle B —
+  frequência acumulada por matéria), **sem subtrair** a aula do total de
+  aulas consideradas. O denominador permanece inalterado.
+- Exemplo do mesmo formato já usado em RULE-FREQ-01: em 40 aulas de
+  Cálculo I com 32 presenças e 1 falta justificada aprovada, o resultado é
+  33/40 — **não** 32/39.
+
+**Não fechado por este addendum (continua gap em aberto, ver
+`Exceptions` acima e
+`project-knowledge/references/pending-decisions.md`):** se a frequência
+acumulada é **recalculada retroativamente** quando a justificativa é
+aprovada. Isso **não foi perguntado nem respondido** — este addendum define
+apenas *como* a falta justificada entra na conta, não *quando* a conta é
+refeita.
+
+**Source of confirmation:** Usuário, 2026-09-02 (resposta à ambiguidade A4
+registrada no bloco HANDOFF de
+`project-knowledge/references/pending-decisions.md`), formalizado em sessão
+posterior da mesma data.
 
 ### RULE-JUST-04: O anexo do atestado é dado pessoal sensível (LGPD) — tratamento mais restrito que o restante do projeto
 

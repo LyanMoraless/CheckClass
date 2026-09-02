@@ -325,6 +325,55 @@ consolidados) quando a cascata chega até a Turma não foi detalhado —
 tratar como gap (ver `pending-decisions.md`).
 **Source of confirmation:** Usuário, 2026-09-01 (terceira rodada, item #3).
 
+**Addendum — excluir Matéria deixa de cascatear para a Turma no modelo de
+turma multi-matéria, confirmado pelo usuário em 2026-09-02:** o
+`Statement` acima ("Excluir uma Matéria remove automaticamente suas Turmas
+vinculadas") só é sustentável enquanto uma Turma tem **exatamente uma**
+Matéria — que é o modelo hoje em código (`class_group.subject_id`). Com
+**RULE-INST-14** (Turma agrupa VÁRIAS Matérias — feature futura, ver mais
+abaixo neste mesmo arquivo), essa cascata deixa de fazer sentido: apagar
+uma turma inteira porque uma de suas N matérias foi excluída destruiria as
+demais matérias, matrículas e histórico da turma. Perguntado sobre isso, o
+usuário respondeu: **"remove só a matéria da turma; a turma continua."**
+
+Comportamento confirmado (válido **somente** sob RULE-INST-14):
+
+- Excluir uma Matéria **não** exclui a Turma quando a turma tiver **outras
+  matérias** — a Turma **sobrevive**; apenas o vínculo daquela matéria com
+  a turma é removido.
+- São afetadas apenas **as aulas/sessões e a frequência daquela matéria**
+  dentro da turma (frequência acumulada é por matéria — RULE-FREQ-01,
+  `business-rules/references/attendance-frequency-rules.md`). As demais
+  matérias da turma seguem intactas.
+
+**Vigência — este addendum ainda NÃO vale hoje:** ele só passa a valer
+**quando RULE-INST-14 for implementada**. Hoje o código real ainda é
+`class_group.subject_id` (matéria única, com migration de backfill
+`1755854000000-MigrateClassGroupToSubject.ts` já aplicada), e RULE-INST-14
+é feature futura **não aprovada para implementação**. Enquanto isso, o
+`Statement` original de RULE-INST-08 continua descrevendo o comportamento
+vigente. Nenhum agente deve alterar código de cascata com base neste
+addendum antes da rodada de RULE-INST-14.
+
+**GAP NOVO em aberto (não perguntado ao usuário, NÃO presumir resposta):**
+o que acontece quando **a matéria excluída era a única matéria daquela
+turma** — a turma sobrevive vazia (sem nenhuma matéria), é excluída em
+cascata como hoje, ou a exclusão é bloqueada? Esta pergunta **não foi
+feita** ao usuário em 2026-09-02; a resposta literal dele ("remove só a
+matéria da turma; a turma continua") foi dada no contexto de uma turma com
+**várias** matérias e **não** pode ser estendida a este caso. Registrado
+também em `project-knowledge/references/pending-decisions.md`.
+
+Interação com **RULE-INST-13** (exclusão de Turma bloqueada se houver
+presença consolidada) **não foi discutida** neste addendum e permanece como
+está — este addendum trata apenas de *quando* a cascata Matéria→Turma
+dispara, não de *como* a exclusão da Turma se comporta quando disparada.
+
+**Source of confirmation:** Usuário, 2026-09-02 (resposta à ambiguidade A3
+registrada no bloco HANDOFF de
+`project-knowledge/references/pending-decisions.md`), formalizado em sessão
+posterior da mesma data.
+
 ### RULE-INST-09: Autorização para montar/editar turma restrita ao coordenador escopado ao curso
 
 **Statement:** Apenas uma pessoa com `leadership_assignment` escopado

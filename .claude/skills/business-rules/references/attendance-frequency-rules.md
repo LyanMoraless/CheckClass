@@ -164,13 +164,20 @@ cadastradas ao criar a turma). Ver:
 
 ## Dependência direta com Justificativa de Faltas (Feature irmã)
 
-Esta feature tem uma **dependência não resolvida** com a feature de
-justificativa de faltas
-(`business-rules/references/absence-justification-rules.md`): não está
-confirmado se a frequência acumulada é **recalculada retroativamente**
-quando uma justificativa de falta é aprovada, nem qual é a semântica exata
-de "retirar a falta" no cálculo (a aula vira presença e entra no
-numerador, ou vira "falta justificada" e sai do denominador?) — as duas
-leituras produzem resultados diferentes. Ver RULE-JUST-03 e os gaps
-registrados em `project-knowledge/references/pending-decisions.md`. **Não
-presumir nenhuma das duas leituras.**
+Esta feature tem uma **dependência direta** com a feature de justificativa
+de faltas (`business-rules/references/absence-justification-rules.md`).
+
+**Resolvido (2026-09-02) — semântica de "retirar a falta":** confirmado
+pelo usuário que a falta justificada aprovada **conta como presença**
+(entra no **numerador**) e **não sai do denominador** — o total de aulas
+consideradas no período permanece inalterado. É exatamente o cálculo de
+RULE-FREQ-01 acima, apenas com uma presença a mais. Ex.: 40 aulas, 32
+presenças, 1 falta justificada aprovada → **33/40**, não 32/39. Ver
+addendum em RULE-JUST-03
+(`business-rules/references/absence-justification-rules.md`).
+**Source of confirmation:** Usuário, 2026-09-02.
+
+**Continua em aberto (NÃO presumir):** se a frequência acumulada é
+**recalculada retroativamente** quando uma justificativa de falta é
+aprovada. Isso não foi perguntado nem respondido — ver os gaps registrados
+em `project-knowledge/references/pending-decisions.md`.
