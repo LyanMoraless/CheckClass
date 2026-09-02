@@ -49,6 +49,14 @@ Prompt Mestre:
 - **Empresa**: app mostra presença, agenda, informações internas, eventos,
   comunicados.
 
+> **Desqualificação definitiva — "empresa" (2026-09-02):** o bullet acima
+> está **superado**, preservado apenas como histórico. O usuário
+> desqualificou completamente "empresa" como tipo de instituição do
+> CheckClass — decisão permanente, não um adiamento. Ver
+> `business-domain/references/domain-overview.md` e "Decisão —
+> Desqualificação definitiva do tipo de instituição 'empresa'
+> (2026-09-02)" em `project-knowledge/references/pending-decisions.md`.
+
 Outros tipos de instituição citados (universidade, curso, igreja,
 hospital, evento) têm o mesmo princípio de adaptação, mas seus conteúdos
 específicos de interface **ainda não foram detalhados** — tratar como gap
@@ -63,6 +71,12 @@ a esclarecer quando o trabalho tocar esses tipos especificamente.
 > Não devem ser tratados como suportados nem parcialmente suportados até
 > reintrodução explícita futura.
 
+> **Atualização (2026-09-02):** o enum citado acima como "três valores"
+> está desatualizado — "empresa" foi desqualificada definitivamente, o enum
+> passa a ter apenas dois valores (faculdade, escola). Ver "Desqualificação
+> definitiva — 'empresa'" em
+> `business-domain/references/domain-overview.md`.
+
 ## Hierarquia de liderança institucional (confirmado em 2026-08-21)
 
 Confirmado pelo usuário como resposta à clarificação sobre quem pode
@@ -75,6 +89,11 @@ exemplo para empresa; para escola/universidade seria o equivalente, ex:
 reitor/diretor geral — isso não foi detalhado e é um gap menor a
 esclarecer quando o gerenciamento institucional, prioridade 2, for
 trabalhado).
+
+> **Nota (2026-09-02):** o exemplo "CEO" acima é apenas histórico —
+> "empresa" foi desqualificada definitivamente como tipo de instituição
+> (ver `business-domain/references/domain-overview.md`), então este topo de
+> cadeia deixou de ser relevante para o produto.
 
 Regra de autorização derivada desta hierarquia: ver RULE-ATT-11 em
 `business-rules/references/attendance-rules.md`.
@@ -109,6 +128,13 @@ permanecem em aberto** — o exemplo genérico Professor/Coordenador/
 Diretor/CEO citado em 2026-08-21 usava empresa apenas como ilustração
 (CEO), sem ter sido formalmente fechado como cadeia oficial de empresa.
 
+> **Atualização (2026-09-02):** "empresa" foi desqualificada definitivamente
+> como tipo de instituição (ver
+> `business-domain/references/domain-overview.md`) — a ressalva "escola e
+> empresa permanecem em aberto" acima **só se aplica a escola** a partir de
+> agora; não há mais um tipo "empresa" para o qual esse gap possa ficar em
+> aberto.
+
 ## Administrador técnico da instituição (confirmado em 2026-08-21)
 
 Papel separado da hierarquia pedagógica acima, com acesso a dados brutos
@@ -130,3 +156,8 @@ institucional (prioridade 2) for trabalhado — não deve ser assumido.
 > **Atualização (2026-08-31):** para o tipo **faculdade**, este gap está
 > fechado — ver "Hierarquia de liderança — Faculdade" acima. Continua em
 > aberto, sem alteração, para escola e empresa.
+
+> **Atualização (2026-09-02):** "empresa" foi desqualificada definitivamente
+> como tipo de instituição (ver
+> `business-domain/references/domain-overview.md`) — a ressalva acima
+> **só se aplica a escola** a partir de agora.

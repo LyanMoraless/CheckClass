@@ -99,7 +99,8 @@ com o funcionamento das quatro permissões já existentes hoje):
 - `view_camera` — visualizar uma câmera específica.
 - `view_sector_cameras` — visualizar câmeras de um setor.
 - `fullscreen_camera` — colocar uma câmera em tela cheia.
-- `follow_camera_events` — acompanhamento automático de câmera (RULE-SEC-03).
+- ~~`follow_camera_events` — acompanhamento automático de câmera
+  (RULE-SEC-03).~~ **Removida em 2026-09-02 — ver nota abaixo.**
 - `access_camera_recordings` — acessar gravações (se existirem).
 - `administer_camera_devices` — administrar os dispositivos de câmera.
 A distinção entre "visualizar uma câmera específica" e "visualizar câmeras
@@ -110,8 +111,38 @@ até então existiam apenas na linguagem conceitual do Prompt Mestre. Resolve
 o gap "Pendente — Códigos exatos do novo enum `Permission` para permissões
 de câmera" em `project-knowledge/references/pending-decisions.md`.
 
-**Nota de referência cruzada (confirmado pelo usuário em 2026-08-23):**
-não confundir estes seis códigos de câmera com `manage_security_incidents`
+**Nota de remoção (confirmado pelo usuário em 2026-09-02) —
+`follow_camera_events` deixa de existir:** na mesma sessão de 2026-09-02 em
+que o "acompanhamento dinâmico entre câmeras" foi desqualificado por
+completo (não é mais adiado, não haverá — ver addendum em RULE-SEC-03,
+`business-rules/references/security-intrusion-rules.md`, e correção
+equivalente em `project-knowledge/references/pending-decisions.md`), o
+código de permissão `follow_camera_events` ficou órfão: sua descrição
+textual era literalmente "acompanhamento automático de câmera
+(RULE-SEC-03)" — uma funcionalidade que não existirá. Perguntado se
+preferia remover o código do enum ou redefini-lo para outro propósito, o
+usuário respondeu de forma direta: **"Quero remover."** O conjunto de
+permissões de câmera de RULE-ACC-07 passa de **seis para cinco** códigos,
+sem dependência entre si:
+- `view_camera`
+- `view_sector_cameras`
+- `fullscreen_camera`
+- `access_camera_recordings`
+- `administer_camera_devices`
+Este histórico (a lista original de seis, riscada acima) é preservado
+deliberadamente — não apagado — para que qualquer agente que consulte esta
+regra no futuro entenda que `follow_camera_events` existiu, foi aprovado
+formalmente em 2026-08-23, e foi removido por decisão de escopo explícita
+do usuário, não por engano de implementação. **Existe código-fonte real
+ainda não atualizado** declarando este código — ver pendência técnica nova
+em `project-knowledge/references/pending-decisions.md`
+("Pendência técnica nova — remover `follow_camera_events` do enum
+`Permission` no código-fonte").
+**Source of confirmation:** Usuário, 2026-09-02.
+
+**Nota de referência cruzada (confirmado pelo usuário em 2026-08-23; contagem
+atualizada em 2026-09-02 — ver "Nota de remoção" acima, de seis para cinco
+códigos):** não confundir estes códigos de câmera com `manage_security_incidents`
 — um 7º código relacionado, mas conceitualmente separado, confirmado na
 mesma data para gatear visualização/fechamento de incidentes de intrusão
 (RULE-SEC-07, `business-rules/references/security-intrusion-rules.md`).

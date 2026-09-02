@@ -66,6 +66,21 @@ ajustes futuros exigem nova confirmação, não devem ser alterados
 silenciosamente no código.
 **Source of confirmation:** Confirmado pelo usuário em 2026-08-21.
 
+> **Ponteiro (2026-09-02) — dado sensível de saúde ainda não coberto por
+> nenhuma regra de retenção:** a feature futura de **justificativa de
+> faltas** (`business-rules/references/absence-justification-rules.md`,
+> RULE-JUST-04) prevê o upload de **atestado médico** pelo aluno — **dado
+> pessoal sensível sob a LGPD**, com exigência de tratamento mais restrito
+> que os dados de chamada cobertos por RULE-RET-01/02. Nenhuma regra deste
+> arquivo cobre esse tipo de dado hoje (quem pode abrir o anexo, prazo de
+> retenção, se é excluído após a decisão do professor, se entra ou não no
+> ciclo de 60 dias + fechamento mensal). **Não presumir** que o ciclo de
+> RULE-RET-01 se aplica ao anexo. Reconciliação obrigatória com o
+> **Security Agent** antes de qualquer implementação — ponto de risco real,
+> registrado em `project-knowledge/references/pending-decisions.md`.
+> **Source of confirmation:** Feature confirmada pelo usuário em
+> 2026-09-02; as regras de retenção do anexo continuam **em aberto**.
+
 ### RULE-RET-04: Papel de administrador técnico da instituição
 
 **Statement:** Existe um papel de **administrador técnico da

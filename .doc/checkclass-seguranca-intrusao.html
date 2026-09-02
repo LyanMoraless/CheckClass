@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckClass — Segurança de Intrusão (Documentação Técnica)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --text: #1c1c1c;
+    --muted: #5a5a5a;
+    --bg: #ffffff;
+    --panel: #f6f6f4;
+    --line: #e2e2df;
+    --accent: #1c1c1c;
+    --pill-core: #1c1c1c;
+    --pill-2: #55524a;
+    --pill-3: #8a8a86;
+    --pill-4: #b7b7b3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  header.masthead {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 36px 48px 28px;
+    border-bottom: 3px solid var(--text);
+  }
+  header.masthead img { height: 56px; width: auto; }
+  header.masthead .title-block h1 {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 26px;
+    margin: 0 0 4px;
+    letter-spacing: 0.5px;
+  }
+  header.masthead .title-block p { margin: 0; color: var(--muted); font-size: 14px; }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 48px 80px; }
+  section { margin-bottom: 56px; }
+  h2.section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px;
+    letter-spacing: 1px;
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--line);
+  }
+  h3 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16.5px; margin: 26px 0 8px; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 16.5px; color: var(--text); }
+  .overview-box {
+    background: var(--panel);
+    border-left: 4px solid var(--text);
+    padding: 20px 24px;
+    border-radius: 4px;
+  }
+  .toc {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 16px 0 0;
+    line-height: 1.9;
+  }
+  .toc a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .toc a:hover { border-bottom-color: var(--text); }
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 100px;
+    margin: 0 6px 10px 0;
+  }
+  .pill.p3 { background: var(--pill-3); color: #1c1c1c; }
+  .pill.status { background: var(--pill-core); }
+  .ref {
+    font-family: 'Courier New', monospace;
+    font-size: 10.5px;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+  .feature-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+  .feature-card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+  .feature-card p { margin: 0; color: var(--text); font-size: 14px; }
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .status-card { border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; }
+  .status-card h4 { font-family: 'Montserrat', sans-serif; font-weight: 700; margin: 0 0 8px; font-size: 15px; }
+  .status-card p { font-size: 13.5px; margin: 0 0 8px; }
+  .status-card ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--text); }
+  .status-card ul li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.8px; margin: 8px 0 4px; }
+  table th, table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); font-weight: 700; }
+  table td code { font-size: 12.5px; background: var(--panel); padding: 1px 5px; border-radius: 3px; }
+  .note {
+    background: #fff;
+    border: 1px dashed #c7c7c3;
+    border-left: 4px dashed var(--muted);
+    padding: 14px 18px;
+    border-radius: 4px;
+    font-size: 13.8px;
+    margin: 16px 0;
+  }
+  .note .tag {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .note.risk { border-left-color: var(--text); border-style: solid; background: var(--panel); }
+  .gap-list { margin: 0; padding-left: 20px; font-size: 14px; }
+  .gap-list li { margin-bottom: 9px; color: var(--text); }
+  .gap-list li .tag {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-right: 6px;
+    font-weight: 700;
+  }
+  .gap-list li .tag.disqualified {
+    color: #fff;
+    background: var(--pill-core);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+  /* --- diagrams --- */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0; font-size: 13.5px; }
+  .flow .node {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .flow .arrow { color: var(--muted); font-size: 18px; }
+  .flow .cond {
+    font-size: 11px;
+    color: var(--muted);
+    max-width: 140px;
+    text-align: center;
+  }
+  .branch-diagram { text-align: center; margin: 22px 0; }
+  .branch-diagram .branch-source { display: inline-block; }
+  .branch-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-top: 4px;
+  }
+  .branch-row .branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border-top: 2px solid var(--line);
+    padding-top: 12px;
+  }
+  .branch-row .cond { font-size: 11.5px; color: var(--muted); min-height: 44px; }
+  footer {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 24px 48px 60px;
+    color: var(--muted);
+    font-size: 12.5px;
+    border-top: 1px solid var(--line);
+  }
+  @media print {
+    header.masthead { border-bottom: 2px solid #000; }
+    .feature-card, .status-card, .branch-diagram, .note { break-inside: avoid; }
+    section { break-inside: avoid-page; }
+  }
+  @media (max-width: 700px) {
+    header.masthead, main, footer { padding-left: 20px; padding-right: 20px; }
+    .branch-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <img src="assets/logo.png" alt="LGI Morales">
+  <div class="title-block">
+    <h1>CheckClass — Segurança de Intrusão</h1>
+    <p>Documentação técnica da feature — regras e arquitetura aprovadas, implementação pendente</p>
+  </div>
+</header>
+
+<main>
+
+  <section id="overview">
+    <h2 class="section-title">Visão Geral</h2>
+    <span class="pill p3">Prioridade 3 do produto</span>
+    <span class="pill status">Regras, arquitetura e tecnologia aprovadas · nenhum código novo escrito ainda</span>
+    <div class="overview-box lead">
+      <p><strong>Segurança de Intrusão</strong> é a camada de segurança física do CheckClass: detecta pessoas sem autorização circulando pela instituição e alerta a equipe de segurança. Uma pessoa é considerada "não autorizada" quando não porta pulseira, ou porta uma cuja categoria não tem permissão para aquela área. Ao detectar essa presença, o sistema estima em qual região do prédio ela está (por barreiras infravermelhas) e abre automaticamente, na tela do operador, a câmera fixa daquele local — para que a equipe de segurança veja o que está acontecendo sem precisar procurar a câmera certa.</p>
+      <p>É a <strong>3ª prioridade</strong> do produto <span class="ref">RULE-SEC-01</span> — uma extensão do sistema, nunca deve substituir ou se sobrepor ao foco principal, que é apuração de presença. Este documento existe como área própria e autocontida a pedido explícito do usuário em 2026-09-02: <em>"Importante que tudo isso seja separado em uma aba própria para que no momento correto possamos trabalhar de uma forma multidisciplinar nessa área do projeto."</em> É preparação de documentação para quando o trabalho técnico real (IoT, Visão Computacional, Backend, Security) começar nesta frente — ainda não é esse momento.</p>
+      <p>Regras de negócio, arquitetura e tecnologia da primeira rodada foram aprovadas em 2026-08-23, com revisões de escopo confirmadas em 2026-09-02 — inclusive uma segunda rodada de correções, no mesmo dia, que fechou em definitivo dois itens que antes pareciam abertos: o acompanhamento dinâmico entre câmeras e os níveis de vigilância foram <strong>desqualificados por completo</strong> (ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>), e a contagem de entrada/saída ganhou uma direção técnica nova e bem mais concreta (ver <a href="#contagem">Contagem de Entrada/Saída</a>). <strong>Nenhum código específico desta feature foi escrito ainda</strong> — nem migration, nem Gateway de Ingestão de Sinais de Segurança, nem Motor de Detecção de Intrusão, nem telas. A única peça que já existe em código hoje é o mecanismo de autenticação por dispositivo (API key), mas ele não é exclusivo desta feature — é compartilhado com o núcleo de presença (ver <a href="#status">Status Atual</a>).</p>
+    </div>
+    <nav class="toc">
+      Neste documento:
+      <a href="#deteccao">Detecção &amp; localização</a> ·
+      <a href="#camera">Câmera do local</a> ·
+      <a href="#incidente">Ciclo de vida do incidente</a> ·
+      <a href="#permissoes">Permissões</a> ·
+      <a href="#arquitetura">Arquitetura técnica</a> ·
+      <a href="#tecnologia">Tecnologia</a> ·
+      <a href="#contagem">Contagem de entrada/saída</a> ·
+      <a href="#fora-de-escopo">Fora desta rodada</a> ·
+      <a href="#desqualificados">Desqualificado / removido</a> ·
+      <a href="#gaps">Gaps em aberto</a> ·
+      <a href="#status">Status atual</a>
+    </nav>
+  </section>
+
+  <section id="quem-usa">
+    <h2 class="section-title">Quem Usa</h2>
+    <div class="status-grid">
+      <div class="status-card">
+        <h4>Equipe de Segurança</h4>
+        <p>Recebe o alerta, acompanha a câmera do local sinalizado, e fecha o incidente registrando o desfecho (intrusão real ou falso positivo). Qualquer membro da equipe pode fechar um incidente — não há hierarquia interna dedicada.</p>
+      </div>
+      <div class="status-card">
+        <h4>Instituição (tenant)</h4>
+        <p>Configura categorias de pulseira e suas permissões de área/bloco/período — é essa configuração que determina, indiretamente, quem conta como "não autorizado" para efeito de detecção de intrusão.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="deteccao">
+    <h2 class="section-title">Detecção e Localização</h2>
+    <p>O objetivo desta camada é detectar pessoas não autorizadas em áreas da instituição e acompanhar seus movimentos <span class="ref">RULE-SEC-01</span>.</p>
+
+    <h3>O que conta como "não autorizado"</h3>
+    <p>Uma pessoa está autorizada em uma área quando a categoria da sua pulseira tem uma permissão válida (área/bloco/período) para aquela área <span class="ref">RULE-ACC-02</span>. Uma pessoa sem pulseira, ou cuja categoria não tenha permissão válida ali, é tratada como não autorizada — potencial intrusão.</p>
+
+    <div class="note">
+      <span class="tag">Diferença de outro mecanismo do sistema — não confundir</span>
+      RULE-SEC-01 não é a mesma coisa que RULE-ACC-04 (registro de tentativa de acesso não autorizado numa porta específica). RULE-ACC-04 registra uma tentativa pontual numa porta. RULE-SEC-01 detecta a presença e o deslocamento de uma pessoa não autorizada de forma mais ampla, em nível de bloco/edifício, via barreiras infravermelhas — independente de qualquer tentativa pontual numa porta.
+    </div>
+
+    <h3>Localização por barreiras infravermelhas</h3>
+    <p>Barreiras infravermelhas posicionadas estrategicamente (ex.: uma por andar) permitem estimar em qual andar/região/corredor a pessoa não autorizada está <span class="ref">RULE-SEC-02</span>. Quanto maior a cobertura de sensores, maior a precisão — não há garantia de localização exata com cobertura mínima.</p>
+    <p>A granularidade de detecção é de bloco/edifício (mais ampla que uma única porta) de forma proposital: isso prepara o modelo de dados para que, numa rodada futura, as portas da área invadida possam ser fechadas preventivamente quando o bloqueio automático (RULE-SEC-04, hoje adiado) for construído. Não é um requisito de construir o bloqueio agora — é apenas contexto arquitetural para quem desenhar o pipeline de detecção.</p>
+
+    <h3>Um incidente por intrusão em andamento</h3>
+    <p>Enquanto um incidente está aberto/ativo, um novo sinal referente à mesma intrusão correlaciona-se (atualiza) esse mesmo incidente, em vez de abrir um segundo. O rastro de deslocamento recebe mais uma entrada em seu histórico. Isso também resolve a semântica de deduplicação de sinais de segurança — não há lógica de dedup própria, é só mais um ponto na trilha do mesmo incidente ativo.</p>
+    <p>Para esta rodada, isso também implica um comportamento de "índice único": o sistema acompanha apenas a detecção ativa mais recente/prioritária, não vários incidentes concorrentes com seletor de UI. Explicitamente adiado — não rejeitado — retomar se o uso real mostrar necessidade de múltiplos incidentes simultâneos.</p>
+  </section>
+
+  <section id="camera">
+    <h2 class="section-title">Câmera do Local (escopo definitivo, revisado em 2026-09-02)</h2>
+    <p>Quando um sinal de intrusão é detectado, o sistema abre/exibe automaticamente a câmera fixa daquele local <span class="ref">RULE-SEC-03</span>.</p>
+
+    <div class="note risk">
+      <span class="tag">Comportamento definitivo de RULE-SEC-03 — não é mais "só desta rodada"</span>
+      A versão original desta regra previa que a câmera "seguisse" o intruso: conforme ele se movesse entre zonas, a câmera correspondente à nova região assumiria a tela cheia automaticamente. Em 2026-09-02, o usuário reduziu esse escopo: <em>"Essa questão de seguir o intruso, vamos deixar de lado. Por hora vamos apenas nos preocupar com abrir a câmera referente ao local que sinalizou uma intrusão. Essa feature depende da integração com outros dispositivos. Ela ficará para um segundo momento."</em>
+      <br><br>
+      Na mesma sessão do mesmo dia, o usuário fechou o assunto por completo: <em>"Acompanhamento dinâmico entre câmeras, retire também. Não haverá."</em> Diferente de um adiamento (que mantém o item como candidato legítimo a retomar depois), esta é uma decisão <strong>permanente</strong>: não haverá acompanhamento dinâmico entre câmeras nesta ou em qualquer rodada futura, a menos que o usuário reabra o assunto explicitamente. Ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>.
+      <br><br>
+      <strong>Comportamento definitivo:</strong> um sinal de intrusão → uma câmera fixa exibida (a do local que originou o sinal) → ponto final. Sem troca de câmera, sem acompanhamento dinâmico se a pessoa se mover para outra zona coberta por outra câmera — e sem ressalva de "pode ser retomado no futuro".
+    </div>
+
+    <div class="flow">
+      <div class="node">Sinal de intrusão detectado</div>
+      <div class="arrow">→</div>
+      <div class="node">Local/zona de origem identificado</div>
+      <div class="arrow">→</div>
+      <div class="node">Câmera fixa daquele local exibida</div>
+    </div>
+
+    <p>O acompanhamento dinâmico entre câmeras (trocar de câmera conforme a pessoa se desloca, correlacionando sinais de múltiplos dispositivos) <strong>não haverá</strong> — desqualificado por completo pelo usuário em 2026-09-02, decisão permanente, não um adiamento. Ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>.</p>
+  </section>
+
+  <section id="incidente">
+    <h2 class="section-title">Ciclo de Vida do Incidente</h2>
+    <p>Um incidente de intrusão pode ser fechado por qualquer membro da Equipe de Segurança — não há hierarquia dedicada, é uma autorização simples e plana <span class="ref">RULE-SEC-07</span>.</p>
+
+    <div class="branch-diagram">
+      <div class="node branch-source">Incidente aberto/ativo</div>
+      <div class="branch-row">
+        <div class="branch">
+          <div class="cond">confirmado como intrusão real, tratada</div>
+          <div>↓</div>
+          <div class="node"><code>resolved</code></div>
+        </div>
+        <div class="branch">
+          <div class="cond">pessoa legítima cuja pulseira falhou na leitura, sem ameaça real</div>
+          <div>↓</div>
+          <div class="node"><code>false_positive</code></div>
+        </div>
+      </div>
+    </div>
+    <p>Em ambos os desfechos, uma nota/justificativa é <strong>obrigatória</strong> no momento do fechamento.</p>
+
+    <h3>Quem é "Equipe de Segurança", na prática</h3>
+    <p>Concretamente: qualquer pessoa que possua a permissão <code>manage_security_incidents</code> — um 5º código de permissão de grupo, seguindo o mesmo mecanismo plano já usado pelas quatro permissões de grupo existentes (<code>manage_users</code>, <code>configure_attendance_rules</code>, <code>view_attendance_register</code>, <code>manage_institution_structure</code>). Visualizar e fechar incidentes é gateado por essa permissão. Este código foi mantido separado dos códigos de permissão de câmera (ver <a href="#permissoes">Permissões</a>) — são preocupações diferentes, mesmo estando ambas dentro do módulo de segurança.</p>
+  </section>
+
+  <section id="permissoes">
+    <h2 class="section-title">Permissões</h2>
+    <p>Controle de permissão granular sobre câmeras: quem pode visualizar uma câmera, quem pode acessar câmeras de um setor, quem pode colocar em tela cheia, quem pode acessar gravações, e quem pode administrar os dispositivos <span class="ref">RULE-ACC-07</span>.</p>
+
+    <table>
+      <tr><th>Código</th><th>Capacidade</th></tr>
+      <tr><td><code>view_camera</code></td><td>Visualizar uma câmera específica.</td></tr>
+      <tr><td><code>view_sector_cameras</code></td><td>Visualizar câmeras de um setor.</td></tr>
+      <tr><td><code>fullscreen_camera</code></td><td>Colocar uma câmera em tela cheia.</td></tr>
+      <tr><td><code>access_camera_recordings</code></td><td>Acessar gravações, se existirem.</td></tr>
+      <tr><td><code>administer_camera_devices</code></td><td>Administrar os dispositivos de câmera.</td></tr>
+    </table>
+    <p>Cinco códigos independentes do enum <code>Permission</code>, sem dependência entre si — <code>fullscreen_camera</code> não exige que <code>access_camera_recordings</code> também esteja concedida, por exemplo. Um grupo de permissão pode combiná-los livremente.</p>
+    <div class="note">
+      <span class="tag disqualified">Desqualificado</span>
+      A permissão <code>follow_camera_events</code> ("acompanhamento automático de câmera", RULE-SEC-03) existia no conjunto original de seis códigos aprovado em 2026-08-23. Removida em 2026-09-02: a funcionalidade que ela controlava (acompanhamento dinâmico entre câmeras) foi desqualificada por completo — ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>. Resposta literal do usuário à pergunta se deveria ser removida ou redefinida: <em>"Quero remover."</em> O código já existe hoje em <code>backend/src/modules/auth/permission.enum.ts</code> e <code>frontend/src/types/permission.ts</code> — ainda não removido do código-fonte, fica como pendência técnica de baixo risco.
+    </div>
+    <p>Separado disso está <code>manage_security_incidents</code> (ver <a href="#incidente">Ciclo de Vida do Incidente</a>) — um 6º código relacionado, mas conceitualmente distinto: gerencia incidentes, não câmeras.</p>
+  </section>
+
+  <section id="arquitetura">
+    <h2 class="section-title">Arquitetura Técnica</h2>
+    <p>Aprovada em 2026-08-23. Um segundo pipeline orientado a eventos, estruturalmente paralelo ao pipeline de chamada, dentro do mesmo monólito modular NestJS — não um novo deployável, não microserviços. Separação no estilo bounded-context, compartilhando com o pipeline de chamada apenas uma primitiva mínima de resolução de identidade. Nada do pipeline de chamada existente tem seu comportamento alterado.</p>
+
+    <h3>Os 6 componentes lógicos</h3>
+    <table>
+      <tr><th>Componente</th><th>O que faz</th></tr>
+      <tr>
+        <td>Gateway de Ingestão de Sinais de Segurança</td>
+        <td>Irmão do Gateway de Ingestão de Eventos de Dispositivo já existente no núcleo. Autenticado por dispositivo, recebe eventos de barreira IR e leitores de acesso de área, persiste em tabela de evento bruto própria (não <code>raw_identification_event</code>, que é específica de chamada).</td>
+      </tr>
+      <tr>
+        <td>Serviço de Identidade por Pulseira</td>
+        <td>Serviço pequeno e compartilhado, extraído da lógica hoje embutida em <code>IdentificationService.resolvePerson()</code>: <code>tagCode → { personId, wristbandCategoryId } | null</code>. <code>IdentificationService</code> passa a consumir essa primitiva; seu comportamento não muda.</td>
+      </tr>
+      <tr>
+        <td>Serviço de Autorização de Área</td>
+        <td>Checagem de autorização de RULE-ACC-02/RULE-SEC-01 (categoria de pulseira → permissão de área). Serviço de decisão puro, somente leitura, reutilizável futuramente por controle de acesso de porta ou bloqueio — mas não construído para isso agora.</td>
+      </tr>
+      <tr>
+        <td>Motor de Detecção de Intrusão</td>
+        <td>Concentra a decisão "o que conta como intrusão". Correlaciona sinais de pulseira não autorizada e cruzamento de barreira IR não explicado, abre/atualiza um incidente com histórico de localização (não apenas um campo de localização atual). Nunca decide bloqueio.</td>
+      </tr>
+      <tr>
+        <td>Registro/Consulta de Alertas de Segurança</td>
+        <td>Lado de leitura consultável do alerta — mesmo precedente de separação já usado em Consolidação/Fila de Pendências da chamada.</td>
+      </tr>
+      <tr>
+        <td>Serviço de Câmeras — Cobertura de Área e Seleção Automática</td>
+        <td>Mantém o mapeamento câmera→área. Resolve de forma <strong>estática, definitiva</strong> qual câmera fixa corresponde ao local que originou o sinal — sem reavaliar a seleção se o incidente se mover de zona. Este componente não terá capacidade de troca dinâmica entre câmeras (RULE-SEC-03), nesta ou em qualquer rodada futura. Não faz visão computacional/rastreamento nem controle de protocolo de câmera para esta finalidade — ver <a href="#contagem">Contagem de Entrada/Saída</a> para a direção técnica separada de câmera + visão computacional aplicada à contagem em sala de aula.</td>
+      </tr>
+    </table>
+
+    <h3>Fluxo de integração</h3>
+    <div class="flow">
+      <div class="node">Barreira IR / leitor de área</div>
+      <div class="arrow">→</div>
+      <div class="node">Gateway de Ingestão de Sinais de Segurança</div>
+      <div class="arrow">→</div>
+      <div class="node">Identidade por Pulseira + Autorização de Área</div>
+      <div class="arrow">→</div>
+      <div class="node">Motor de Detecção de Intrusão</div>
+      <div class="arrow">→</div>
+      <div class="node">Alertas de Segurança</div>
+    </div>
+    <p>Em paralelo, o Motor de Detecção de Intrusão informa o Serviço de Câmeras sobre a área de origem do incidente, que resolve a câmera fixa correspondente.</p>
+
+    <h3>Entrega de alerta: polling, não push/realtime</h3>
+    <p>Decisão fundamentada, não um default assumido: o projeto não tem infraestrutura de tempo real em nenhum outro ponto hoje; cruzamentos de barreira IR têm ritmo humano, não alta frequência; reaproveita o mesmo cliente TanStack Query sobre <code>fetch</code> já existente. Revisitar apenas se o uso real mostrar que a latência do polling é insuficiente — mesmo raciocínio já aplicado à decisão de não usar broker de mensagens no núcleo.</p>
+
+    <h3>Isolamento multi-tenant</h3>
+    <p>Transversal a todos os componentes acima — mesmo modelo <code>tenant_id</code> + Row-Level Security do núcleo, sem exceção.</p>
+  </section>
+
+  <section id="tecnologia">
+    <h2 class="section-title">Tecnologia Aprovada</h2>
+    <p>Preenche com tecnologia concreta os pontos deixados em aberto pela arquitetura acima. Aprovada em 2026-08-23, sem alterações do usuário.</p>
+
+    <h3>Hardware de barreira IR / leitor de área</h3>
+    <p>Pares de sensor de barreira infravermelha comercial passivo, com saída em relé/contato seco, sem pilha de rede própria — cabeado a um controlador de borda Raspberry Pi por andar/área. Reaproveita a mesma classe de dispositivo e provisionamento já usados no processamento de câmera/OpenCV do núcleo. Sensores IR "inteligentes" com Wi-Fi/firmware próprio e microcontroladores classe ESP32 foram avaliados e rejeitados — cada um viraria um nó de rede/toolchain adicional a manter, sem necessidade evidenciada nesta rodada.</p>
+
+    <h3>Autenticação por dispositivo</h3>
+    <p>API key por dispositivo (hash SHA-256, formato <code>{apiKeyId}.{secret}</code>, comparação em tempo constante), revogável individualmente. <strong>Não é um mecanismo novo</strong> — já estava implementado no código do núcleo (<code>device-auth.service.ts</code>, <code>device-auth.guard.ts</code>, migration <code>1755751000000-AddDeviceApiKey.ts</code>) e foi ratificado retroativamente em 2026-08-23 como o mecanismo oficial também para os novos dispositivos de segurança (barreira IR, leitor de área) — uma única decisão, não duas. <code>device_type</code> já é <code>varchar(50)</code> livre, então novos valores (<code>ir_barrier</code>, <code>area_reader</code>) não exigem mudança de schema. mTLS e JWT de curta duração por dispositivo foram avaliados e rejeitados por adicionar complexidade sem modelo de ameaça que a justifique.</p>
+
+    <h3>Contrato de payload de barreira IR / leitor de área</h3>
+    <p>Mesmo precedente já usado no núcleo — HTTPS REST POST (ex.: <code>POST /v1/security-ingestion/events</code>), autenticado por dispositivo, com <code>idempotencyKey</code> obrigatória gerada pelo cliente. <code>tenantId</code>/<code>deviceId</code> nunca são aceitos no corpo — sempre resolvidos pela credencial de autenticação. MQTT foi avaliado e descartado pelo mesmo motivo do núcleo (nenhum broker se justifica neste volume).</p>
+    <div class="feature-card">
+      <h4>Envelope aproximado</h4>
+      <p><code>{ idempotencyKey, eventType: "IR_BARRIER_CROSSING" | "AREA_READER_SCAN", capturedAt, areaId, data }</code> — <code>data</code> carrega <code>{ tagCode }</code> para <code>AREA_READER_SCAN</code>; <code>IR_BARRIER_CROSSING</code> pode não carregar nenhum dado de identidade (um corte de feixe é anônimo por natureza). O destino exato de FK de <code>areaId</code> fica em aberto — ver <a href="#gaps">Gaps em Aberto</a>.</p>
+    </div>
+
+    <h3>Hardware/controle de câmera</h3>
+    <p>Câmeras IP fixas com saída RTSP, <strong>sem PTZ</strong> (pan-tilt-zoom) — a regra exige apenas selecionar qual feed já existente aparece em tela cheia, nunca mover fisicamente uma câmera. Essa escolha de hardware não muda com a redução de escopo de 2026-09-02: já era compatível com o comportamento estático confirmado. A frase que constava aqui sobre "continuar sendo o hardware certo também para a futura extensão dinâmica" foi removida — a extensão dinâmica em si deixou de existir como item futuro (ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>); a escolha de hardware vale apenas para o escopo estático definitivo.</p>
+    <p>O backend nunca fala um protocolo de fabricante de câmera (sem ONVIF, sem cliente RTSP, sem SDK de fabricante dentro do monólito NestJS) — apenas armazena <code>cameraId → areaId</code> / <code>cameraId → streamUrl</code> e informa ao frontend qual câmera exibir. O inventário de câmeras é administrado manualmente pelo dashboard admin (permissão <code>administer_camera_devices</code>) — nenhum protocolo de auto-descoberta nesta rodada.</p>
+
+    <div class="note">
+      <span class="tag">Infraestrutura necessária, mas fora desta rodada</span>
+      Navegadores não reproduzem RTSP bruto nativamente — algo (as próprias câmeras, se capazes, ou um relay de streaming RTSP→HLS/WebRTC separado) precisa ficar entre as câmeras e o navegador. Esse relay não faz parte do backend de negócio NestJS. Vídeo ao vivo pelo navegador foi confirmado como explicitamente adiado em 2026-09-02 — ver <a href="#fora-de-escopo">Escopo Fora Desta Rodada</a>.
+    </div>
+  </section>
+
+  <section id="contagem">
+    <h2 class="section-title">Contagem de Entrada/Saída — Restrição Confirmada, Tecnologia Ainda Pendente</h2>
+    <p>A solução técnica para contar pessoas entrando/saindo de um ambiente deve ser escolhida considerando quantidade de pessoas, passagem simultânea, direção do fluxo, precisão necessária, custo, ambiente e posicionamento do sensor/câmera. Não se deve assumir que uma barreira infravermelha simples resolve todos os cenários — ela não distingue corretamente múltiplas pessoas passando ao mesmo tempo <span class="ref">RULE-SEC-05</span>.</p>
+
+    <div class="note risk">
+      <span class="tag">Restrição de precisão confirmada em 2026-09-02 — tecnologia ainda não escolhida</span>
+      Em resposta a uma pergunta de esclarecimento, o usuário confirmou a opção de maior exigência: o sistema deve <strong>contar exatamente</strong> quantas pessoas entraram/saíram, mesmo quando passam em grupo/juntas simultaneamente — não é aceitável uma solução que apenas estima quantidade ou falha em distinguir indivíduos em passagem simultânea.
+      <br><br>
+      Isto <strong>não escolhe a tecnologia</strong>. É um gap real, não uma decisão tomada: qual tecnologia usar (contagem por câmera com visão computacional, múltiplos sensores correlacionados, ou outra abordagem) continua pendente, a cargo do Tech Decision Agent com apoio do Hardware Evaluation. A restrição apenas fecha o critério de aceite que qualquer tecnologia candidata precisa cumprir.
+    </div>
+
+    <p>Este é um recorte diferente da localização de intrusão por barreira IR (RULE-SEC-01/02): lá, o hardware já aprovado (item "Hardware de barreira IR" acima) basta, porque só precisa dizer "um cruzamento aconteceu aqui" — não precisa contar pessoas com exatidão sob passagem em grupo. São capacidades diferentes, mesmo tipo de sensor físico citado como possível ponto de partida.</p>
+
+    <h3>Nova direção técnica (2026-09-02) — câmera + visão computacional, ainda uma orientação, não uma tecnologia fechada</h3>
+    <div class="note risk">
+      <span class="tag">Orientação de produto mais específica — a escolha de tecnologia continua em aberto</span>
+      O usuário deu uma direção bem mais concreta do que existia antes, mas o próprio usuário deixou claro que não é uma escolha fechada de biblioteca/tecnologia — a decisão final continua a cargo do Tech Decision Agent, agora também com apoio do <strong>Computer Vision Agent</strong> (não só do Hardware Evaluation Agent).
+      <br><br>
+      Mensagem literal do usuário: <em>"Essa tecnologia de contagem não necessariamente precisa ser feita com um dispositivo. Penso em integrarmos as câmeras no sistema que são vinculadas a uma sala de aula. Ela com a biblioteca OpenCV (ou com outros métodos) de tempos em tempos pode fazer a contagem. Exemplo: 19hrs a aula inicia. Até 19:10 45 tags são registradas na sala de aula (passando a tag no leitor que fica em cima da mesa do professor). 19:15 a câmera faz uma contagem de pessoas, deve bater com a quantidade de tags passadas."</em>
+    </div>
+
+    <p>Pontos que essa direção confirma:</p>
+    <ul class="gap-list">
+      <li><span class="tag">Confirmado</span>A contagem <strong>não precisa</strong> de um sensor/dispositivo dedicado (ex.: sensor de barreira). Pode reaproveitar câmeras já vinculadas à sala de aula/turma — que podem não ser as mesmas câmeras fixas de Segurança de Intrusão (ver gap de footprint de hardware abaixo).</li>
+      <li><span class="tag">Confirmado</span>O mecanismo é <strong>contagem periódica via visão computacional</strong> — OpenCV citado como exemplo (mesma biblioteca já aprovada para o núcleo), mas explicitamente "ou com outros métodos": não é escolha de biblioteca fechada. Não é rastreamento contínuo individual por barreira.</li>
+      <li><span class="tag">Confirmado</span><strong>Propósito de auditoria/validação cruzada:</strong> a contagem por câmera é comparada com a contagem de registros de presença já feitos via tag/pulseira no leitor da sala — o pipeline de chamada já existente do núcleo (<code>raw_identification_event</code>). Divergência entre os dois números sinaliza possível anomalia (ex.: tag repassada por outra pessoa, pessoa presente sem tag registrada).</li>
+    </ul>
+
+    <div class="flow">
+      <div class="node">19:00 — aula inicia</div>
+      <div class="arrow">→</div>
+      <div class="node">até 19:10 — 45 tags registradas no leitor da sala</div>
+      <div class="arrow">→</div>
+      <div class="node">19:15 — câmera conta pessoas na sala</div>
+      <div class="arrow">→</div>
+      <div class="node">contagem deveria bater com 45</div>
+    </div>
+
+    <p>Isto cruza dois domínios do projeto que antes eram tratados separadamente — Segurança de Intrusão (esta regra) e o núcleo de Presença/Chamada (RULE-ATT-*, <code>business-rules/references/attendance-rules.md</code>) — uma ponte conceitual nova, não uma regra de negócio fechada em si.</p>
+
+    <div class="note">
+      <span class="tag">Gaps novos, não confirmados — não presumir resposta</span>
+      Quatro pontos que esta direção deixa em aberto, sinalizados também em <a href="#gaps">Gaps/Pendências Reais em Aberto</a>:
+      <br><br>
+      1. Frequência exata da contagem periódica (o exemplo usa ~5–15 min, mas não foi confirmado como regra geral).<br>
+      2. O que acontece quando a contagem por câmera não bate com a contagem por tag — gera incidente de segurança? alerta ao professor? apenas log de auditoria? quem é notificado?<br>
+      3. Se este mecanismo é específico do contexto "sala de aula/turma" (chamada) ou se também vale para áreas gerais de Segurança de Intrusão (corredores, zonas restritas sem contexto de aula) — o exemplo dado é 100% sala de aula, não presumir generalização.<br>
+      4. Se a câmera de sala de aula é a <strong>mesma</strong> câmera fixa já aprovada para Segurança de Intrusão, ou uma câmera adicional por sala — implicação real de hardware/custo.
+    </div>
+  </section>
+
+  <section id="fora-de-escopo">
+    <h2 class="section-title">Escopo Fora Desta Rodada</h2>
+    <p>Itens explicitamente <strong>adiados, não rejeitados</strong> — não devem ser assumidos como escopo por nenhum agente até nova confirmação explícita do usuário. É justamente para preparar o terreno para retomar estes itens, de forma multidisciplinar, que este documento foi criado como área própria.</p>
+    <ul class="gap-list">
+      <li><span class="tag">Adiado</span><strong>Bloqueio automático de portas/ambientes</strong> (RULE-SEC-04). Em situações configuráveis, o sistema poderia bloquear portas automaticamente ao detectar intrusão — fluxo completo: intrusão detectada → localização identificada → setor entra em modo de segurança → portas bloqueadas → central recebe alerta. <strong>Ressalva inegociável, válida para qualquer implementação futura:</strong> situações de emergência (incêndio, evacuação) devem sempre ser consideradas, para que uma regra automática de bloqueio nunca coloque pessoas em risco. Adiado dado o caráter inegociável dessa ressalva e a ausência de qualquer hardware de bloqueio hoje no projeto.</li>
+      <li><span class="tag">Confirmado-adiado</span><strong>Vídeo ao vivo das câmeras pelo navegador.</strong> Confirmado pelo usuário em 2026-09-02: o foco desta rodada é detecção e alerta primeiro; assistir ao vídeo ao vivo fica para uma rodada futura. Consequência prática: a escolha do software de relay RTSP→HLS/WebRTC não precisa ser resolvida para esta rodada fechar.</li>
+      <li><span class="tag">Adiado</span><strong>Múltiplos incidentes concorrentes com seletor de UI.</strong> Esta rodada trata apenas um "índice único" — a detecção ativa mais recente/prioritária. Retomar se o uso real mostrar necessidade.</li>
+    </ul>
+    <p style="font-size: 13.5px; color: var(--muted); margin-top: 14px;">Dois itens que estavam nesta lista até uma revisão anterior deste documento — acompanhamento dinâmico entre câmeras e níveis de vigilância — <strong>não são mais "adiados"</strong>: o usuário os desqualificou por completo em 2026-09-02. Ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>, logo abaixo — categoria diferente, não confundir as duas.</p>
+  </section>
+
+  <section id="desqualificados">
+    <h2 class="section-title">Desqualificado / Removido Permanentemente</h2>
+    <p>Diferente da seção anterior — estes itens <strong>não são candidatos a retomar depois</strong>. O usuário os rejeitou de forma definitiva em 2026-09-02. Nenhum agente deve reabrir ou reconsiderar estes itens sem uma nova confirmação explícita do usuário.</p>
+    <ul class="gap-list">
+      <li><span class="tag disqualified">Desqualificado</span><strong>Acompanhamento dinâmico entre câmeras</strong> (antiga previsão de RULE-SEC-03, depois tratada por um curto período como "adiado"). Mensagem literal do usuário: <em>"Acompanhamento dinamico entre cameras, retire também. Não haverá."</em> RULE-SEC-03 é definitivamente câmera estática do local — um sinal de intrusão, uma câmera fixa exibida, sem qualquer troca de câmera conforme a pessoa se desloca entre zonas. Ver <a href="#camera">Câmera do Local</a>.</li>
+      <li><span class="tag disqualified">Desqualificado</span><strong>Níveis de vigilância</strong> (básico/intermediário/avançado, RULE-SEC-06). Mensagem literal do usuário: <em>"Niveis de vigilancia -> exclua completamente. Não haverá essa divisão."</em> Diferente da nota anterior deste documento (que descrevia a implementação exata como "pendente de definição"), esta é uma decisão de produto fechada: o conceito de níveis de vigilância configuráveis por área/instituição <strong>não existe</strong> no CheckClass. Nenhuma área ou instituição terá essa divisão configurável — não é um gap técnico a resolver no futuro.</li>
+      <li><span class="tag disqualified">Desqualificado</span><strong>Permissão <code>follow_camera_events</code></strong> (RULE-ACC-07). Consequência direta da desqualificação do acompanhamento dinâmico acima — a permissão que controlava essa funcionalidade deixou de fazer sentido. Confirmado pelo usuário: <em>"Quero remover."</em> O conjunto de permissões de câmera passa de seis para cinco códigos. Ver <a href="#permissoes">Permissões</a>. Já existe código-fonte declarando essa permissão, ainda não removido — pendência técnica de baixo risco para o Backend/Frontend Agent.</li>
+    </ul>
+  </section>
+
+  <section id="gaps">
+    <h2 class="section-title">Gaps/Pendências Reais em Aberto</h2>
+    <p>Diferente da seção anterior, estes não são itens adiados por decisão de escopo — são lacunas técnicas que ainda precisam de trabalho antes da implementação real começar.</p>
+    <ul class="gap-list">
+      <li><span class="tag">Gap</span><strong>Tecnologia de contagem de entrada/saída</strong> (RULE-SEC-05). Ver <a href="#contagem">seção dedicada</a> acima — a restrição de precisão está confirmada, e desde 2026-09-02 há uma direção técnica bem mais concreta (câmera vinculada à sala de aula + visão computacional, cruzando com a contagem de tags do leitor da sala), mas a tecnologia final (biblioteca, método) continua não escolhida — a cargo do Tech Decision Agent, agora também com o Computer Vision Agent.</li>
+      <li><span class="tag">Gap</span><strong>Frequência exata da contagem periódica por câmera</strong> (novo, RULE-SEC-05). O exemplo do usuário sugere algo na faixa de 5–15 minutos (aula às 19:00, contagem às 19:15), mas não foi confirmado como regra geral.</li>
+      <li><span class="tag">Gap</span><strong>Comportamento em caso de divergência entre contagem por câmera e contagem por tag</strong> (novo, RULE-SEC-05). Não confirmado se uma divergência gera incidente de segurança, um alerta ao professor, ou apenas um registro de log para auditoria posterior — nem quem seria notificado.</li>
+      <li><span class="tag">Gap</span><strong>Escopo do mecanismo de contagem por câmera — sala de aula ou também áreas gerais</strong> (novo, RULE-SEC-05). O exemplo dado pelo usuário é inteiramente de sala de aula/turma; não presumir que o mesmo mecanismo se estende a corredores ou zonas restritas sem contexto de aula.</li>
+      <li><span class="tag">Gap</span><strong>Mesma câmera ou câmera adicional por sala</strong> (novo, RULE-SEC-05). Não confirmado se a câmera usada para contagem em sala de aula é a mesma câmera fixa já aprovada para Segurança de Intrusão, ou uma câmera adicional dedicada a cada sala — implicação real de hardware/custo, relevante para o Hardware Evaluation Agent.</li>
+      <li><span class="tag">Gap</span><strong>Software de relay RTSP→HLS/WebRTC</strong> entre câmera e navegador. Necessário para qualquer exibição de vídeo pelo navegador (mesmo a exibição estática de uma única câmera desta rodada), mas nunca foi escolhido — sinalizado apenas como tarefa futura de dimensionamento de IoT/DevOps, sem urgência enquanto vídeo ao vivo continuar adiado.</li>
+      <li><span class="tag">Gap de modelagem</span><strong>Vínculo categoria de pulseira → área no schema</strong> (RULE-ACC-02). O conceito "categoria da pulseira tem permissão válida de área/bloco/período" é regra de negócio confirmada, mas o vínculo concreto (tabela/colunas) não existe hoje — a tabela <code>wristband_category</code> atualmente só tem <code>id</code>/<code>tenant_id</code>/<code>name</code>. Também afeta onde a FK de <code>areaId</code> do payload de barreira IR deveria apontar. Fica para o Database Agent quando a implementação começar.</li>
+    </ul>
+    <p style="font-size: 13.5px; color: var(--muted); margin-top: 14px;">Os níveis de vigilância (RULE-SEC-06) <strong>não aparecem mais aqui</strong> — deixaram de ser um gap técnico e viraram uma decisão de produto fechada de exclusão. Ver <a href="#desqualificados">Desqualificado / Removido Permanentemente</a>.</p>
+  </section>
+
+  <section id="status">
+    <h2 class="section-title">Status Atual</h2>
+    <div class="status-grid">
+      <div class="status-card">
+        <h4>O que já foi aprovado</h4>
+        <ul>
+          <li>Regras de negócio — RULE-SEC-01 a 07 (2026-08-21 a 2026-09-02)</li>
+          <li>Arquitetura (segundo pipeline orientado a eventos, 6 componentes) — 2026-08-23</li>
+          <li>Tecnologia (hardware de barreira IR, autenticação, contrato de payload, hardware de câmera) — 2026-08-23</li>
+          <li>Permissões de câmera e de gestão de incidente (7 códigos) — 2026-08-23</li>
+          <li>RULE-SEC-03 definitivamente câmera estática (acompanhamento dinâmico entre câmeras desqualificado por completo) — 2026-09-02</li>
+          <li>Níveis de vigilância (RULE-SEC-06) desqualificados por completo — 2026-09-02</li>
+          <li>Permissão <code>follow_camera_events</code> removida (6 → 5 códigos de câmera) — 2026-09-02</li>
+          <li>Nova direção técnica para contagem de entrada/saída (câmera + visão computacional, RULE-SEC-05) — 2026-09-02</li>
+        </ul>
+      </div>
+      <div class="status-card">
+        <h4>O que ainda não existe</h4>
+        <ul>
+          <li>Nenhuma migration desta feature aplicada</li>
+          <li>Nenhum Gateway de Ingestão de Sinais de Segurança</li>
+          <li>Nenhum Serviço de Identidade por Pulseira, Autorização de Área, Motor de Detecção de Intrusão, Registro de Alertas ou Serviço de Câmeras</li>
+          <li>Nenhuma tela de Incidentes de segurança/Câmeras no dashboard</li>
+          <li>Nenhum teste</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">
+      <span class="tag">Exceção parcial — não é código novo desta feature</span>
+      O mecanismo de autenticação por dispositivo (API key, hash SHA-256) já existe em código hoje (<code>device-auth.service.ts</code>, <code>device-auth.guard.ts</code>, migration <code>1755751000000-AddDeviceApiKey.ts</code>), mas foi construído originalmente para o núcleo de presença. Em 2026-08-23 o usuário ratificou retroativamente que este mesmo mecanismo, sem alteração, também cobre os novos dispositivos de segurança (barreira IR, leitor de área) — uma única decisão de tecnologia, não duas. Isso não significa que qualquer parte específica de Segurança de Intrusão já foi implementada; é reaproveitamento de uma peça já pronta do núcleo.
+    </div>
+    <p>A implementação real (IoT, Visão Computacional, Backend, Database, Frontend, Security, Testing) é trabalho de uma rodada futura separada e multidisciplinar — exatamente o motivo pelo qual este documento existe como área própria, conforme pedido do usuário em 2026-09-02.</p>
+  </section>
+
+</main>
+
+<footer>
+  Documento gerado a partir das decisões confirmadas do projeto CheckClass para a área "Segurança de Intrusão". Fontes: <code>.claude/skills/business-rules/references/security-intrusion-rules.md</code> (RULE-SEC-01 a 07), <code>.claude/skills/business-rules/references/access-control-rules.md</code> (RULE-ACC-02, RULE-ACC-07), <code>.claude/skills/project-knowledge/references/architecture-overview.md</code> ("Decisão de arquitetura — Segurança de Intrusão, primeira rodada" e "Decisão de tecnologia — Segurança de Intrusão, primeira rodada", aprovadas em 2026-08-23, com notas de atualização de 2026-09-02) e <code>.claude/skills/project-knowledge/references/pending-decisions.md</code> (gaps, escopo adiado e a instrução do usuário de 2026-09-02 que originou este documento). Ver também <a href="checkclass-visao-geral.html">checkclass-visao-geral.html</a> para a visão geral do produto.
+</footer>
+
+</body>
+</html>

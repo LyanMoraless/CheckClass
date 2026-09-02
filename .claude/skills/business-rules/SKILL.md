@@ -98,18 +98,44 @@ so agents can find the referenced rule quickly without reading everything.
   2026-08-31 correction note: deployment model changed to one dedicated
   instance per institution, while the technical tenant_id+RLS isolation
   mechanism stays as defense in depth.
-- `references/institution-management-rules.md` — RULE-INST-01..05
-  (added 2026-08-31, part of the institution-management structural
-  pivot): fixed institution-type enum (faculdade/escola/empresa) and what
-  each enables, self-service onboarding with single-instance lock,
-  Curso→Matéria→Turma academic modeling, automatic class-session
-  generation from a recurring schedule, automatic pending-review
-  resolution authority when a teacher is assigned to a class group.
+- `references/institution-management-rules.md` — RULE-INST-01..14
+  (RULE-INST-01..05 added 2026-08-31 as part of the institution-management
+  structural pivot; 06..13 added in later 2026-08-31/09-01 rounds;
+  RULE-INST-14 added 2026-09-02): fixed institution-type enum
+  (faculdade/escola — empresa was disqualified 2026-09-02, see
+  pending-decisions.md) and what each enables, self-service onboarding
+  with single-instance lock, Curso→Matéria→Turma academic modeling,
+  automatic class-session generation from a recurring schedule, automatic
+  pending-review resolution authority when a teacher is assigned to a
+  class group, room assignment/visibility, cascade deletion, class-group
+  assembly authority, schedule-conflict detection, enrollment status enum,
+  permission reuse, and **RULE-INST-14 (future feature, implementation NOT
+  approved): a class group holds SEVERAL subjects**, inverting the
+  single-subject model currently implemented (`class_group.subject_id`).
 - `references/data-retention-rules.md` — RULE-RET-01..04: 60-day live
   data window before monthly closure archival, annual consolidation
   after 12 monthly closures, per-factor-type deduplication time windows
   (10s point-in-time factors, 2s room entry/exit), technical
   administrator role separate from the pedagogical leadership hierarchy.
+- `references/exam-rules.md` — RULE-EXAM-01..17: "Área de Provas"
+  (product priority, applicable institution types, question types,
+  proctoring/monitoring, backend-controlled timer, session lifecycle,
+  audit trail, grading, exam↔class-group binding, answer-key visibility).
+- `references/attendance-frequency-rules.md` — RULE-FREQ-01..04
+  (added 2026-09-02, **future feature, implementation NOT approved**):
+  accumulated attendance percentage **per subject** as a new control
+  stacked on top of the per-class permanence percentage (RULE-ATT-04),
+  configurable assessment period (bimonthly/quarterly/semiannual, same
+  institution→course→class-group scope hierarchy), automatic
+  near-the-limit warning relative to the configured minimum, and the
+  warning's behavior (first login + alarm-icon notice area on the
+  student's home, per subject, until the class group ends).
+- `references/absence-justification-rules.md` — RULE-JUST-01..04
+  (added 2026-09-02, **future feature, implementation NOT approved**):
+  student submits an absence justification (day, subject filtered by that
+  day, message, medical-certificate attachment); teacher approves
+  (removes the absence) or rejects (keeps it); the attachment is LGPD
+  **sensitive health data** and requires Security Agent review.
 - `references/configurable-parameters.md` — index of values that must
   never be hardcoded (minimum attendance %, check-in tolerance, access
   permissions/schedules, surveillance levels, lockdown rules, required

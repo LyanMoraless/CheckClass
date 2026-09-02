@@ -187,6 +187,13 @@
     text-transform: uppercase;
     margin-right: 6px;
   }
+  .gap-list li .tag.disqualified {
+    color: #fff;
+    background: var(--pill-core);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
   footer {
     max-width: 900px;
     margin: 0 auto;
@@ -250,7 +257,7 @@
         <div>
           <span class="pill p3">Prioridade 3</span>
           <strong>Segurança de Intrusão</strong>
-          <span class="desc">Camada complementar de segurança física — nunca o foco principal do sistema.</span>
+          <span class="desc">Camada complementar de segurança física — nunca o foco principal do sistema. Ver <a href="checkclass-seguranca-intrusao.html">documento dedicado</a>.</span>
         </div>
       </li>
       <li>
@@ -258,7 +265,7 @@
         <div>
           <span class="pill p4">Prioridade 4</span>
           <strong>Demais funcionalidades</strong>
-          <span class="desc">Inteligência artificial futura e outras ideias ainda não definidas.</span>
+          <span class="desc">Inteligência artificial futura, Área de Provas (faculdade/escola — ver documento dedicado) e outras ideias ainda não definidas.</span>
         </div>
       </li>
     </ul>
@@ -334,7 +341,7 @@
 
   <section id="security">
     <h2 class="section-title">Segurança de Intrusão</h2>
-    <p>Camada complementar (3ª prioridade) que detecta pessoas não autorizadas nas instalações e acompanha seus movimentos — nunca substitui o foco principal de presença.</p>
+    <p>Camada complementar (3ª prioridade) que detecta pessoas não autorizadas nas instalações e acompanha seus movimentos — nunca substitui o foco principal de presença. Resumo abaixo — ver <a href="checkclass-seguranca-intrusao.html">documento dedicado</a> para o detalhamento completo (regras de negócio, arquitetura, tecnologia, gaps).</p>
 
     <div class="feature-card">
       <h4>Detecção de intrusão</h4>
@@ -345,8 +352,8 @@
       <p>Barreiras posicionadas estrategicamente (ex.: uma por andar) estimam em qual região do prédio está o intruso. Quanto maior a cobertura de sensores, maior a precisão.</p>
     </div>
     <div class="feature-card">
-      <h4>Câmeras seguem o intruso automaticamente</h4>
-      <p>Conforme a localização estimada do intruso muda, a câmera mais próxima da nova região assume a tela cheia automaticamente, facilitando o acompanhamento pela equipe de segurança.</p>
+      <h4>Câmera do local sinalizado (escopo definitivo, revisado em 2026-09-02)</h4>
+      <p>Ao detectar um sinal de intrusão, o sistema abre automaticamente a câmera fixa do local que originou o sinal — comportamento definitivo, não apenas desta rodada. O acompanhamento dinâmico entre câmeras (trocar de câmera conforme a pessoa se move entre zonas) foi <strong>desqualificado por completo</strong> pelo usuário: "não haverá" essa funcionalidade, em nenhuma rodada futura. Ver <a href="checkclass-seguranca-intrusao.html">documento dedicado</a>.</p>
     </div>
     <div class="feature-card">
       <h4>Um incidente por intrusão em andamento</h4>
@@ -433,13 +440,13 @@
     <h2 class="section-title">Ainda em Aberto</h2>
     <p>Pontos conscientemente adiados ou ainda não definidos — não devem ser tratados como decisão fechada:</p>
     <ul class="gap-list">
-      <li><span class="tag">Adiado</span>Bloqueio automático de portas durante intrusão.</li>
+      <li><span class="tag">Adiado</span>Segurança de Intrusão (Prioridade 3): bloqueio automático de portas, vídeo ao vivo das câmeras pelo navegador, e tecnologia de contagem exata de entrada/saída (restrição de precisão confirmada; desde 2026-09-02 há também uma direção técnica mais concreta — câmera de sala de aula + visão computacional, cruzada com contagem de tags — mas a tecnologia final ainda não foi escolhida). Regras e arquitetura já aprovadas — ver <a href="checkclass-seguranca-intrusao.html">documento dedicado</a>.</li>
+      <li><span class="tag disqualified">Desqualificado</span>Acompanhamento dinâmico de câmera entre zonas e níveis de vigilância (básico/intermediário/avançado) foram <strong>desqualificados por completo</strong> pelo usuário em 2026-09-02 — decisões permanentes, não itens adiados a retomar depois. Ver <a href="checkclass-seguranca-intrusao.html">documento dedicado</a>.</li>
       <li><span class="tag">Não definido</span>Escopo e finalidade exata da Inteligência Artificial no produto.</li>
-      <li><span class="tag">Não definido</span>Implementação exata dos níveis de vigilância (básico/intermediário/avançado).</li>
-      <li><span class="tag">Não definido</span>Tecnologia de contagem de entrada/saída de pessoas.</li>
       <li><span class="tag">Gap</span>Hierarquia administrativa interna detalhada (além de professor → coordenador → diretor).</li>
       <li><span class="tag">Gap</span>Conteúdo de interface para tipos de instituição além de escola e empresa (universidade, igreja, hospital, evento).</li>
       <li><span class="tag">Fora desta rodada</span>App mobile ainda não cobre "Atividades" (escola) nem o conteúdo voltado a empresas.</li>
+      <li><span class="tag">Adiado</span>Área de Provas (Prioridade 4, faculdade/escola): tipos de pergunta adicionais do Google Forms, banco de questões reutilizável, pausa de timer configurável e agente de monitoramento nativo/desktop. Design de arquitetura/dados já aprovado, implementação ainda não iniciada — ver <a href="checkclass-area-de-provas.html">documento dedicado</a>.</li>
     </ul>
   </section>
 

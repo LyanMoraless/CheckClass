@@ -33,6 +33,19 @@ apuração de presença é comum a todas.
 > suportados. "Faculdade" é o termo adotado para a instituição de ensino
 > superior (não "universidade", que constava na lista anterior).
 
+> **Desqualificação definitiva — "empresa" (2026-09-02):** o enum de três
+> valores confirmado acima (faculdade, escola, empresa) está **superado**.
+> O usuário desqualificou completamente **"empresa"** como tipo de
+> instituição suportado pelo CheckClass — decisão fechada e permanente, não
+> mais um adiamento "por ora"/"fora desta rodada" como outros itens desta
+> skill. O enum de tipo de instituição passa a ter **exatamente dois
+> valores: faculdade, escola**. Ver detalhamento completo, incluindo a
+> pendência técnica de limpeza de código-fonte ainda não executada, em
+> "Decisão — Desqualificação definitiva do tipo de instituição 'empresa'
+> (2026-09-02)" em `project-knowledge/references/pending-decisions.md`, e o
+> addendum correspondente em RULE-INST-01
+> (`business-rules/references/institution-management-rules.md`).
+
 ## Prioridade oficial do produto (não alterar silenciosamente)
 
 1. **CheckClass (apuração de presença multifatorial)** — o CORE. Nunca
@@ -70,6 +83,34 @@ núcleo do sistema contradiz esta priorização e deve ser flagada.
 > apenas quanto à priorização entre presença e gerenciamento institucional
 > — não se aplica a segurança/IA, que continuam abaixo de ambos.
 
+### Nova funcionalidade confirmada na Prioridade 4 — Área de Provas (2026-09-02)
+
+O usuário confirmou explicitamente que a nova feature "Área de Provas"
+(exam area — alunos realizam provas/avaliações online, com monitoramento/
+proctoring configurável e timer controlado pelo backend) se encaixa na
+**Prioridade 4 ("Demais funcionalidades")** já listada acima — não vira um
+pilar/prioridade própria, nem se sobrepõe a Gerenciamento da Instituição,
+CheckClass (apuração de presença) ou Segurança de Intrusão. Detalhamento
+das regras de negócio confirmadas: ver
+`business-rules/references/exam-rules.md`. Núcleo funcional da prova em si
+(quais perguntas, correção, etc.) ainda em confirmação — ver
+`project-knowledge/references/pending-decisions.md`.
+
+### Canal de autoatendimento da Prioridade 1 — pivot para portal web (2026-09-02)
+
+O parênteses "incluindo app mobile" da Prioridade 1 acima descrevia
+implicitamente o App Mobile como o canal de autoatendimento de
+Aluno/Professor para o conteúdo de Gerenciamento da Instituição. Isso está
+**superado**: o usuário confirmou que o **Frontend Web** passa a ser o
+canal primário de autoatendimento para Aluno, Professor e Coordenador
+(incluindo esse mesmo conteúdo — cronograma, presença/faltas — mais a Área
+de Provas), e o App Mobile passa a ser um cliente secundário que reflete o
+mesmo conteúdo, não descartado. Isso não altera a ordem de prioridade de
+produto em si (Gerenciamento da Instituição continua prioridade 1) — é uma
+mudança de canal/interface, não de prioridade. Detalhamento completo: ver
+"Pivot — Portal de autoatendimento (self-service)..." em
+`project-knowledge/references/architecture-overview.md`.
+
 ## Segmento / mercado
 
 Segmento: **gestão institucional com foco em controle de presença físico
@@ -86,6 +127,11 @@ aqui após confirmação do usuário.
 > O segmento real de atuação nesta rodada é **educação (faculdade, escola)
 > e corporativo (empresa)** — saúde e eventos não são mais um caso de uso
 > ativo até reintrodução explícita futura.
+
+> **Correção adicional (2026-09-02):** o segmento "corporativo (empresa)"
+> descrito acima também está superado — ver "Desqualificação definitiva —
+> 'empresa'" na seção "O que é o CheckClass" acima. O segmento real de
+> atuação do CheckClass passa a ser **apenas educação (faculdade, escola)**.
 
 ## Terminologia de domínio
 

@@ -96,6 +96,67 @@ facilitar o acompanhamento pela equipe de segurança.
 **Exceptions:** Nenhuma.
 **Source of confirmation:** Prompt Mestre, seção 19.
 
+**Addendum — redução de escopo desta rodada para exibição estática de
+câmera única, confirmado pelo usuário em 2026-09-02:** o comportamento
+descrito no `Statement` acima ("conforme o intruso se desloca, a câmera
+correspondente à nova região assume a tela cheia") está **reduzido para
+esta rodada**, não removido do enunciado histórico da regra. Mensagem
+literal do usuário (contexto de negócio): "Essa questão de seguir o
+intruso, vamos deixar de lado. Por hora vamos apenas nos preocupar com
+abrir a câmera referente ao local que sinalizou uma intrusão. Essa
+feature [seguir o intruso entre câmeras] depende da integração com outros
+dispositivos. Ela ficará para um segundo momento."
+
+Escopo revisado desta rodada: quando um sinal de intrusão é detectado em
+um local/zona, o sistema abre/exibe automaticamente **apenas a câmera
+fixa daquele local específico que originou o sinal** — sem trocar de
+câmera, sem acompanhar/seguir o intruso caso ele se mova para outra zona
+coberta por outra câmera. Comportamento estático: um sinal → uma câmera
+fixa exibida, ponto final.
+
+**Adiado para uma rodada futura (não rejeitado), mesmo padrão de
+adiamento já usado em RULE-SEC-04 abaixo e no vídeo ao vivo das câmeras:**
+o acompanhamento automático dinâmico — trocar de câmera conforme o
+intruso se move entre zonas, correlacionando sinais de múltiplos
+dispositivos (barreiras IR, leitores de área, câmeras) para rastrear a
+localização atual — fica para um segundo momento. Motivo explícito dado
+pelo usuário: depende de integração mais ampla com outros dispositivos
+(trabalho multidisciplinar). Ver "Escopo confirmado (revisado
+2026-09-02)... Segurança de Intrusão, primeira rodada" em
+`project-knowledge/references/pending-decisions.md`.
+
+> **Correção (2026-09-02, mesma sessão) — de "adiado" para
+> "desqualificado por completo":** o parágrafo acima, que tratava o
+> acompanhamento dinâmico entre câmeras como item **adiado para rodada
+> futura**, está **superado**. Mensagem literal do usuário: "Acompanhamento
+> dinamico entre cameras, retire também. Não haverá." Diferente de um
+> adiamento (que mantém o item como candidato legítimo a retomar depois),
+> esta é uma decisão **permanente**, mesmo padrão já usado para a
+> desqualificação do tipo de instituição "empresa" e para a remoção dos
+> tipos de pergunta adicionais estilo Google Forms da Área de Provas: **não
+> haverá acompanhamento dinâmico entre câmeras nesta ou em rodadas
+> futuras**, a menos que o usuário reabra o assunto explicitamente. O
+> escopo estático confirmado no corpo do addendum acima (uma câmera fixa
+> por local/zona que originou o sinal) não muda — continua sendo o
+> comportamento definitivo de RULE-SEC-03, não apenas o comportamento desta
+> rodada. Ver correção equivalente em
+> `project-knowledge/references/pending-decisions.md` ("Escopo confirmado
+> (revisado em 2026-09-02)... Segurança de Intrusão" e
+> "Correção/redução de escopo (2026-09-02) — RULE-SEC-03...").
+> **Source of confirmation:** Usuário, 2026-09-02.
+
+Esta revisão afeta **apenas RULE-SEC-03** — não altera RULE-SEC-01
+(detecção) nem RULE-SEC-02 (localização/alerta), que permanecem como
+estavam.
+
+Esta confirmação também **resolve** o gap sinalizado em
+"Confirmado-adiado — Vídeo ao vivo das câmeras não é prioridade desta
+rodada (2026-09-02)" (`project-knowledge/references/pending-decisions.md`)
+sobre se RULE-SEC-03 precisaria ser ajustada em consequência do adiamento
+do vídeo ao vivo — a resposta é sim, e este addendum é esse ajuste.
+
+**Source of confirmation:** Usuário, 2026-09-02.
+
 ### RULE-SEC-04: Bloqueio automático de portas/ambientes em intrusão (com ressalva de emergência)
 
 **Statement:** Em situações configuráveis, o sistema pode bloquear
@@ -134,6 +195,91 @@ si).
 **Exceptions:** Nenhuma.
 **Source of confirmation:** Prompt Mestre, seção 16.
 
+**Addendum — precisão exigida, confirmado pelo usuário em 2026-09-02:**
+em resposta a uma pergunta de esclarecimento em linguagem simples ("o que
+o sistema deve saber dizer depois que uma pessoa passa por uma
+entrada/saída?"), o usuário confirmou a opção de maior exigência: o
+sistema deve **contar exatamente quantas pessoas entraram/saíram, mesmo
+quando passam em grupo/juntas simultaneamente** — não é aceitável uma
+solução que apenas estima quantidade ou que falha em distinguir
+indivíduos em passagem simultânea em grupo. Isto **não escolhe a
+tecnologia** (a decisão de qual tecnologia usar continua pendente, a
+cargo do Tech Decision Agent com apoio do Hardware Evaluation — ver
+`project-knowledge/references/pending-decisions.md`), mas fecha uma
+restrição de precisão que antes não existia explicitamente: qualquer
+tecnologia candidata deve suportar contagem exata sob passagem
+simultânea/em grupo, reforçando o próprio texto desta regra ("não se deve
+assumir que uma barreira infravermelha simples resolve todos os
+cenários").
+
+**Addendum — nova direção técnica confirmada pelo usuário (2026-09-02):
+contagem via câmera + visão computacional, não dispositivo dedicado.**
+Este addendum registra uma **orientação de produto**, não uma escolha de
+tecnologia fechada — a decisão técnica final continua a cargo do Tech
+Decision Agent (agora também com apoio necessário do **Computer Vision
+Agent**, não apenas do Hardware Evaluation Agent), mas com um direcionamento
+muito mais específico e restritivo do que existia antes deste addendum.
+
+Mensagem literal do usuário: "Essa tecnologia de contagem não
+necessariamente precisa ser feita com um dispositivo. Penso em
+integrarmos as câmeras no sistema que são vinculadas a uma sala de aula.
+Ela com a biblioteca OpenCV (ou com outros métodos) de tempos em tempos
+pode fazer a contagem. Exemplo: 19hrs a aula inicia. Até 19:10 45 tags são
+registradas na sala de aula (passando a tag no leitor que fica em cima da
+mesa do professor). 19:15 a câmera faz uma contagem de pessoas, deve bater
+com a quantidade de tags passadas."
+
+Pontos confirmados por esta direção:
+- A contagem **não precisa** de um sensor/dispositivo dedicado de
+  contagem (ex.: sensor IR de barreira contando passagem). Pode ser feita
+  reaproveitando **câmeras já vinculadas à sala de aula/turma** — atenção:
+  isso pode implicar um footprint de câmera diferente do já aprovado para
+  Segurança de Intrusão (uma câmera por sala de aula, não necessariamente
+  a mesma câmera fixa por zona de segurança de "Decisão de tecnologia —
+  Segurança de Intrusão, primeira rodada", item 4,
+  `project-knowledge/references/architecture-overview.md`) — **não
+  presumir que é a mesma câmera**, ver gap registrado abaixo.
+- O mecanismo é **contagem periódica via visão computacional** — biblioteca
+  citada como exemplo pelo usuário: OpenCV (mesma biblioteca já aprovada
+  para o núcleo, "Decisão de tecnologia — Núcleo do CheckClass", item 5,
+  `architecture-overview.md`) — mas **não é escolha de biblioteca fechada**
+  ("ou com outros métodos" foi dito explicitamente pelo usuário). Não é
+  rastreamento contínuo individual de entrada/saída por barreira.
+- **Propósito de auditoria/validação cruzada:** a contagem por câmera deve
+  ser comparada com a contagem de registros de presença já feitos via
+  tag/pulseira no leitor da sala — o pipeline de chamada já existente do
+  núcleo do CheckClass (`raw_identification_event`, RULE-ATT-* em
+  `business-rules/references/attendance-rules.md`). Se os números não
+  baterem, isso sinaliza uma possível divergência/fraude/anomalia (ex.:
+  tag repassada por outra pessoa, pessoa presente sem tag registrada).
+  Ver nota cruzada em `business-rules/references/attendance-rules.md`.
+- Exemplo temporal dado pelo usuário: aula inicia às 19:00; até 19:10, o
+  sistema já registrou 45 tags passadas no leitor da sala; às 19:15 a
+  câmera faz uma contagem de pessoas fisicamente presentes, que deve bater
+  com as 45 tags.
+
+Isto cruza dois domínios já existentes no projeto — Segurança de Intrusão
+(esta regra) e o núcleo de Presença/Chamada (RULE-ATT-*) — uma ponte
+conceitual que não existia antes deste addendum.
+
+**Gaps novos, não presumidos, registrados em
+`project-knowledge/references/pending-decisions.md`:**
+- Frequência exata da contagem periódica (o exemplo do usuário usa
+  ~5–15 min, mas não foi confirmado como regra geral).
+- O que acontece quando a contagem por câmera não bate com a contagem por
+  tag (gera incidente de segurança? alerta ao professor? apenas log para
+  auditoria posterior? quem é notificado?).
+- Se este mecanismo é específico do contexto "sala de aula/turma"
+  (chamada) ou se também se aplica às áreas gerais de Segurança de
+  Intrusão (corredores, zonas restritas sem contexto de aula) — o exemplo
+  do usuário é 100% sala de aula, não presumir generalização.
+- Se a câmera de sala de aula é a MESMA câmera fixa já aprovada para
+  Segurança de Intrusão ou uma câmera adicional/diferente vinculada a cada
+  sala — implicação de hardware/custo relevante para o Hardware
+  Evaluation Agent.
+
+**Source of confirmation:** Usuário, 2026-09-02.
+
 ### RULE-SEC-06: Níveis de vigilância configuráveis
 
 **Statement:** O sistema pode ter diferentes níveis de vigilância, onde
@@ -146,6 +292,26 @@ projeto — não tratar os exemplos acima como especificação fechada.
 **Applies to:** Configuração de vigilância por área/instituição.
 **Exceptions:** N/A — os exemplos de nível não são definitivos.
 **Source of confirmation:** Prompt Mestre, seção 27.
+
+> **Addendum (2026-09-02) — regra desqualificada/superada, decisão de
+> produto fechada:** o `Statement` acima descreve o conceito original do
+> Prompt Mestre, preservado aqui como histórico — **não é mais o
+> comportamento do CheckClass**. Mensagem literal do usuário: "Niveis de
+> vigilancia -> exclua completamente. Não haverá essa divisão." Isto
+> substitui a nota anterior de 2026-09-02 (registrada em
+> `project-knowledge/references/pending-decisions.md`), que dizia apenas
+> que o usuário "não entendeu a pergunta e pediu para deixar de lado por
+> enquanto" — aquilo era tratado como pendência técnica ainda em aberto;
+> isto aqui é diferente: é uma **decisão de produto fechada** de que o
+> conceito de "níveis de vigilância" (básico/intermediário/avançado, ou
+> qualquer variação equivalente) **não existe** no CheckClass. Nenhuma área
+> ou instituição terá essa divisão configurável. Não tratar como pendência
+> a resolver no futuro — é rejeição permanente, não adiamento. Ver
+> correção equivalente em
+> `project-knowledge/references/pending-decisions.md` ("Decisão pendente —
+> Implementação exata dos níveis de vigilância") e em
+> `project-knowledge/references/architecture-overview.md` onde aplicável.
+> **Source of confirmation:** Usuário, 2026-09-02.
 
 ### RULE-SEC-07: Ciclo de vida de fechamento de incidente de intrusão
 
@@ -187,7 +353,13 @@ RULE-ATT-15, `business-rules/references/attendance-rules.md`). Não é um
 conceito de autorização novo, apenas mais um código no mesmo modelo já
 aprovado. Visualizar e fechar incidentes de intrusão (esta regra) é
 gateado por essa permissão. Alternativa rejeitada: reaproveitar um dos
-seis códigos de permissão de câmera de RULE-ACC-07
+códigos de permissão de câmera de RULE-ACC-07
 (`business-rules/references/access-control-rules.md`) — rejeitada por
 serem especificamente sobre capacidades de câmera, uma preocupação
 diferente e mais estreita que a gestão geral de incidentes.
+
+> **Nota (2026-09-02):** o texto acima dizia "um dos seis códigos" — a
+> contagem caiu para cinco em 2026-09-02, com a remoção de
+> `follow_camera_events` (ver "Nota de remoção" em RULE-ACC-07,
+> `business-rules/references/access-control-rules.md`). Não afeta o
+> raciocínio desta nota, apenas a contagem literal.

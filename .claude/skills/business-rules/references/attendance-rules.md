@@ -56,6 +56,26 @@ do sistema.
 **Source of confirmation:** Prompt Mestre, seção 6 (exemplo dos 75% /
 aula de 2 horas).
 
+> **Nota de precisão e referência cruzada (2026-09-02) — esta regra NÃO é
+> frequência acumulada:** verificação no código real
+> (`backend/src/modules/attendance-rules/attendance-rules-engine.service.ts`,
+> linha 160) confirma que o `min_attendance_percentage` configurável de
+> hoje significa **percentual de permanência dentro de UMA aula/sessão**,
+> decidindo se aquela aula conta como presença ou falta — exatamente o que
+> esta regra descreve, e **nada além disso**. Não existe hoje nenhum
+> cálculo de frequência do aluno ao longo de um período letivo, nem
+> conceito de período de apuração.
+> Uma **feature futura** (não aprovada para implementação, registrada em
+> 2026-09-02) adiciona esse segundo controle, empilhado sobre este e sem
+> alterá-lo: frequência acumulada **por matéria** ao longo de um período de
+> apuração configurável (bimestral/trimestral/semestral), com aviso
+> automático de proximidade do limite. Ver RULE-FREQ-01 a 04 em
+> `business-rules/references/attendance-frequency-rules.md` e a feature
+> irmã de justificativa de faltas em
+> `business-rules/references/absence-justification-rules.md`
+> (RULE-JUST-01 a 04). RULE-ATT-04 permanece **sem alteração**.
+> **Source of confirmation:** Usuário, 2026-09-02.
+
 ### RULE-ATT-05: Tolerância de atraso para check-in configurável
 
 **Statement:** O sistema deve permitir configurar um período de
@@ -143,6 +163,24 @@ entrada e a última saída.
 **Source of confirmation:** Confirmado pelo usuário via clarificação do
 Business Analyst, 2026-08-21.
 
+> **Nota de referência cruzada (2026-09-02) — nova ponte conceitual com
+> Segurança de Intrusão, não uma regra nova:** o usuário deu uma direção
+> técnica (não uma regra de negócio fechada) para que a contagem de
+> entrada/saída de RULE-SEC-05
+> (`business-rules/references/security-intrusion-rules.md`) seja feita via
+> câmeras vinculadas à sala de aula + visão computacional, com contagem
+> periódica comparada aos registros de tag já capturados por este pipeline
+> de chamada (`raw_identification_event`, RULE-ATT-*), para fins de
+> auditoria/validação cruzada (ex.: detectar tag repassada por outra
+> pessoa, pessoa presente sem tag registrada). Ver addendum completo em
+> RULE-SEC-05 e "Nova direção técnica confirmada (2026-09-02)... Tecnologia
+> de contagem de entrada/saída" em
+> `project-knowledge/references/pending-decisions.md` — inclui gaps ainda
+> não confirmados (frequência da contagem, comportamento em caso de
+> divergência, escopo sala de aula vs. áreas gerais, mesma câmera ou
+> câmera adicional). Esta nota é apenas um ponteiro; nenhuma regra de
+> negócio nova nasce aqui.
+
 ### RULE-ATT-09: Saída não detectada gera pendência, não é assumida
 
 **Statement:** Quando o evento de saída de um aluno nunca é capturado
@@ -201,6 +239,11 @@ Business Analyst, 2026-08-21.
 > Professor → Coordenador de Curso → Direção/Reitoria (Aluno é o ator
 > sujeito à apuração, não um nível de autoridade). A ressalva de
 > "Exceptions" continua válida, sem alteração, para escola e empresa.
+
+> **Atualização (2026-09-02):** "empresa" foi desqualificada definitivamente
+> como tipo de instituição (ver
+> `business-domain/references/domain-overview.md`) — a ressalva acima
+> **só se aplica a escola** a partir de agora.
 
 ### RULE-ATT-13: Instituição pode cadastrar fatores de chamada próprios
 

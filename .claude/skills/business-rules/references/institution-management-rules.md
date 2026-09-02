@@ -29,6 +29,21 @@ reintrodução explícita futura pelo usuário; não são valores válidos do
 enum nesta rodada.
 **Source of confirmation:** Usuário, 2026-08-31 (decisão #5).
 
+> **Atualização (2026-09-02) — desqualificação definitiva de "empresa":**
+> o enum de três valores acima está **superado**. O usuário desqualificou
+> completamente **"empresa"** como tipo de instituição suportado pelo
+> CheckClass — diferente da exceção acima (universidade, curso, etc.), que
+> continua um adiamento reversível, esta é uma decisão fechada e permanente.
+> O enum passa a ter **exatamente dois valores: faculdade, escola**. Ver
+> `business-domain/references/domain-overview.md` e "Decisão —
+> Desqualificação definitiva do tipo de instituição 'empresa'
+> (2026-09-02)" em `project-knowledge/references/pending-decisions.md`
+> (inclui a pendência técnica de limpeza de código-fonte, ainda não
+> executada). Escola mantém o campo de tipo disponível sem comportamento de
+> gerenciamento institucional detalhado, exatamente como antes desta
+> atualização — apenas "empresa" é removida do enum.
+> **Source of confirmation:** Usuário, 2026-09-02.
+
 ### RULE-INST-02: Onboarding self-service com trava de instância única
 
 **Statement:** A criação da instituição (tenant + conta admin) passa a
@@ -122,6 +137,18 @@ Matéria é detalhe técnico do Database Agent, não definido aqui.
 > agora.
 > **Source of confirmation:** Usuário, 2026-09-01 (terceira rodada,
 > item #7).
+
+> **Revisão de modelo (2026-09-02) — Turma passa a ter VÁRIAS Matérias
+> (texto original acima preservado, não apagado):** o trecho acima que diz
+> "**Turma** passa a ser uma oferta/instância de **uma** Matéria" descreve
+> o modelo **hoje implementado** (`class_group.subject_id`, migration de
+> backfill `1755854000000-MigrateClassGroupToSubject.ts` já aplicada) —
+> e esse modelo é **invertido** pela confirmação do usuário de 2026-09-02:
+> uma Turma passa a agrupar **várias** Matérias, cadastradas no momento de
+> criar a turma. Ver **RULE-INST-14** abaixo para o registro completo, e
+> `business-rules/references/attendance-frequency-rules.md` para a feature
+> que motivou a revisão. Nenhum código foi alterado — é feature futura.
+> **Source of confirmation:** Usuário, 2026-09-02.
 
 ### RULE-INST-04: Cronograma de aulas gera sessões automaticamente
 
@@ -239,6 +266,17 @@ atribuído por múltiplos coordenadores/múltiplas vezes. Tratar como gap.
 > para a mesma turma.
 > **Source of confirmation:** Usuário, 2026-09-01 (terceira rodada,
 > item #1).
+
+> **Confirmação (2026-09-02) — vínculo do professor continua por TURMA, não
+> por matéria:** com a Turma passando a agrupar várias Matérias
+> (RULE-INST-14), foi perguntado ao usuário se o professor passaria a ser
+> vinculado por matéria. **Não** — o professor continua vinculado à turma
+> inteira, como é hoje. Consequência confirmada: qualquer professor da
+> turma mantém autoridade sobre pendências/justificativas de **qualquer
+> matéria dela**. Esta regra permanece **sem alteração**; a confirmação é
+> registrada apenas para que nenhum agente presuma o contrário ao
+> implementar RULE-INST-14 ou as features de frequência/justificativa.
+> **Source of confirmation:** Usuário, 2026-09-02.
 
 ### RULE-INST-06: Visibilidade obrigatória da sala atribuída nas telas operacionais
 
@@ -404,3 +442,53 @@ de negócio aqui.
 ("confiarei nas suas decisões", 2026-09-01), a partir de proposta do
 Solution Architect que fecha o gap "Dados dependentes de Turma na
 exclusão em cascata" registrado em `pending-decisions.md`.
+
+### RULE-INST-14: Turma agrupa VÁRIAS Matérias (cenário 1 — turma fechada), inverte o modelo hoje implementado
+
+> **Status: feature futura, NÃO aprovada para implementação agora.**
+> Registrada a pedido explícito do usuário em 2026-09-02 ("adicione nas
+> pendências"). Escopo/regra confirmados; arquitetura, tecnologia, modelo
+> de dados e código são rodada futura separada. Nenhum código foi alterado.
+
+**Statement:** Uma **Turma passa a ter várias Matérias**, cadastradas no
+momento de criar a turma ("ao cadastrar uma turma é necessário cadastrar as
+suas respectivas matérias"). Isso **inverte o modelo hoje implementado**,
+em que `class_group.subject_id` amarra uma turma a exatamente **uma**
+matéria (RULE-INST-03, com migration de backfill
+`1755854000000-MigrateClassGroupToSubject.ts` já aplicada em código).
+
+Contexto dado pelo usuário — existem **dois cenários** de organização
+acadêmica:
+- **Cenário 1 (confirmado para esta feature):** aluno que é da faculdade
+  desde o primeiro ano, em uma turma fechada que cursa o mesmo conjunto de
+  matérias. Cada turma tem suas matérias específicas.
+- **Cenário 2 (explicitamente adiado, não rejeitado):** aluno "de grade",
+  que participa de várias turmas porque cursa matérias específicas para se
+  graduar. Registrado como pendência para revisitar em um segundo momento
+  — ver `project-knowledge/references/pending-decisions.md`.
+
+**Applies to:** Cadastro/montagem de Turma; modelagem acadêmica Curso →
+Matéria → Turma (RULE-INST-03); qualquer cálculo por matéria, em especial
+a frequência acumulada
+(`business-rules/references/attendance-frequency-rules.md`).
+**Exceptions:** Nada além do cenário 1 está confirmado. O cenário 2 **não**
+deve ser presumido nem implementado por antecipação.
+**Source of confirmation:** Usuário, 2026-09-02 (resposta literal a
+pergunta objetiva do Product Definition Agent: "Por hora, vamos trabalhar
+com o cenário 1 onde cada turma tem suas matérias específicas. Então, ao
+cadastrar uma turma é necessário cadastrar as suas respectivas matérias.
+Adicione nas pendências para em um segundo momento voltarmos a revisitar o
+cenário do aluno que faz por grade").
+
+> **Implicação estrutural conhecida (implicação, NÃO decisão de
+> arquitetura — cabe ao Solution Architect/Database Agent na rodada
+> futura):** como o controle de frequência é **por matéria**, e hoje nem
+> `class_group_schedule_slot` (grade semanal recorrente) nem
+> `class_session` (sessões concretas) têm vínculo com matéria — os dois
+> herdam implicitamente a única matéria da turma —, **cada slot de horário
+> e cada sessão de aula precisará dizer de qual matéria é**. Isso não está
+> resolvido em lugar nenhum hoje e não deve ser presumido como trivial:
+> afeta a geração automática de sessões (RULE-INST-04), o filtro de
+> matérias por dia da justificativa de falta (RULE-JUST-02,
+> `business-rules/references/absence-justification-rules.md`) e a migração
+> do dado já existente sob o modelo de matéria única.

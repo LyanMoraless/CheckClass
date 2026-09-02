@@ -274,6 +274,29 @@ chamada, resolução de pendências, usuários/grupos de permissão,
 pulseiras, dispositivos) — não o app do aluno/professor (esse é o futuro
 App Mobile, decisão separada, ainda não tomada).
 
+> **Extensão de escopo — Área de Provas (confirmada em 2026-09-02):** o
+> parágrafo acima ("não o app do aluno/professor") deixa de valer
+> especificamente para a feature "Área de Provas" — não é revertido para o
+> restante do produto. Aluno e Professor passam a usar este mesmo Frontend
+> Web (não o App Mobile) para autoria, realização e acompanhamento de
+> provas. Justificativa aprovada pelo usuário: os eventos de monitoramento
+> de RULE-EXAM-05 (`business-rules/references/exam-rules.md`) — perda de
+> foco, troca de aba, navegação externa — são conceitos de navegador que
+> não existem do mesmo jeito num app React Native/Expo; construir a
+> experiência de prova como app mobile exigiria reconstruir esses conceitos
+> de forma menos direta, sem ganho correspondente. Ver "Decisão de
+> arquitetura/tecnologia — Área de Provas" mais abaixo para o detalhamento
+> completo desta extensão de público.
+
+> **Superado (2026-09-02):** a ressalva acima ("não é revertido para o
+> restante do produto") e o parágrafo original deste tópico ("não o app do
+> aluno/professor") deixam de valer. Ver "Pivot — Portal de autoatendimento
+> (self-service) no Frontend Web substitui o App Mobile como canal
+> primário de Aluno/Professor/Coordenador (2026-09-02)", mais abaixo nesta
+> mesma skill: o Frontend Web passa a ser o canal primário de
+> autoatendimento de Aluno/Professor/Coordenador para todo o produto, não
+> apenas para a Área de Provas.
+
 1. **Framework/linguagem:** React 18+ com TypeScript, SPA (sem
    SSR/Next.js — a ferramenta é interna, autenticada, sem SEO/conteúdo
    público, então SSR resolveria um problema que não existe aqui).
@@ -307,6 +330,14 @@ tecnologia concreta o componente **App Mobile** já previsto no diagrama
 de alto nível — não é uma decisão de arquitetura nova. Escopo desta
 rodada: o conteúdo Escola/Aluno já confirmado em "Escopo confirmado —
 App Mobile, primeira rodada" abaixo.
+
+> **Papel superado (2026-09-02):** esta stack (React Native/Expo) continua
+> aprovada e não é descartada, mas o App Mobile deixa de ser o canal onde
+> este conteúdo nasce primeiro — vira um cliente secundário que reflete o
+> mesmo backend/conteúdo do novo portal web de autoatendimento. Ver "Pivot
+> — Portal de autoatendimento (self-service) no Frontend Web substitui o
+> App Mobile como canal primário de Aluno/Professor/Coordenador
+> (2026-09-02)", mais abaixo nesta mesma skill.
 
 1. **Framework/linguagem:** React Native via o framework/workflow Expo
    (modelo development build, não Expo Go), com TypeScript.
@@ -426,6 +457,13 @@ do Business Analyst:
   variante de conteúdo "Empresa" — ver
   `project-knowledge/references/pending-decisions.md`.
 
+> **Atualização (2026-09-02):** a variante de conteúdo "Empresa" citada
+> acima deixou de ser um item "adiado" — "empresa" foi desqualificada
+> definitivamente como tipo de instituição do CheckClass. Ver "Decisão —
+> Desqualificação definitiva do tipo de instituição 'empresa'
+> (2026-09-02)" em `project-knowledge/references/pending-decisions.md`.
+> "Atividades" (Escola) continua adiada, sem alteração.
+
 > **Correção de escopo (2026-09-01):** o bullet acima ("nenhum uso mais
 > amplo confirmado") está **superado para o tipo de instituição
 > faculdade** — não apagado, pois continua descrevendo corretamente o
@@ -496,6 +534,33 @@ Identificação, Deduplicação, Motor de Regras de Presença,
    tela cheia dado a área estimada atual, atualizando conforme a
    localização muda. Não faz visão computacional/rastreamento nem
    controle de protocolo de câmera.
+
+   > **Nota de atualização (2026-09-02):** "atualizando conforme a
+   > localização muda" acima descreve o comportamento **dinâmico**
+   > (troca de câmera entre zonas), que o usuário confirmou estar
+   > **explicitamente fora desta rodada** — ver addendum em RULE-SEC-03
+   > (`business-rules/references/security-intrusion-rules.md`) e
+   > "Correção/redução de escopo (2026-09-02)" em `pending-decisions.md`.
+   > Nesta rodada, o serviço apenas resolve, de forma estática, qual
+   > câmera fixa corresponde ao local/zona que originou o sinal de
+   > intrusão — sem reavaliar a seleção se o incidente se mover para
+   > outra zona coberta por outra câmera.
+   >
+   > **Correção (2026-09-02, mesma sessão) — deixa de ser "extensão
+   > futura legítima", passa a ser desqualificada por completo:** a
+   > última frase acima ("a troca dinâmica entre câmeras permanece como
+   > extensão futura legítima deste mesmo componente quando a integração
+   > multidispositivo mencionada pelo usuário for retomada") está
+   > **superada**. Mensagem literal do usuário: "Acompanhamento dinamico
+   > entre cameras, retire também. Não haverá." Este componente **não
+   > terá** capacidade de troca dinâmica entre câmeras nesta ou em
+   > rodadas futuras, a menos que o usuário reabra o assunto
+   > explicitamente — ver addendum correspondente em RULE-SEC-03
+   > (`business-rules/references/security-intrusion-rules.md`) e em
+   > `pending-decisions.md`. Esta nota não reabre a arquitetura completa;
+   > o comportamento estático descrito acima (uma câmera fixa por
+   > local/zona) permanece a definição definitiva deste componente.
+   > **Source of confirmation:** Usuário, 2026-09-02.
 7. **Isolamento multi-tenant** — transversal, mesmo modelo `tenant_id` +
    RLS do núcleo, sem exceção.
 
@@ -520,14 +585,26 @@ decisão de broker de mensagens no núcleo.
 
 **Pontos em aberto para Tech Decision/Hardware Evaluation Agent**
 (arquitetura não decide tecnologia nem hardware): mecânica de bloqueio
-de RULE-SEC-04 (adiada, fora desta rodada); mecânica dos níveis de
+de RULE-SEC-04 (adiada, fora desta rodada); ~~mecânica dos níveis de
 vigilância de RULE-SEC-06 (reconhecida apenas como eixo de configuração
-futuro); protocolo/hardware de controle de câmera; mecanismo de
+futuro)~~; protocolo/hardware de controle de câmera; mecanismo de
 autenticação de dispositivo e contrato de payload da barreira IR;
 semântica de deduplicação para sinais de segurança (não presumir a
 lógica de RULE-ATT-10); semântica de ciclo de vida/resolução de
 incidente; códigos exatos do novo enum `Permission` para as permissões
 de câmera de RULE-ACC-07.
+
+> **Correção (2026-09-02) — níveis de vigilância deixam de ser ponto em
+> aberto:** o item riscado acima ("mecânica dos níveis de vigilância de
+> RULE-SEC-06... eixo de configuração futuro") está **superado**. O
+> usuário desqualificou completamente o conceito de "níveis de
+> vigilância": "Niveis de vigilancia -> exclua completamente. Não haverá
+> essa divisão." Não é mais um ponto em aberto a resolver pelo Tech
+> Decision Agent — é uma decisão de produto fechada de que o conceito não
+> existe no CheckClass. Ver addendum em RULE-SEC-06
+> (`business-rules/references/security-intrusion-rules.md`) e correção
+> equivalente em `pending-decisions.md`. **Source of confirmation:**
+> Usuário, 2026-09-02.
 
 ## Decisão de tecnologia — Segurança de Intrusão, primeira rodada (aprovada em 2026-08-23)
 
@@ -617,7 +694,16 @@ Escopo: mesmo recorte já aprovado nessa decisão de arquitetura
    **sem PTZ** (pan-tilt-zoom) — uma releitura do texto de RULE-SEC-03
    confirmou que ela exige apenas SELECIONAR qual feed de câmera já
    existente aparece em tela cheia conforme a área estimada muda, não
-   mover fisicamente uma câmera. O backend (Serviço de Câmeras, já
+   mover fisicamente uma câmera.
+
+   > **Nota de atualização (2026-09-02):** a frase "conforme a área
+   > estimada muda" acima também descrevia o comportamento dinâmico de
+   > troca de câmera — ver a mesma nota de redução de escopo registrada
+   > junto ao componente 6 ("Serviço de Câmeras — Cobertura de Área e
+   > Seleção Automática") em "Decisão de arquitetura — Segurança de
+   > Intrusão, primeira rodada", acima nesta mesma skill. A escolha de
+   > hardware (câmera fixa, sem PTZ, RTSP) em si **não muda** — ela já era
+   > compatível com o escopo estático agora confirmado. O backend (Serviço de Câmeras, já
    previsto na arquitetura aprovada) nunca fala um protocolo de
    fabricante de câmera (sem ONVIF, sem cliente RTSP, sem SDK de
    fabricante dentro do monólito NestJS) — apenas armazena metadados
@@ -627,6 +713,18 @@ Escopo: mesmo recorte já aprovado nessa decisão de arquitetura
    câmeras é administrado manualmente pelo dashboard admin já existente
    (a permissão `administer_camera_devices` de RULE-ACC-07 já antecipa
    essa interface) — nenhum protocolo de auto-descoberta nesta rodada.
+   > **Correção (2026-09-02, mesma sessão):** a nota acima originalmente
+   > dizia que a escolha de hardware "continua sendo o hardware certo
+   > também para a futura extensão dinâmica" — essa frase foi removida
+   > porque a extensão dinâmica em si deixou de existir como item futuro:
+   > o usuário desqualificou por completo o acompanhamento dinâmico entre
+   > câmeras ("Acompanhamento dinamico entre cameras, retire também. Não
+   > haverá"). A escolha de hardware (câmera fixa, sem PTZ, RTSP)
+   > permanece válida e correta apenas para o escopo estático definitivo
+   > agora confirmado — ver addendum em RULE-SEC-03
+   > (`business-rules/references/security-intrusion-rules.md`).
+   > **Source of confirmation:** Usuário, 2026-09-02.
+
    **Necessidade de infraestrutura sinalizada, não decidida aqui, apenas
    registrada para não ser silenciosamente presumida:** navegadores não
    reproduzem RTSP bruto nativamente, então algo (as próprias câmeras, se
@@ -638,6 +736,17 @@ Escopo: mesmo recorte já aprovado nessa decisão de arquitetura
    relacionadas) — é uma tarefa futura de dimensionamento de IoT/DevOps,
    sem software de relay escolhido.
 
+   > **Atualização (2026-09-02):** o parágrafo acima descrevia isto como
+   > "apenas sinalizado, tarefa futura de dimensionamento" — status
+   > **superado** por confirmação explícita do usuário: ver
+   > "Confirmado-adiado — Vídeo ao vivo das câmeras não é prioridade desta
+   > rodada (2026-09-02)" em `pending-decisions.md`. Assistir vídeo ao vivo
+   > das câmeras pelo navegador é escopo explicitamente adiado desta
+   > rodada (não apenas uma lacuna técnica em aberto) — mesmo padrão de
+   > adiamento de RULE-SEC-04. Ver também a ressalva registrada naquela
+   > entrada sobre uma possível tensão não resolvida com RULE-SEC-03
+   > (acompanhamento automático de câmera).
+
 5. **Confirmação de escopo, não uma decisão de tecnologia:** RULE-SEC-05
    (contagem de entrada/saída) permanece explicitamente fora do escopo
    desta rodada — é uma capacidade diferente (contagem de ocupação sob
@@ -647,11 +756,26 @@ Escopo: mesmo recorte já aprovado nessa decisão de arquitetura
    problema de contagem). Nenhuma mudança ao status já existente em
    `pending-decisions.md`.
 
+   > **Atualização (2026-09-02):** a pendência de qual tecnologia
+   > continua aberta, sem alteração, mas agora com uma restrição de
+   > precisão confirmada pelo usuário — contagem exata mesmo em passagem
+   > simultânea/em grupo, sem margem de erro aceita. Ver addendum em
+   > RULE-SEC-05 (`business-rules/references/security-intrusion-rules.md`)
+   > e em "Decisão pendente — Tecnologia de contagem de entrada/saída"
+   > (`pending-decisions.md`).
+
 **Fora desta rodada (ainda não decidido):** mecânica de bloqueio de
-RULE-SEC-04; mecânica dos níveis de vigilância de RULE-SEC-06; tecnologia
-de contagem de entrada/saída de RULE-SEC-05; software de relay
-RTSP→HLS/WebRTC (dimensionamento futuro de IoT/DevOps); schema exato do
-vínculo categoria de pulseira → área (Database Agent).
+RULE-SEC-04; ~~mecânica dos níveis de vigilância de RULE-SEC-06~~
+(**desqualificada por completo em 2026-09-02, deixa de ser "ainda não
+decidido" — ver addendum em RULE-SEC-06,
+`business-rules/references/security-intrusion-rules.md`, e correção em
+`pending-decisions.md`**); tecnologia de contagem de entrada/saída de
+RULE-SEC-05 (agora com restrição de precisão confirmada e nova direção
+técnica de câmera + visão computacional confirmada em 2026-09-02 — ver
+addendum acima e em RULE-SEC-05); software de relay RTSP→HLS/WebRTC e
+vídeo ao vivo pelo navegador (confirmado-adiado em 2026-09-02, ver
+`pending-decisions.md`); schema exato do vínculo categoria de pulseira →
+área (Database Agent).
 
 ## Escopo confirmado — Pivot estrutural: Gerenciamento da Instituição como foco principal (2026-08-31)
 
@@ -685,6 +809,14 @@ posicionada por suposição.
 **Não confirmado nesta rodada (gap, ver `pending-decisions.md`):**
 posicionamento de Salas, Usuários e Revisões pendentes — nenhuma das três
 foi mencionada nas decisões do pivot.
+
+> **Nova área confirmada, posicionamento/IA pendente (2026-09-02):** esta
+> lista de áreas era inteiramente administrativa/institucional — nenhuma
+> delas era um portal de autoatendimento para Aluno/Professor/Coordenador.
+> O pivot "Portal de autoatendimento (self-service)..." (mais abaixo nesta
+> skill) confirma que uma nova área de navegação própria para esse portal
+> precisa existir; seu posicionamento exato (nome, separação por papel,
+> etc.) é gap — ver `pending-decisions.md`.
 
 > **Atualização (2026-08-31 — segunda rodada de fechamento de gaps):** os
 > três posicionamentos deixados como gap acima foram confirmados:
@@ -844,6 +976,15 @@ aplicativo (mesma stack já aprovada — React Native/Expo/TypeScript, ver
 instituição; a navegação se adapta em tempo de execução ao tipo de
 instituição do tenant e ao(s) papel(is) da pessoa autenticada.
 
+> **Primazia superada (2026-09-02):** o professor deixa de ver esse
+> conteúdo primeiro/apenas pelo app — o portal web de autoatendimento passa
+> a ser o canal primário (ver "Pivot — Portal de autoatendimento
+> (self-service)...", mais abaixo). A composição de leitura descrita nesta
+> seção (reaproveitar `AttendanceRegisterService`, sem novo estado
+> persistido) continua válida como conceito de backend, reutilizável pelo
+> portal web — não precisa ser redesenhada, só servida por um canal
+> diferente como primário.
+
 **Componente novo — contexto do usuário (tipo de instituição + papéis):**
 um componente novo, pequeno e **somente leitura**, dentro do bounded
 context Self-Service já existente (`backend/src/modules/self-service/`),
@@ -912,6 +1053,318 @@ Agent/Tech Decision Agent quando a implementação real começar.
 **Source of confirmation:** Usuário, 2026-09-01 (terceira rodada de
 fechamento de gaps — itens #17, #19, #20 e #21; decomposição de fluxos
 pelo Business Analyst e proposta de arquitetura pelo Solution Architect).
+
+## Decisão de arquitetura — Área de Provas (aprovada em 2026-09-02)
+
+Proposta do Solution Architect, com complementos exigidos pelo Security e
+duas suposições confirmadas diretamente pelo usuário (RULE-EXAM-16/17,
+`business-rules/references/exam-rules.md`). Cobre o escopo já fechado em
+RULE-EXAM-01 a 17: proctoring configurável, timer/disponibilidade, sessão
+e auditoria de prova — não cobre nenhuma tecnologia nova (ver "Decisão de
+tecnologia" abaixo) nem o modelo de dados (ver "Modelagem de dados"
+abaixo).
+
+**Padrão arquitetural:** novo bounded context `exam`, módulo **síncrono**
+dentro do mesmo monólito modular NestJS — sem fila/evento, ao contrário do
+núcleo de presença/segurança de intrusão. Justificativa: a borda aqui é um
+navegador autenticado (aluno/professor), não um dispositivo IoT pouco
+confiável — mesmo raciocínio já usado para o estilo síncrono do
+Gerenciamento da Instituição (ver seção acima). Isolamento multi-tenant
+via `tenant_id` + RLS, sem exceção, mesmo padrão de todo o restante do
+projeto.
+
+**Componentes lógicos (mapeiam diretamente os 6 componentes exigidos pelo
+usuário — Timer, Disponibilidade, Monitoramento, Política de Violação,
+Sessão, Auditoria — ver nota de arquitetura de negócio em
+`exam-rules.md`):**
+
+1. **`ExamAvailabilityService`** — calcula `EXAM_NOT_AVAILABLE` /
+   `EXAM_AVAILABLE` / `EXAM_CLOSED` (vocabulário técnico em inglês, ver
+   nota de tradução em RULE-EXAM-06,
+   `business-rules/references/exam-rules.md`) a partir da janela de
+   disponibilidade; verifica matrícula ativa
+   (`class_group_enrollment.enrollment_status = 'active'` —
+   `backend/src/database/entities/class-group-enrollment.entity.ts`) do
+   aluno na turma da prova (RULE-EXAM-16) antes de liberar o início; nega
+   disponibilidade se o tenant não for do tipo faculdade/escola
+   (`tenant.institutionType`, mesmo mecanismo de gate já usado em "Decisão
+   de arquitetura — App Mobile para Faculdade" acima — implementa
+   RULE-EXAM-02).
+2. **`ExamTimerService`** — calcula `startedAt`/`expiresAt` ao iniciar
+   sessão, e reexpõe o mesmo `expiresAt` absoluto em qualquer recuperação
+   de sessão (reload — RULE-EXAM-11); nenhuma lógica de tempo vive no
+   frontend além de exibição.
+3. **`ExamMonitoringService`** — recebe eventos de monitoramento
+   reportados pelo cliente, filtra pelos tipos habilitados na prova
+   (RULE-EXAM-05), e trata `PAGE_RELOAD` como caso especial: **sempre**
+   grava o evento em auditoria (RULE-EXAM-11 não tem a mesma condicional de
+   habilitação que os demais tipos têm), mas só marca
+   `treated_as_violation` se `PAGE_RELOAD` estiver habilitado.
+4. **`ExamViolationPolicyService`** (Strategy) — implementa os dois modos
+   de RULE-EXAM-04 (`TERMINATE` / `LOG_ONLY`) como estratégias
+   intercambiáveis, preparado para evoluir para política por tipo de
+   evento (RULE-EXAM-05) sem reconstrução, conforme exigido pelo usuário.
+5. **`ExamSessionService`** — única autoridade de escrita do estado da
+   sessão (`NOT_STARTED, AVAILABLE, IN_PROGRESS, COMPLETED, TERMINATED,
+   EXPIRED, ABANDONED` — RULE-EXAM-12); toda transição de estado passa por
+   aqui, nunca decidida em outro serviço ou no frontend. Reaproveita
+   `LeadershipScopeService` já oficial para autorizar gestão/criação de
+   prova e acesso à auditoria por turma (RULE-EXAM-16).
+6. **`ExamAuditService`** — escrita append-only de todo evento relevante da
+   sessão (RULE-EXAM-12) e leitura consultável pelo professor autor da
+   prova.
+
+**Timer entregue ao frontend:** o backend emite um `expiresAt` absoluto
+uma única vez por sessão (início ou recuperação via reload); o frontend
+apenas renderiza a contagem regressiva local a partir desse valor — nunca
+decide expiração. Toda operação relevante (responder pergunta, finalizar
+prova) revalida a expiração no servidor antes de aceitar, nunca confiando
+isoladamente no timestamp do cliente (RULE-EXAM-07).
+
+**Canal de acompanhamento do professor:** polling, não push/realtime —
+mesma decisão fundamentada já usada em Segurança de Intrusão (ver "Decisão
+de arquitetura — Segurança de Intrusão, primeira rodada" acima): não há
+infraestrutura de tempo real em nenhum outro ponto do projeto, e
+violações de prova têm ritmo humano, não alta frequência. Revisitar apenas
+mediante evidência de necessidade real.
+
+**Fluxo de integração:** aluno autenticado → `ExamAvailabilityService`
+(elegibilidade + janela) → `ExamSessionService.start()` (cria sessão,
+consulta `ExamTimerService` para `expiresAt`) → durante a sessão, o
+navegador reporta eventos de monitoramento ao
+`ExamMonitoringService` → `ExamAuditService` registra → se o evento for
+violação segundo `ExamViolationPolicyService`, `ExamSessionService`
+transiciona para `TERMINATED`; em paralelo, a expiração de tempo é
+revalidada a cada requisição relevante e pode transicionar para `EXPIRED`
+independentemente do monitoramento (RULE-EXAM-09). Painel do professor
+consulta `ExamAuditService`/`ExamSessionService` via polling.
+
+**Risco aceito e documentado, não uma falha de desenho:** como não há
+agente nativo/desktop nesta rodada (`EXTERNAL_APPLICATION_FOCUS`
+permanece fora de escopo real — ver `pending-decisions.md`), o
+monitoramento é inteiramente observado pelo navegador. Um aluno tecnicamente
+capaz de chamar endpoints diretamente pode contornar a UI de
+monitoramento. É uma limitação estrutural aceita da decisão "borda =
+navegador autenticado", coerente com o resto do projeto — não uma
+pendência a corrigir.
+
+**Pontos em aberto (não decididos aqui, não bloqueiam implementação):**
+gatilho exato do estado `ABANDONED`; tentativas permitidas por prova;
+obrigatoriedade de pergunta; suporte a múltiplas seções/páginas; acesso de
+Coordenador de Curso/Direção à auditoria (default: negado). Ver detalhamento
+em `pending-decisions.md`.
+
+## Decisão de tecnologia — Área de Provas (aprovada em 2026-09-02)
+
+Proposta do Tech Decision Agent, aprovada pelo usuário sem alterações.
+Preenche com tecnologia concreta a arquitetura acima — nenhuma tecnologia
+nova é introduzida neste round.
+
+1. **Backend/Frontend:** reaproveita integralmente a stack já aprovada —
+   NestJS + PostgreSQL + RLS multi-tenant (núcleo do CheckClass); React +
+   TypeScript + Vite + TanStack Query (Frontend Web). Nenhum novo
+   framework, biblioteca de estado ou banco.
+2. **Timer no cliente:** `setInterval`/`Date.now()` nativo do navegador,
+   apenas para renderizar a contagem regressiva local a partir do
+   `expiresAt` absoluto recebido do backend — nunca como fonte de decisão
+   (RULE-EXAM-07).
+3. **Canal de acompanhamento do professor:** polling a cada 5 segundos via
+   `refetchInterval` do TanStack Query — mesmo cliente HTTP/padrão de
+   autenticação já usado em todo o resto do dashboard, sem infraestrutura
+   nova. Aplicado somente ao painel do professor; o aluno não faz polling
+   (nenhum caso de uso comprovado que o exija).
+4. **Proteção contra rajada de eventos de monitoramento:** reaproveita
+   `@nestjs/throttler`, já em uso no login/onboarding, escopado por
+   `(tenant_id, exam_session_id)` — não apenas por IP/usuário, exigência do
+   Security para não permitir que um único aluno sature o log de auditoria
+   de outra sessão através de rate limit compartilhado.
+
+**Fora desta rodada (não decidido):** qualquer mecanismo de agente
+desktop/nativo (`EXTERNAL_APPLICATION_FOCUS`); tipos de pergunta
+adicionais do Google Forms (RULE-EXAM-03, exceptions).
+
+## Modelagem de dados — Área de Provas (aprovada em 2026-09-02)
+
+Proposta do Database Agent, com reforços exigidos pelo Security. Nenhuma
+migration foi aplicada ainda — modelo lógico de referência, mesmo
+precedente já usado no núcleo do CheckClass.
+
+**9 tabelas novas em PostgreSQL**, todas com `tenant_id` e política RLS
+própria: `exam` (com `class_group_id`, RULE-EXAM-16), `exam_question`,
+`exam_question_option`, `exam_monitoring_config`,
+`exam_monitoring_event_type`, `exam_session`, `exam_answer`,
+`exam_answer_selected_option`, `exam_session_event`.
+
+Pontos técnicos relevantes:
+- `exam_session` grava um **snapshot** da configuração aplicável no
+  momento em que a sessão é criada (duração, modo de monitoramento, tipos
+  de evento habilitados) — mesma decisão já usada em `class_session` para
+  que mudanças de configuração não afetem sessões já em andamento.
+- `exam_session_event` é append-only, com `occurred_at` gravado pelo
+  servidor (nunca aceito do cliente) e `event_type` como coluna de texto
+  livre, para permitir novos tipos de evento sem migration. **Imutabilidade
+  exigida a nível de banco** (`REVOKE UPDATE, DELETE` ou trigger
+  equivalente) — exigência do Security, não apenas disciplina de
+  aplicação, para que a trilha de auditoria não possa ser adulterada nem
+  pela própria camada de aplicação em caso de bug.
+- `exam_answer` tem `UNIQUE` por sessão+pergunta, suportando autosave
+  incremental de resposta (não apenas envio final único).
+- RLS em `exam_session`/`exam_answer` precisa de predicado de **posse por
+  aluno** (via `person_id`), não apenas `tenant_id` — reforço do Security,
+  já que dois alunos do mesmo tenant não podem ver a sessão/resposta um do
+  outro. `exam_question_option`/`exam_answer_selected_option` precisam de
+  política RLS própria, não apenas herdada implicitamente via FK.
+- Nenhum payload servido ao aluno (durante ou depois da prova) pode conter
+  `is_correct`/pontuação de qualquer pergunta (RULE-EXAM-17) — controle de
+  camada de aplicação (DTO com allow-list de campo), não do schema em si,
+  mas registrado aqui porque nasce do mesmo modelo de dados.
+
+**Ainda pendente (não bloqueante):** aplicabilidade exata da coluna
+`points` em `exam_question` para tipos subjetivos (inferência do Database
+Agent além do texto literal de RULE-EXAM-14, sinalizada para confirmação);
+migration real fica para quando a implementação começar.
+
+## Decisão de segurança — Área de Provas (aprovada em 2026-09-02)
+
+Revisão do Security Agent sobre a arquitetura/modelo de dados acima.
+Riscos cobertos: manipulação de timer pelo cliente, integridade da trilha
+de auditoria, isolamento multi-tenant/entre alunos, vazamento de
+gabarito/nota, e conteúdo livre de prova como vetor de XSS armazenado.
+
+**Controles exigidos, já incorporados ao design aprovado acima (não
+opcionais):**
+1. Checagem de posse (`personId` do JWT == dono da sessão) em todo
+   endpoint de sessão/resposta do aluno.
+2. Reaproveitamento de `LeadershipScopeService` para autorizar
+   gestão/criação de prova e leitura de auditoria por turma (RULE-EXAM-16)
+   — nenhuma checagem de autorização paralela nova.
+3. Checagem de matrícula ativa
+   (`class_group_enrollment.enrollment_status = 'active'` —
+   `backend/src/database/entities/class-group-enrollment.entity.ts`) antes
+   de liberar disponibilidade/início de sessão — mesmo precedente já usado
+   na nota anexada a RULE-ATT-06.
+4. Separação de dois caminhos de escrita de evento de auditoria: eventos
+   reportados pelo cliente (lista de tipos permitida, allow-list) vs.
+   eventos gerados exclusivamente pelo servidor (ex.: `EXAM_TIME_EXPIRED`)
+   — o segundo grupo nunca pode ser injetado via payload externo.
+5. Exclusão de `is_correct`/pontuação de qualquer payload servido ao aluno
+   (RULE-EXAM-17).
+6. Imutabilidade de `exam_session_event` a nível de banco (ver "Modelagem
+   de dados" acima).
+7. Sanitização de conteúdo livre de prova (perguntas, opções, respostas
+   dissertativas) contra XSS armazenado — relevante porque o JWT do
+   professor em `sessionStorage` (ver "Decisão de tecnologia — Frontend
+   Web" acima) fica exposto se qualquer tela renderizar HTML não
+   sanitizado vindo de uma prova.
+
+**Risco aceito, não bloqueante, comunicado e reconhecido pelo usuário:**
+monitoramento é inteiramente observado pelo navegador, sem agente nativo
+— tem valor dissuasório/de registro, não é à prova de burla técnica por um
+aluno capaz de chamar endpoints diretamente. Ver nota equivalente na
+"Decisão de arquitetura" acima.
+
+## Pivot — Portal de autoatendimento (self-service) no Frontend Web substitui o App Mobile como canal primário de Aluno/Professor/Coordenador (2026-09-02)
+
+Registra apenas escopo/canal de produto — as regras de negócio já
+aprovadas sobre presença, matrícula, resolução de pendência, provas, etc.
+não mudam; muda apenas por qual componente de interface esse conteúdo é
+servido primariamente. Processado com o mesmo rigor do "Pivot estrutural:
+Gerenciamento da Instituição como foco principal (2026-08-31)" acima, por
+contradizer diretamente decisões já registradas nesta skill.
+
+**Contradições identificadas, resolvidas por este pivot** (ver notas
+"Superado"/"Papel superado"/"Primazia superada" já inseridas nas seções
+correspondentes acima):
+1. "Decisão de tecnologia — Frontend Web" (2026-08-22) escopava esse
+   componente como administração institucional, com o texto "não o app do
+   aluno/professor".
+2. A nota "Extensão de escopo — Área de Provas (confirmada em 2026-09-02)"
+   anexada à mesma decisão restringia essa extensão de público apenas à
+   Área de Provas ("não é revertido para o restante do produto").
+3. "Decisão de tecnologia — App Mobile" (2026-08-22) escopava o App Mobile
+   como o canal onde o conteúdo Escola/Aluno nasce primeiro.
+4. "Decisão de arquitetura — App Mobile para Faculdade" (2026-09-01)
+   estendia essa mesma primazia ao Professor.
+5. A navegação do Frontend Web reorganizada pelo pivot estrutural de
+   2026-08-31 só tem áreas administrativas — nenhuma de portal do
+   aluno/professor/coordenador.
+
+**Direção confirmada pelo usuário, 2026-09-02** (texto literal: "A ideia
+não é mais que o front seja apenas de configurações. Quero que toda a
+parte de dashboard do aluno/professor/coordenador seja pelo web também...
+Quero que o aluno acesse o sistema pelo web para acessar toda sua área,
+provas, faltas etc e o mobile apenas reflita isso"):
+
+- O **Frontend Web** (tecnologia já aprovada — React/TypeScript/Vite) passa
+  a ser o **canal primário** de autoatendimento (self-service) para Aluno e
+  Professor, cobrindo no mínimo: todo o conteúdo já escopado para o App
+  Mobile (aulas/cronograma, faltas/presença/horários —
+  `business-rules/references/attendance-rules.md` RULE-ATT-06/RULE-ATT-15;
+  resolução de pendência do professor — RULE-ATT-12; presença das turmas
+  para o professor em faculdade — ver "Decisão de arquitetura — App Mobile
+  para Faculdade" acima) mais a Área de Provas já desenhada
+  (`business-rules/references/exam-rules.md`, RULE-EXAM-01 a 17).
+- **Coordenador de Curso** (ator já existente para faculdade — ver
+  `business-domain/references/actors.md`) passa também a ter presença
+  própria neste portal — escopo exato do que essa área contém é gap (ver
+  `pending-decisions.md`).
+- A **Decisão de tecnologia — App Mobile (React Native/Expo)** não é
+  descartada, mas muda de papel: deixa de ser o canal onde o conteúdo
+  nasce primeiro e passa a ser um **cliente secundário que reflete** o
+  mesmo backend/conteúdo do portal web. O mecanismo técnico exato dessa
+  reflexão (reimplementação nativa das mesmas telas mais tarde, WebView do
+  próprio portal, ou outra abordagem) é decisão técnica futura do Tech
+  Decision Agent — explicitamente não decidida aqui, e não bloqueia este
+  registro de escopo.
+- **Fato que reduz o risco desta mudança:** não existe hoje nenhum código
+  de App Mobile implementado no repositório (`mobile/` não existe; apenas
+  `backend/` e `frontend/`) — a decisão de tecnologia (React Native/Expo)
+  foi aprovada mas nunca chegou a ser construída. Este pivot redireciona
+  planejamento futuro, não desfaz código já escrito.
+- **Navegação do Frontend Web:** precisa ganhar uma nova área própria de
+  "Portal do Aluno/Professor/Coordenador" (self-service), distinta das
+  áreas administrativas já confirmadas no pivot estrutural de 2026-08-31
+  (Onboarding, Sistema principal, Cadastro de informações, Configurações,
+  Segurança de Intrusão). Posicionamento exato de navegação/IA é gap (ver
+  `pending-decisions.md`).
+
+**Gaps resolvidos (2026-09-02) — os 3 pontos abaixo foram confirmados
+diretamente pelo usuário, sem gap bloqueante restante para este pivot**
+(ver também `pending-decisions.md`, "Resolvido — Gaps do pivot Portal de
+autoatendimento web"):
+- **Tipos de instituição:** confirmado **Faculdade + Escola** apenas —
+  mesmo escopo já coberto por App Mobile e pela Área de Provas
+  (RULE-EXAM-02, `business-rules/references/exam-rules.md`). Empresa
+  continua fora (nunca teve conteúdo de app mobile construído — ficou
+  deferido — e não tem o ator "Aluno").
+
+> **Atualização (2026-09-02):** "empresa continua fora" acima descrevia um
+> escopo restrito a este pivot específico; está **superado** por uma
+> decisão mais ampla — "empresa" foi desqualificada definitivamente como
+> tipo de instituição em todo o CheckClass, não apenas neste pivot. Ver
+> "Decisão — Desqualificação definitiva do tipo de instituição 'empresa'
+> (2026-09-02)" em `project-knowledge/references/pending-decisions.md`.
+- **Escopo da área do Coordenador de Curso:** confirmado — Coordenador de
+  Curso vê presença/provas das turmas dos cursos que coordena
+  (`leadership_assignment.courseId`, mesmo escopo de RULE-INST-09,
+  `business-rules/references/institution-management-rules.md`);
+  Direção/Reitoria vê tudo (herança automática sobre todos os cursos,
+  mesmo padrão de RULE-INST-09). Isto **supera** a exceção "negado por
+  padrão" sobre acesso à auditoria de provas — ver addendum em
+  RULE-EXAM-16 (`business-rules/references/exam-rules.md`).
+- **Cronograma de desenvolvimento:** confirmado — o desenvolvimento do App
+  Mobile (React Native/Expo) fica **pausado até o portal web estar
+  pronto**, para evitar construir a mesma coisa duas vezes ao mesmo tempo.
+  Isto é uma decisão de priorização de roadmap, não uma regra de negócio
+  nem uma mudança na "Decisão de tecnologia — App Mobile" já aprovada
+  acima (a stack continua a mesma quando o trabalho for retomado).
+
+**Explicitamente não bloqueante, fica para o Tech Decision Agent
+depois:** mecanismo técnico exato de "refletir" o mobile (WebView vs.
+reimplementação nativa vs. outra abordagem) — segue não decidido, mas não
+bloqueia o restante do pivot.
+
+**Source of confirmation:** Usuário, 2026-09-02.
 
 ## Restrições/premissas confirmadas
 

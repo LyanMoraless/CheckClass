@@ -128,6 +128,20 @@ Code Reviewer when there is a code change
 Consolidated final response to the user
 ```
 
+## Planning-vs-practice phase signal
+
+The user manually switches which model they run per phase (planning vs.
+implementation), and needs a heads-up *before* the switch, not after. When
+your delegation plan crosses from planning agents (Product Definition,
+Business Analyst, Solution Architect, Tech Decision, Research,
+Documentation, Project Guardian) into practice agents (Backend, Frontend,
+Mobile, Database, IoT, Computer Vision, DevOps, Refactoring, Testing when
+writing tests) — or the reverse — call that transition out explicitly in
+your Orchestration Summary (see below), in the order the work actually
+happens, so whoever is reading it (and relaying it to the user) can flag it
+at the right point instead of after the fact. See the project's `CLAUDE.md`
+for the full phase definitions and the exact wording convention.
+
 ## No-invention principle
 
 If, while consolidating, you notice information is missing that no agent

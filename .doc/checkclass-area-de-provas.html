@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckClass — Área de Provas (Documentação Técnica)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --text: #1c1c1c;
+    --muted: #5a5a5a;
+    --bg: #ffffff;
+    --panel: #f6f6f4;
+    --line: #e2e2df;
+    --accent: #1c1c1c;
+    --pill-core: #1c1c1c;
+    --pill-2: #55524a;
+    --pill-3: #8a8a86;
+    --pill-4: #b7b7b3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  header.masthead {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 36px 48px 28px;
+    border-bottom: 3px solid var(--text);
+  }
+  header.masthead img { height: 56px; width: auto; }
+  header.masthead .title-block h1 {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 26px;
+    margin: 0 0 4px;
+    letter-spacing: 0.5px;
+  }
+  header.masthead .title-block p { margin: 0; color: var(--muted); font-size: 14px; }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 48px 80px; }
+  section { margin-bottom: 56px; }
+  h2.section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px;
+    letter-spacing: 1px;
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--line);
+  }
+  h3 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16.5px; margin: 26px 0 8px; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 16.5px; color: var(--text); }
+  .overview-box {
+    background: var(--panel);
+    border-left: 4px solid var(--text);
+    padding: 20px 24px;
+    border-radius: 4px;
+  }
+  .toc {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 16px 0 0;
+    line-height: 1.9;
+  }
+  .toc a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .toc a:hover { border-bottom-color: var(--text); }
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 100px;
+    margin: 0 6px 10px 0;
+  }
+  .pill.p4 { background: var(--pill-4); color: #1c1c1c; }
+  .pill.status { background: var(--pill-core); }
+  .ref {
+    font-family: 'Courier New', monospace;
+    font-size: 10.5px;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+  .feature-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+  }
+  .feature-card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+  .feature-card p { margin: 0; color: var(--text); font-size: 14px; }
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .status-card { border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; }
+  .status-card h4 { font-family: 'Montserrat', sans-serif; font-weight: 700; margin: 0 0 8px; font-size: 15px; }
+  .status-card p { font-size: 13.5px; margin: 0 0 8px; }
+  .status-card ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--text); }
+  .status-card ul li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.8px; margin: 8px 0 4px; }
+  table th, table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); font-weight: 700; }
+  table td code { font-size: 12.5px; background: var(--panel); padding: 1px 5px; border-radius: 3px; }
+  .note {
+    background: #fff;
+    border: 1px dashed #c7c7c3;
+    border-left: 4px dashed var(--muted);
+    padding: 14px 18px;
+    border-radius: 4px;
+    font-size: 13.8px;
+    margin: 16px 0;
+  }
+  .note .tag {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .note.risk { border-left-color: var(--text); border-style: solid; background: var(--panel); }
+  .gap-list { margin: 0; padding-left: 20px; font-size: 14px; }
+  .gap-list li { margin-bottom: 9px; color: var(--text); }
+  .gap-list li .tag {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-right: 6px;
+    font-weight: 700;
+  }
+  /* --- diagrams --- */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0; font-size: 13.5px; }
+  .flow .node {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .flow .arrow { color: var(--muted); font-size: 18px; }
+  .flow .cond {
+    font-size: 11px;
+    color: var(--muted);
+    max-width: 140px;
+    text-align: center;
+  }
+  .branch-diagram { text-align: center; margin: 22px 0; }
+  .branch-diagram .branch-source { display: inline-block; }
+  .branch-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 4px;
+  }
+  .branch-row .branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border-top: 2px solid var(--line);
+    padding-top: 12px;
+  }
+  .branch-row .cond { font-size: 11.5px; color: var(--muted); min-height: 44px; }
+  .abandoned-note { max-width: 460px; margin: 18px auto 0; }
+  .independence-diagram {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: stretch;
+    margin: 20px 0;
+  }
+  .independence-diagram .col { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .independence-diagram .col-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 17px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .independence-diagram .node.outcome { background: #fff; border: 2px solid var(--text); font-weight: 700; }
+  .independence-diagram .small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 3px; }
+  .independence-diagram .divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-left: 1px dashed var(--line);
+    border-right: 1px dashed var(--line);
+    padding: 0 6px;
+  }
+  .diagram-note { font-size: 13px; color: var(--muted); }
+  footer {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 24px 48px 60px;
+    color: var(--muted);
+    font-size: 12.5px;
+    border-top: 1px solid var(--line);
+  }
+  @media print {
+    header.masthead { border-bottom: 2px solid #000; }
+    .feature-card, .status-card, .branch-diagram, .independence-diagram, .note { break-inside: avoid; }
+    section { break-inside: avoid-page; }
+  }
+  @media (max-width: 700px) {
+    header.masthead, main, footer { padding-left: 20px; padding-right: 20px; }
+    .branch-row { grid-template-columns: 1fr; }
+    .independence-diagram { grid-template-columns: 1fr; }
+    .independence-diagram .divider {
+      writing-mode: horizontal-tb;
+      border-left: none;
+      border-right: none;
+      border-top: 1px dashed var(--line);
+      border-bottom: 1px dashed var(--line);
+      padding: 8px 0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <img src="assets/logo.png" alt="LGI Morales">
+  <div class="title-block">
+    <h1>CheckClass — Área de Provas</h1>
+    <p>Documentação técnica da feature — design aprovado, implementação pendente</p>
+  </div>
+</header>
+
+<main>
+
+  <section id="overview">
+    <h2 class="section-title">Visão Geral</h2>
+    <span class="pill p4">Prioridade 4 — Demais funcionalidades</span>
+    <span class="pill status">Design aprovado · código não implementado</span>
+    <div class="overview-box lead">
+      <p>A <strong>Área de Provas</strong> é uma nova funcionalidade do CheckClass para criar e aplicar avaliações online. O <strong>professor</strong> monta a prova cadastrando perguntas — em um modelo enxuto, no estilo Google Forms — e configura, por prova, como o sistema reage a comportamentos suspeitos durante a aplicação (monitoramento/proctoring) e quanto tempo o aluno tem para responder. O <strong>aluno</strong> realiza a prova pelo navegador, com um cronômetro cuja fonte de verdade é sempre o backend, nunca o relógio do computador do aluno.</p>
+      <p>Pertence à <strong>Prioridade 4 — "Demais funcionalidades"</strong> do produto <span class="ref">RULE-EXAM-01</span> — não é um pilar do CheckClass, e não muda a ordem de prioridade de Apuração de Presença (núcleo), Gerenciamento da Instituição ou Segurança de Intrusão. Está disponível apenas para instituições dos tipos <strong>faculdade</strong> e <strong>escola</strong>; o tipo <strong>empresa</strong> fica fora de escopo por ora <span class="ref">RULE-EXAM-02</span>.</p>
+      <p>Em 2026-09-02 foram aprovados: regras de negócio, arquitetura, tecnologia, modelo de dados lógico e revisão de segurança desta feature. <strong>Nenhum código foi escrito ainda</strong> — nem migration, nem backend, nem frontend. A implementação real é o próximo passo, tratado como uma rodada de trabalho futura e separada (ver "Status atual" ao final deste documento).</p>
+    </div>
+    <nav class="toc">
+      Neste documento:
+      <a href="#nucleo">Núcleo funcional</a> ·
+      <a href="#monitoramento">Monitoramento</a> ·
+      <a href="#timer">Timer &amp; disponibilidade</a> ·
+      <a href="#estados">Estados &amp; auditoria</a> ·
+      <a href="#arquitetura">Arquitetura técnica</a> ·
+      <a href="#dados">Modelo de dados</a> ·
+      <a href="#seguranca">Segurança</a> ·
+      <a href="#fora-de-escopo">Fora desta rodada</a> ·
+      <a href="#status">Status atual</a>
+    </nav>
+  </section>
+
+  <section id="quem-usa">
+    <h2 class="section-title">Quem Usa</h2>
+    <div class="status-grid">
+      <div class="status-card">
+        <h4>Professor</h4>
+        <p>Cria e configura a prova: perguntas, gabarito opcional, janela de disponibilidade, duração, e política de monitoramento. É quem corrige as perguntas subjetivas e acessa a trilha de auditoria/violações de cada aluno.</p>
+      </div>
+      <div class="status-card">
+        <h4>Aluno</h4>
+        <p>Realiza a prova dentro da janela de disponibilidade, respeitando o tempo definido. Nunca vê o gabarito nem a nota das perguntas objetivas, nem antes nem depois de finalizar.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="nucleo">
+    <h2 class="section-title">Núcleo Funcional da Prova</h2>
+    <p>O professor monta a prova cadastrando perguntas do zero, em um modelo conceitualmente parecido com o Google Forms — mas com um conjunto de tipos de pergunta deliberadamente enxuto nesta rodada <span class="ref">RULE-EXAM-03</span>.</p>
+
+    <table>
+      <tr><th>Tipo de pergunta</th><th>Descrição</th><th>Correção</th></tr>
+      <tr><td>Múltipla escolha</td><td>Uma resposta correta possível.</td><td>Automática (gabarito/pontuação opcionais — "modo Quiz")</td></tr>
+      <tr><td>Caixas de seleção</td><td>Múltiplas respostas possíveis.</td><td>Automática (gabarito/pontuação opcionais — "modo Quiz")</td></tr>
+      <tr><td>Resposta curta</td><td>Texto livre, curto.</td><td>Manual, pelo professor</td></tr>
+      <tr><td>Dissertação / parágrafo</td><td>Texto livre, mais longo.</td><td>Manual, pelo professor</td></tr>
+    </table>
+
+    <h3>Correção</h3>
+    <p>Nas duas perguntas objetivas (múltipla escolha e caixas de seleção), o professor pode, opcionalmente, definir gabarito e pontuação — mesma lógica do "modo Quiz" do Google Forms. Se ele não configurar nenhum gabarito na prova inteira, ela se comporta como um formulário sem nota automática <span class="ref">RULE-EXAM-14</span>. Resposta curta e dissertação exigem sempre correção manual.</p>
+
+    <h3>Sem banco de questões reutilizável</h3>
+    <p>Cada prova nasce com suas próprias perguntas — não existe, nesta rodada, um banco de perguntas persistente e reutilizável entre provas (mesmo comportamento padrão do Google Forms) <span class="ref">RULE-EXAM-15</span>. Reutilização de perguntas fica como escopo futuro — ver <a href="#fora-de-escopo">Fora desta rodada</a>.</p>
+
+    <h3>Vínculo com a turma</h3>
+    <p>Toda prova pertence a uma turma (<code>class_group</code>) <span class="ref">RULE-EXAM-16</span>. Esse vínculo define duas coisas: só pode realizar a prova o aluno com matrícula ativa na turma (mesmo critério já usado no check-in via app); e só o(s) professor(es) atribuído(s) à turma — incluindo co-docência — pode(m) criar/editar a prova e ver a trilha de auditoria, reaproveitando o <code>LeadershipScopeService</code> já usado no restante do produto para essa mesma checagem.</p>
+
+    <h3>O aluno nunca vê gabarito ou nota</h3>
+    <p>Ao finalizar a prova, o aluno não vê o gabarito nem a pontuação das perguntas objetivas — só o professor tem acesso à correção <span class="ref">RULE-EXAM-17</span>. Nenhum payload servido ao aluno, durante ou depois da prova, pode conter o campo de resposta correta (<code>is_correct</code>) ou pontuação de qualquer pergunta.</p>
+
+    <div class="note">
+      <span class="tag">Suposição conservadora do design técnico — não é regra de negócio confirmada</span>
+      Para não travar o desenho técnico, o Business Analyst adotou premissas conservadoras, revisitáveis quando a implementação real tocar cada ponto: não existe estado de rascunho/publicação (uma prova criada já é válida a partir da sua janela de disponibilidade); edição de conteúdo/configuração crítica é bloqueada assim que qualquer sessão de aluno avançar além de <code>NOT_STARTED</code>/<code>AVAILABLE</code>; mínimo de 1 pergunta por prova e de 2 opções em perguntas de múltipla escolha/caixas de seleção; a escolha do modo de monitoramento é obrigatória ao criar a prova, sem default silencioso; uma única tentativa por prova por aluno.
+    </div>
+  </section>
+
+  <section id="monitoramento">
+    <h2 class="section-title">Política de Monitoramento Configurável</h2>
+    <p>O professor define, por prova, como o sistema reage a ocorrências detectadas durante a aplicação. A política não é fixa: existem no mínimo dois modos <span class="ref">RULE-EXAM-04</span>.</p>
+
+    <table>
+      <tr><th>Modo</th><th>Ao detectar uma ocorrência configurada como violação</th></tr>
+      <tr>
+        <td><strong>Encerramento automático</strong></td>
+        <td>Registra o evento (data/horário, aluno, tipo de ocorrência, informações técnicas disponíveis) → encerra a sessão imediatamente → impede que o aluno continue respondendo → preserva as respostas já sincronizadas → muda o estado da sessão para <code>TERMINATED</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>Apenas registro</strong></td>
+        <td>Registra o mesmo evento → não encerra a prova → o aluno continua normalmente → o sistema segue monitorando eventos posteriores → o professor revê depois a linha do tempo completa de ocorrências de cada aluno.</td>
+      </tr>
+    </table>
+
+    <h3>Eventos monitoráveis</h3>
+    <p>Além do modo geral, o professor liga/desliga individualmente quais tipos de evento são monitorados na prova (checkboxes na tela de criação) <span class="ref">RULE-EXAM-05</span>:</p>
+    <table>
+      <tr><th>Evento</th><th>Significado</th></tr>
+      <tr><td><code>PAGE_BLUR</code></td><td>Perda de foco da página.</td></tr>
+      <tr><td><code>PAGE_VISIBILITY_CHANGED</code></td><td>Mudança de aba.</td></tr>
+      <tr><td><code>NEW_TAB_ATTEMPT</code></td><td>Tentativa de abrir nova aba. <em>Gap aberto:</em> o texto original também cita "nova janela" como evento distinto, mas não há valor de enum próprio para isso ainda — não confirmado se <code>NEW_TAB_ATTEMPT</code> cobre os dois casos.</td></tr>
+      <tr><td><code>EXTERNAL_NAVIGATION_ATTEMPT</code></td><td>Tentativa de navegação externa.</td></tr>
+      <tr><td><code>KEYBOARD_RESTRICTION_TRIGGERED</code></td><td>Atalho de teclado proibido.</td></tr>
+      <tr><td><code>EXTERNAL_APPLICATION_FOCUS</code></td><td>Foco em aplicativo externo — depende de agente local (ver <a href="#fora-de-escopo">Fora desta rodada</a>).</td></tr>
+      <tr><td><code>PAGE_RELOAD</code></td><td>Atualização/recarregamento de página — tratamento especial, ver <a href="#timer">Timer e disponibilidade</a>.</td></tr>
+    </table>
+    <p>O nome final de cada tipo de evento (enum/schema) é decisão técnica; a lista acima é o vocabulário de negócio confirmado pelo usuário.</p>
+
+    <div class="note">
+      <span class="tag">Evolução futura já prevista pela arquitetura, não requisito desta rodada</span>
+      Hoje a política de violação é a mesma para todos os eventos habilitados numa prova. Uma ação <strong>diferenciada</strong> por tipo de evento (ex.: um evento só registra enquanto outro encerra, na mesma prova) é uma evolução explicitamente futura. A arquitetura já foi desenhada para evoluir nessa direção sem reconstrução — ver <code>ExamViolationPolicyService</code> em <a href="#arquitetura">Arquitetura técnica</a>.
+    </div>
+  </section>
+
+  <section id="timer">
+    <h2 class="section-title">Timer e Disponibilidade</h2>
+    <p>Timer e disponibilidade são dois conceitos separados, com fontes de verdade diferentes.</p>
+
+    <h3>Janela de disponibilidade vs. duração individual</h3>
+    <p>A <strong>disponibilidade</strong> é uma janela de início/fim que determina quando o aluno pode <em>começar</em> a prova: antes da janela, <code>EXAM_NOT_AVAILABLE</code>; depois, <code>EXAM_CLOSED</code>; durante, <code>EXAM_AVAILABLE</code>. A <strong>duração</strong> (sem limite, ou definida em minutos/horas) determina quanto tempo cada aluno tem <em>depois</em> de começar — contada individualmente a partir do horário em que aquele aluno específico iniciou, nunca a partir do fechamento da janela geral <span class="ref">RULE-EXAM-06</span>.</p>
+    <div class="feature-card">
+      <h4>Exemplo</h4>
+      <p>Janela de disponibilidade: 01/10 09:00 às 18:00. Duração: 60 minutos. Se o aluno A começa às 10:00, sua sessão expira às 11:00. Se o aluno B começa às 15:30, a dele expira às 16:30 — mesmo a janela geral fechando só às 18:00. Cada sessão tem seu próprio relógio.</p>
+    </div>
+
+    <h3>Backend como fonte de verdade</h3>
+    <p>Ao iniciar a sessão, o backend registra <code>startedAt</code>/<code>expiresAt</code>. O frontend calcula e exibe a contagem regressiva a partir desses valores — mas nunca decide expiração sozinho. Toda operação relevante (responder pergunta, finalizar prova) revalida no servidor, de forma independente, se a sessão ainda está ativa e se o prazo expirou <span class="ref">RULE-EXAM-07</span>. O horário informado pelo cliente nunca é confiável isoladamente.</p>
+
+    <h3>Expiração de tempo</h3>
+    <p>Quando o tempo da sessão se esgota: o evento <code>EXAM_TIME_EXPIRED</code> é registrado; as respostas pendentes são salvas quando possível; a sessão é encerrada; novas respostas são bloqueadas; o estado muda para <code>EXPIRED</code>; o horário de encerramento é registrado <span class="ref">RULE-EXAM-08</span>.</p>
+
+    <h3>Atualização de página (reload)</h3>
+    <p>Se o aluno atualizar a página durante a prova, a sessão existente é recuperada e o timer continua do ponto correto — o aluno nunca ganha um novo período de prova. O evento <code>PAGE_RELOAD</code> é sempre registrado em auditoria. Se a prova tiver <code>PAGE_RELOAD</code> habilitado como evento monitorado, ele também pode disparar o comportamento configurado na política de violação (apenas registro, ou encerramento) <span class="ref">RULE-EXAM-11</span>.</p>
+
+    <h3>Timer e monitoramento são independentes</h3>
+    <p>Nenhum dos dois decide pelo outro: a expiração de tempo nunca é decidida pela política de violação, e a política de violação nunca depende do estado do timer. Uma prova pode combinar livremente qualquer duração com qualquer modo de monitoramento <span class="ref">RULE-EXAM-09</span>.</p>
+
+    <div class="independence-diagram">
+      <div class="col">
+        <div class="col-title">Timer</div>
+        <div class="node">ExamTimerService<span class="small">startedAt / expiresAt</span></div>
+        <div>↓</div>
+        <div class="node">Revalida expiração a cada requisição relevante</div>
+        <div>↓</div>
+        <div class="node outcome">tempo esgotado → <code>EXPIRED</code></div>
+      </div>
+      <div class="divider">independentes — RULE-EXAM-09</div>
+      <div class="col">
+        <div class="col-title">Monitoramento</div>
+        <div class="node">ExamMonitoringService<span class="small">eventos habilitados na prova</span></div>
+        <div>↓</div>
+        <div class="node">ExamViolationPolicyService<span class="small">TERMINATE | LOG_ONLY</span></div>
+        <div>↓</div>
+        <div class="node outcome">violação + modo automático → <code>TERMINATED</code></div>
+      </div>
+    </div>
+    <p class="diagram-note">Os dois trilhos só se encontram em <code>ExamSessionService</code>, único serviço com autoridade para gravar a mudança de estado — nenhuma seta cruza de um trilho para o outro.</p>
+
+    <div class="note">
+      <span class="tag">Suposição conservadora do design técnico — não é regra de negócio confirmada</span>
+      Não há tolerância/carência após <code>expiresAt</code> — a expiração é exata. Também não há prioridade fixa definida entre <code>EXPIRED</code> e <code>TERMINATED</code> caso os dois coincidam no mesmo instante. Eventos de monitoramento recebidos depois que a sessão já atingiu um estado terminal (<code>COMPLETED</code>, <code>TERMINATED</code>, <code>EXPIRED</code>, <code>ABANDONED</code>) são descartados, sem gerar nova transição.
+    </div>
+
+    <div class="note">
+      <span class="tag">Fora desta rodada</span>
+      Por padrão, o aluno não pode pausar o timer <span class="ref">RULE-EXAM-10</span>. Uma futura permissão de pausa configurável pelo professor, controlada pelo backend, com log obrigatório de pausa (<code>EXAM_TIMER_PAUSED</code>) e retomada (<code>EXAM_TIMER_RESUMED</code>), é escopo explicitamente futuro — ver <a href="#fora-de-escopo">Fora desta rodada</a>.
+    </div>
+  </section>
+
+  <section id="estados">
+    <h2 class="section-title">Estados da Sessão e Auditoria</h2>
+    <p>A sessão de prova de um aluno tem 7 estados possíveis <span class="ref">RULE-EXAM-12</span>. Toda mudança relevante de estado — início, ocorrência de monitoramento, expiração, encerramento etc. — é registrada em auditoria, com data e horário.</p>
+
+    <div class="flow">
+      <div class="node">NOT_STARTED</div>
+      <div class="arrow">→</div>
+      <div class="node">AVAILABLE</div>
+      <div class="arrow">→</div>
+      <div class="node">IN_PROGRESS</div>
+    </div>
+
+    <div class="branch-diagram">
+      <div class="node branch-source">IN_PROGRESS</div>
+      <div class="branch-row">
+        <div class="branch">
+          <div class="cond">aluno envia a prova</div>
+          <div>↓</div>
+          <div class="node">COMPLETED</div>
+        </div>
+        <div class="branch">
+          <div class="cond">violação detectada + modo "encerramento automático"</div>
+          <div>↓</div>
+          <div class="node">TERMINATED</div>
+        </div>
+        <div class="branch">
+          <div class="cond">tempo esgotado (expiresAt)</div>
+          <div>↓</div>
+          <div class="node">EXPIRED</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note abandoned-note">
+      <span class="tag">Gap não-bloqueante — gatilho exato não confirmado</span>
+      <code>ABANDONED</code> é um estado válido do enum, mas a condição exata que o diferencia de <code>EXPIRED</code> ainda não foi definida (ex.: sessão sem limite de tempo que o aluno nunca retoma; janela de disponibilidade encerrada com a sessão ainda em <code>NOT_STARTED</code>/<code>AVAILABLE</code>, nunca iniciada). Precisa de definição antes da implementação real do <code>ExamSessionService</code>.
+    </div>
+
+    <div class="note">
+      <span class="tag">Suposição conservadora do design técnico — não é regra de negócio confirmada</span>
+      <code>NOT_STARTED</code> e <code>AVAILABLE</code> são estados calculados a partir da janela de disponibilidade, nunca persistidos. A linha de <code>exam_session</code> só passa a existir quando o aluno efetivamente inicia a prova (<code>IN_PROGRESS</code>).
+    </div>
+
+    <h3>Trilha de auditoria</h3>
+    <p>Toda mudança relevante de estado é obrigatoriamente registrada, com data/horário. Quem acessa essa trilha, via <code>LeadershipScopeService</code> <span class="ref">RULE-EXAM-16</span>: o(s) professor(es) atribuído(s) à turma da prova (incluindo co-docência); o Coordenador de Curso, para as provas dos cursos que coordena; e Direção/Reitoria, para todas as provas da instituição — mesma hierarquia de liderança já usada no restante do produto. <em>Atualizado em 2026-09-02:</em> o acesso de Coordenador/Direção estava inicialmente negado por padrão nesta rodada, mas foi confirmado como parte do pivot "Portal de autoatendimento web" (ver Arquitetura Técnica abaixo).</p>
+  </section>
+
+  <section id="arquitetura">
+    <h2 class="section-title">Arquitetura Técnica</h2>
+    <p>Novo bounded context <code>exam</code>, implementado como módulo <strong>síncrono</strong> dentro do mesmo monólito modular NestJS já usado no resto do backend — sem fila/evento, ao contrário do núcleo de presença e da segurança de intrusão. Justificativa: aqui a borda é um navegador autenticado (aluno/professor), não um dispositivo IoT pouco confiável, o mesmo raciocínio já usado no módulo síncrono de Gerenciamento da Instituição. Isolamento multi-tenant via <code>tenant_id</code> + Row-Level Security, sem exceção — mesmo padrão de todo o projeto.</p>
+    <div class="feature-card">
+      <h4>Frontend Web como canal primário de Aluno/Professor/Coordenador (atualizado em 2026-09-02)</h4>
+      <p>O Frontend Web (dashboard React) era, até esta feature, escopado só para administração institucional. Uma primeira extensão pontual (mesmo dia) liberou Aluno/Professor apenas para a Área de Provas. Horas depois, o usuário pediu um pivot mais amplo: o Frontend Web passa a ser o <strong>canal primário</strong> de todo o autoatendimento de Aluno/Professor/Coordenador de Curso (provas, presença/faltas, cronograma) para faculdade e escola — não mais uma exceção isolada da Área de Provas. O App Mobile (React Native/Expo, já aprovado, ainda sem código escrito) deixa de ser o canal onde esse conteúdo nasce primeiro e passa a um papel secundário de "espelho"; seu desenvolvimento fica pausado até o portal web estar pronto. Ver "Pivot — Portal de autoatendimento (self-service)" em <code>project-knowledge/references/architecture-overview.md</code> para o registro completo — esta página cobre apenas a fatia de Área de Provas dentro desse pivot maior.</p>
+    </div>
+
+    <h3>Os 6 serviços</h3>
+    <p>Mapeiam diretamente os 6 componentes de negócio exigidos pelo usuário para esta feature: Timer, Disponibilidade, Monitoramento, Política de Violação, Sessão e Auditoria — tratados como independentes, porém integrados, com a lógica crítica centralizada no backend.</p>
+    <table>
+      <tr><th>Serviço</th><th>Componente de negócio</th><th>O que faz</th></tr>
+      <tr>
+        <td><code>ExamAvailabilityService</code></td>
+        <td>Disponibilidade</td>
+        <td>Calcula <code>EXAM_NOT_AVAILABLE</code>/<code>EXAM_AVAILABLE</code>/<code>EXAM_CLOSED</code> a partir da janela; confere matrícula ativa do aluno na turma da prova antes de liberar o início.</td>
+      </tr>
+      <tr>
+        <td><code>ExamTimerService</code></td>
+        <td>Timer</td>
+        <td>Calcula <code>startedAt</code>/<code>expiresAt</code> ao iniciar a sessão; reexpõe o mesmo <code>expiresAt</code> absoluto em qualquer recuperação de sessão (reload). Nenhuma lógica de tempo vive no frontend além da exibição.</td>
+      </tr>
+      <tr>
+        <td><code>ExamMonitoringService</code></td>
+        <td>Monitoramento</td>
+        <td>Recebe eventos reportados pelo navegador, filtra pelos tipos habilitados na prova. Trata <code>PAGE_RELOAD</code> como caso especial: sempre grava em auditoria, mas só marca como violação se <code>PAGE_RELOAD</code> estiver habilitado.</td>
+      </tr>
+      <tr>
+        <td><code>ExamViolationPolicyService</code></td>
+        <td>Política de violação</td>
+        <td>Implementa os dois modos (<code>TERMINATE</code> / <code>LOG_ONLY</code>) como estratégias intercambiáveis (Strategy) — preparado para evoluir para política por tipo de evento sem reconstrução.</td>
+      </tr>
+      <tr>
+        <td><code>ExamSessionService</code></td>
+        <td>Sessão</td>
+        <td>Única autoridade de escrita do estado da sessão (os 7 estados). Toda transição passa por aqui, nunca decidida em outro serviço nem no frontend. Reaproveita <code>LeadershipScopeService</code> para autorizar gestão/criação de prova e acesso à auditoria por turma.</td>
+      </tr>
+      <tr>
+        <td><code>ExamAuditService</code></td>
+        <td>Auditoria</td>
+        <td>Escrita append-only de todo evento relevante da sessão; leitura consultável pelo professor autor da prova.</td>
+      </tr>
+    </table>
+
+    <h3>Fluxo de integração</h3>
+    <div class="flow">
+      <div class="node">Aluno autenticado</div>
+      <div class="arrow">→</div>
+      <div class="node">ExamAvailabilityService<span style="display:block;font-weight:400;font-size:11px;color:var(--muted);">elegibilidade + janela</span></div>
+      <div class="arrow">→</div>
+      <div class="node">ExamSessionService.start()<span style="display:block;font-weight:400;font-size:11px;color:var(--muted);">consulta ExamTimerService</span></div>
+    </div>
+    <p>Durante a sessão, o navegador reporta eventos de monitoramento ao <code>ExamMonitoringService</code>, que os encaminha ao <code>ExamAuditService</code> (registro) e ao <code>ExamViolationPolicyService</code> (decisão de encerrar ou não). Em paralelo — e de forma independente — a expiração de tempo é revalidada a cada requisição relevante (ver diagrama em <a href="#timer">Timer e disponibilidade</a>). O painel do professor consulta <code>ExamAuditService</code>/<code>ExamSessionService</code> por polling, não por push.</p>
+
+    <h3>Tecnologia (reaproveitada, nada novo)</h3>
+    <ul>
+      <li><strong>Backend/Frontend:</strong> a mesma stack já aprovada do resto do produto — NestJS + PostgreSQL + RLS multi-tenant; React + TypeScript + Vite + TanStack Query. Nenhum framework, biblioteca de estado ou banco novo.</li>
+      <li><strong>Timer no cliente:</strong> <code>setInterval</code>/<code>Date.now()</code> nativo do navegador, só para renderizar a contagem regressiva local a partir do <code>expiresAt</code> absoluto recebido do backend — nunca como fonte de decisão.</li>
+      <li><strong>Painel do professor — polling, não realtime:</strong> a cada 5 segundos, via <code>refetchInterval</code> do TanStack Query, o mesmo cliente HTTP/padrão de autenticação já usado no resto do dashboard. Mesma decisão fundamentada já usada na Segurança de Intrusão: não há infraestrutura de tempo real em nenhum outro ponto do projeto, e violações de prova têm ritmo humano, não alta frequência. Aplicado só ao painel do professor — o aluno não faz polling. Revisitar apenas mediante evidência real de necessidade.</li>
+      <li><strong>Proteção contra rajada de eventos de monitoramento:</strong> reaproveita <code>@nestjs/throttler</code> (já usado no login/onboarding), escopado por <code>(tenant_id, exam_session_id)</code> — não apenas por IP/usuário. Exigência do Security, para que um único aluno não consiga saturar o log de auditoria de outra sessão através de um rate limit compartilhado.</li>
+    </ul>
+
+    <div class="note risk">
+      <span class="tag">Risco aceito e documentado — não é uma falha de desenho</span>
+      Como não há agente nativo/desktop nesta rodada, o monitoramento é inteiramente observado pelo navegador. Um aluno tecnicamente capaz de chamar endpoints diretamente pode contornar a UI de monitoramento. É uma limitação estrutural aceita pela decisão "borda = navegador autenticado", coerente com o resto do projeto — não uma pendência a corrigir.
+    </div>
+  </section>
+
+  <section id="dados">
+    <h2 class="section-title">Modelo de Dados</h2>
+    <p>9 tabelas novas em PostgreSQL, todas com <code>tenant_id</code> e política RLS própria. Nenhuma migration foi aplicada ainda — este é o modelo lógico de referência.</p>
+    <table>
+      <tr><th>Tabela</th><th>O que guarda</th></tr>
+      <tr><td><code>exam</code></td><td>A prova em si: vínculo com a turma (<code>class_group_id</code>), janela de disponibilidade, duração, modo de monitoramento.</td></tr>
+      <tr><td><code>exam_question</code></td><td>Cada pergunta da prova: tipo, enunciado, pontuação (quando aplicável).</td></tr>
+      <tr><td><code>exam_question_option</code></td><td>Opções de resposta de perguntas de múltipla escolha/caixas de seleção, incluindo qual é a correta.</td></tr>
+      <tr><td><code>exam_monitoring_config</code></td><td>Modo de monitoramento configurado para a prova (<code>TERMINATE</code>/<code>LOG_ONLY</code>).</td></tr>
+      <tr><td><code>exam_monitoring_event_type</code></td><td>Quais tipos de evento estão habilitados para aquela prova.</td></tr>
+      <tr><td><code>exam_session</code></td><td>A tentativa de um aluno específico: estado atual, <code>startedAt</code>/<code>expiresAt</code>, snapshot da configuração no momento em que a sessão começou.</td></tr>
+      <tr><td><code>exam_answer</code></td><td>Resposta de um aluno a uma pergunta, com suporte a autosave incremental.</td></tr>
+      <tr><td><code>exam_answer_selected_option</code></td><td>Quais opções o aluno marcou, para perguntas de múltipla escolha/caixas de seleção.</td></tr>
+      <tr><td><code>exam_session_event</code></td><td>Trilha de auditoria: todo evento relevante da sessão (início, violação, expiração etc.), append-only.</td></tr>
+    </table>
+
+    <h3>Pontos técnicos relevantes</h3>
+    <ul>
+      <li><strong>Snapshot de configuração na sessão:</strong> <code>exam_session</code> grava um retrato da configuração aplicável no momento em que a sessão é criada (duração, modo de monitoramento, tipos de evento habilitados) — mesmo padrão já usado em <code>class_session</code> no núcleo de presença, para que mudanças de configuração não afetem sessões já em andamento.</li>
+      <li><strong>Auditoria append-only e imutável:</strong> <code>exam_session_event</code> tem <code>occurred_at</code> gravado pelo servidor (nunca aceito do cliente) e <code>event_type</code> como coluna de texto livre, para permitir novos tipos de evento sem migration. A imutabilidade é exigida a nível de banco (<code>REVOKE UPDATE, DELETE</code> ou trigger equivalente) — exigência do Security, não apenas disciplina de aplicação, para que a trilha não possa ser adulterada nem por um bug da própria camada de aplicação.</li>
+      <li><strong>Autosave:</strong> <code>exam_answer</code> tem restrição <code>UNIQUE</code> por sessão+pergunta, suportando resposta sincronizada incrementalmente, não só no envio final.</li>
+      <li><strong>RLS por posse do aluno:</strong> <code>exam_session</code>/<code>exam_answer</code> precisam de um predicado de posse por aluno (via <code>person_id</code>), não apenas <code>tenant_id</code> — dois alunos do mesmo tenant não podem ver a sessão/resposta um do outro. <code>exam_question_option</code>/<code>exam_answer_selected_option</code> precisam de política RLS própria, não apenas herdada implicitamente via chave estrangeira.</li>
+      <li><strong>Nenhum gabarito no payload do aluno:</strong> nenhum payload servido ao aluno (durante ou depois da prova) pode conter <code>is_correct</code> ou pontuação de qualquer pergunta <span class="ref">RULE-EXAM-17</span> — controle de camada de aplicação (DTO com allow-list de campo), não do schema em si.</li>
+    </ul>
+
+    <div class="note">
+      <span class="tag">Pendente, não bloqueante</span>
+      A aplicabilidade exata da coluna <code>points</code> em <code>exam_question</code> para tipos subjetivos (resposta curta/dissertação) foi uma inferência do Database Agent além do texto literal de RULE-EXAM-14, e está sinalizada para confirmação quando a implementação real começar.
+    </div>
+  </section>
+
+  <section id="seguranca">
+    <h2 class="section-title">Segurança</h2>
+    <p>Revisão do Security Agent sobre a arquitetura e o modelo de dados acima. Riscos cobertos: manipulação de timer pelo cliente, integridade da trilha de auditoria, isolamento entre alunos, vazamento de gabarito/nota, e conteúdo livre de prova como vetor de XSS armazenado.</p>
+
+    <h3>Controles exigidos (já incorporados ao design aprovado, não opcionais)</h3>
+    <ol>
+      <li>Checagem de posse (<code>personId</code> do JWT igual ao dono da sessão) em todo endpoint de sessão/resposta do aluno.</li>
+      <li>Reaproveitamento de <code>LeadershipScopeService</code> para autorizar gestão/criação de prova e leitura de auditoria por turma — nenhuma checagem de autorização paralela nova.</li>
+      <li>Checagem de matrícula ativa antes de liberar disponibilidade/início de sessão — mesmo precedente já usado no check-in de presença.</li>
+      <li>Separação de dois caminhos de escrita de evento de auditoria: eventos reportados pelo cliente (allow-list de tipos permitidos) vs. eventos gerados exclusivamente pelo servidor (ex.: <code>EXAM_TIME_EXPIRED</code>) — o segundo grupo nunca pode ser injetado via payload externo.</li>
+      <li>Exclusão de <code>is_correct</code>/pontuação de qualquer payload servido ao aluno.</li>
+      <li>Imutabilidade de <code>exam_session_event</code> a nível de banco.</li>
+      <li>Sanitização de conteúdo livre de prova (perguntas, opções, respostas dissertativas) contra XSS armazenado — relevante porque o JWT do professor em <code>sessionStorage</code> fica exposto se qualquer tela renderizar HTML não sanitizado vindo de uma prova.</li>
+    </ol>
+    <p>Ver também a limitação de taxa de eventos de monitoramento por sessão (<code>(tenant_id, exam_session_id)</code>), descrita em <a href="#arquitetura">Arquitetura técnica</a> — também uma exigência do Security.</p>
+
+    <div class="note risk">
+      <span class="tag">Risco aceito, não bloqueante, comunicado e reconhecido pelo usuário</span>
+      O monitoramento é inteiramente observado pelo navegador, sem agente nativo — tem valor dissuasório/de registro, não é à prova de burla técnica por um aluno capaz de chamar endpoints diretamente.
+    </div>
+  </section>
+
+  <section id="fora-de-escopo">
+    <h2 class="section-title">Escopo Fora Desta Rodada</h2>
+    <p>Itens explicitamente <strong>adiados, não rejeitados</strong> — não devem ser assumidos como escopo por nenhum agente até nova confirmação explícita do usuário.</p>
+    <ul class="gap-list">
+      <li><span class="tag">Adiado</span>Tipos de pergunta adicionais do Google Forms: escala linear, grade de múltipla escolha, grade de caixas de seleção, data, hora, upload de arquivo.</li>
+      <li><span class="tag">Adiado</span>Banco de questões reutilizável entre provas.</li>
+      <li><span class="tag">Adiado</span>Pausa de timer configurável pelo professor.</li>
+      <li><span class="tag">Adiado</span>Ação diferenciada por tipo de evento dentro da mesma prova (arquitetura já preparada para essa evolução, ver <code>ExamViolationPolicyService</code>).</li>
+      <li><span class="tag">Adiado</span>Tentativas múltiplas por prova (schema atual tem <code>UNIQUE</code> sessão-aluno-prova; suportar múltiplas tentativas no futuro seria migration aditiva, não reconstrução).</li>
+      <li><span class="tag">Adiado</span>Obrigatoriedade de pergunta (campo "obrigatória" não existe ainda).</li>
+      <li><span class="tag">Adiado</span>Suporte a múltiplas seções/páginas dentro de uma prova (prova de página única nesta rodada).</li>
+      <li><span class="tag">Resolvido</span>Acesso de Coordenador de Curso/Direção à trilha de auditoria — confirmado em 2026-09-02 (ver "Trilha de auditoria" acima): Coordenador vê provas dos cursos que coordena, Direção/Reitoria vê todas.</li>
+      <li><span class="tag">Não confirmado</span>Agente de monitoramento nativo/desktop para <code>EXTERNAL_APPLICATION_FOCUS</code> — não está claro se é um requisito real desta feature ou apenas um exemplo aspiracional do texto original recebido do usuário.</li>
+    </ul>
+  </section>
+
+  <section id="status">
+    <h2 class="section-title">Status Atual</h2>
+    <div class="status-grid">
+      <div class="status-card">
+        <h4>O que já foi aprovado (2026-09-02)</h4>
+        <ul>
+          <li>Regras de negócio — RULE-EXAM-01 a 17</li>
+          <li>Arquitetura (bounded context <code>exam</code>, 6 serviços)</li>
+          <li>Tecnologia (stack reaproveitada, polling, throttling)</li>
+          <li>Modelo de dados lógico (9 tabelas)</li>
+          <li>Revisão de segurança</li>
+        </ul>
+      </div>
+      <div class="status-card">
+        <h4>O que ainda não existe</h4>
+        <ul>
+          <li>Nenhuma migration aplicada</li>
+          <li>Nenhum código de backend</li>
+          <li>Nenhum código de frontend</li>
+          <li>Nenhum teste</li>
+        </ul>
+      </div>
+    </div>
+    <p>A implementação real (Backend, Database, Frontend, Testing) é trabalho de uma rodada futura separada — mesmo padrão já usado em toda feature grande anterior deste projeto.</p>
+  </section>
+
+</main>
+
+<footer>
+  Documento gerado a partir das decisões confirmadas do projeto CheckClass para a feature "Área de Provas". Fontes: <code>.claude/skills/business-rules/references/exam-rules.md</code> (RULE-EXAM-01 a 17), <code>.claude/skills/project-knowledge/references/architecture-overview.md</code> (seções "Área de Provas", aprovadas em 2026-09-02) e <code>.claude/skills/project-knowledge/references/pending-decisions.md</code> (gaps, suposições conservadoras e escopo adiado). Ver também <a href="checkclass-visao-geral.html">checkclass-visao-geral.html</a> para a visão geral do produto.
+</footer>
+
+</body>
+</html>

@@ -17,6 +17,23 @@
 - Regras de bloqueio automático em intrusão (RULE-SEC-04).
 - Regras de chamada / fatores obrigatórios por instituição (RULE-ATT-02).
 
+**Adição (2026-09-02) — feature futura, ainda não aprovada para
+implementação** (ver
+`business-rules/references/attendance-frequency-rules.md`):
+
+- **Período de apuração da frequência acumulada** — bimestral, trimestral
+  ou semestral, escolhido pelo administrador, com a mesma hierarquia de
+  escopo já usada hoje (instituição → curso → turma, o mais específico
+  vence) (RULE-FREQ-02).
+- **Distância do gatilho do aviso de proximidade do limite de frequência**
+  — relativa ao mínimo configurado, nunca um valor absoluto fixo no código
+  (o "85%" do texto original do usuário é o resultado de mínimo 75% + 10
+  pontos, não uma constante) (RULE-FREQ-03). **Atenção:** a distância exata
+  e se ela é configurável pelo administrador **ainda não foram
+  confirmadas** — ver gap em
+  `project-knowledge/references/pending-decisions.md`; não fixar valor no
+  código sem confirmação.
+
 Ao implementar qualquer uma dessas regras, o agente responsável (Backend,
 Database, etc.) deve modelar o valor como configuração (por
 instituição/curso/turma/área, conforme o caso), nunca como constante de
