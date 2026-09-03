@@ -8,7 +8,8 @@ import { Loading } from '../../components/loading';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
-import type { ClassGroup } from '../class-groups/class-groups-api';
+import { listClassGroupSubjects, type ClassGroup } from '../class-groups/class-groups-api';
+import { listSubjects } from '../subjects/subjects-api';
 import { createScheduleSlot, deleteScheduleSlot, generateSessions, listScheduleSlots, type ScheduleSlot } from './class-schedule-api';
 import styles from './schedule-slots-section.module.css';
 
@@ -41,11 +42,29 @@ export function ScheduleSlotsSection({ classGroupId, classGroup }: ScheduleSlots
     error,
   } = useQuery({ queryKey: ['schedule-slots', classGroupId], queryFn: () => listScheduleSlots(classGroupId) });
 
+  // RULE-INST-14: a slot teaches one of the turma's matérias, so the form
+  // needs the turma's set and the slot table needs to show which one each
+  // slot is about.
+  const { data: classGroupSubjects } = useQuery({
+    queryKey: ['class-group-subjects', classGroupId],
+    queryFn: () => listClassGroupSubjects(classGroupId),
+  });
+  const { data: subjectsForCourse } = useQuery({
+    queryKey: ['subjects', 'by-course', classGroup?.courseId],
+    queryFn: () => listSubjects(classGroup?.courseId),
+    enabled: Boolean(classGroup?.courseId),
+  });
+
+  function subjectName(id: string): string {
+    return subjectsForCourse?.find((subject) => subject.id === id)?.name ?? id;
+  }
+
+  const [subjectId, setSubjectId] = useState('');
   const [dayOfWeek, setDayOfWeek] = useState('1');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const createMutation = useMutation({
-    mutationFn: () => createScheduleSlot(classGroupId, { dayOfWeek: Number(dayOfWeek), startTime, endTime }),
+    mutationFn: () => createScheduleSlot(classGroupId, { subjectId, dayOfWeek: Number(dayOfWeek), startTime, endTime }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule-slots', classGroupId] });
       // A slot create/delete regenerates future sessions server-side —
@@ -109,6 +128,7 @@ export function ScheduleSlotsSection({ classGroupId, classGroup }: ScheduleSlots
           getRowKey={(slot) => slot.id}
           emptyMessage="Nenhum slot na grade ainda."
           columns={[
+            { header: 'Matéria', cell: (slot) => subjectName(slot.subjectId) },
             { header: 'Dia da semana', cell: (slot) => DAY_OF_WEEK_LABELS[slot.dayOfWeek] },
             { header: 'Início', cell: (slot) => formatTime(slot.startTime) },
             { header: 'Fim', cell: (slot) => formatTime(slot.endTime) },
@@ -136,6 +156,21 @@ export function ScheduleSlotsSection({ classGroupId, classGroup }: ScheduleSlots
         <form onSubmit={handleCreateSubmit}>
           {createMutation.isError && <ErrorBanner message={errorMessage(createMutation.error)} />}
           <label>
+            Matéria
+            <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)} required>
+              <option value="" disabled>
+                {classGroupSubjects && classGroupSubjects.length > 0
+                  ? 'Selecione uma matéria'
+                  : 'Adicione uma matéria à turma primeiro'}
+              </option>
+              {classGroupSubjects?.map((link) => (
+                <option key={link.id} value={link.subjectId}>
+                  {subjectName(link.subjectId)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
             Dia da semana
             <select value={dayOfWeek} onChange={(event) => setDayOfWeek(event.target.value)}>
               {DAY_OF_WEEK_LABELS.map((label, index) => (
@@ -153,7 +188,11 @@ export function ScheduleSlotsSection({ classGroupId, classGroup }: ScheduleSlots
             Fim
             <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} required />
           </label>
-          <button type="submit" disabled={createMutation.isPending || !startTime || !endTime} className={styles.iconButton}>
+          <button
+            type="submit"
+            disabled={createMutation.isPending || !subjectId || !startTime || !endTime}
+            className={styles.iconButton}
+          >
             <Plus size={16} />
             {createMutation.isPending ? 'Adicionando…' : 'Adicionar slot'}
           </button>

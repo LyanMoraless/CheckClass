@@ -4,7 +4,10 @@ import { TenantContextService } from '../../database/tenant-context.service';
 export interface TeachingClassGroupEntry {
   classGroupId: string;
   classGroupName: string;
-  subjectName: string;
+  // RULE-INST-14: a turma studies N matérias — RULE-INST-05 keeps the
+  // professor bound to the whole turma, not to one of its matérias, so this
+  // list stays turma-level and just shows the full set.
+  subjectNames: string[];
   courseName: string;
 }
 
@@ -29,14 +32,19 @@ export class TeachingClassGroupsService {
       SELECT
         cg.id AS "classGroupId",
         cg.name AS "classGroupName",
-        sub.name AS "subjectName",
+        subs.names AS "subjectNames",
         c.name AS "courseName"
       FROM class_group_enrollment cge
       JOIN class_group cg ON cg.id = cge.class_group_id
-      JOIN subject sub ON sub.id = cg.subject_id
-      JOIN course c ON c.id = sub.course_id
+      JOIN course c ON c.id = cg.course_id
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(array_agg(s.name ORDER BY s.name), '{}'::text[]) AS names
+        FROM class_group_subject cgs
+        JOIN subject s ON s.id = cgs.subject_id
+        WHERE cgs.class_group_id = cg.id
+      ) subs ON TRUE
       WHERE cge.tenant_id = $1 AND cge.person_id = $2 AND cge.role = 'teacher'
-      ORDER BY c.name ASC, sub.name ASC, cg.name ASC
+      ORDER BY c.name ASC, cg.name ASC
       `,
       [tenantId, personId],
     );

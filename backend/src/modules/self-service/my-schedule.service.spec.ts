@@ -59,7 +59,10 @@ describe('MyScheduleService', () => {
     await service.getMySchedule('student-1');
 
     const [query] = manager.query.mock.calls[0] as [string, unknown[]];
-    expect(query).toMatch(/JOIN subject sub ON sub\.id = cg\.subject_id/);
+    // RULE-INST-14: the matéria comes from the SESSION, not from the turma —
+    // a turma studies several matérias, so cg.subject_id no longer exists and
+    // "the turma's matéria" is no longer a well-formed question.
+    expect(query).toMatch(/JOIN subject sub ON sub\.id = cs\.subject_id/);
     expect(query).toMatch(/LEFT JOIN room r ON r\.id = COALESCE\(cs\.room_id, cg\.room_id\)/);
     expect(query).toMatch(/cg\.name AS "classGroupName"/);
     expect(query).toMatch(/sub\.name AS "subjectName"/);

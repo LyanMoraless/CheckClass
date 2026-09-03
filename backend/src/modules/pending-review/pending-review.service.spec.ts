@@ -29,7 +29,7 @@ describe('PendingReviewService', () => {
     createdAt: new Date(),
   };
   const session = { id: 'session-1', classGroupId: 'class-group-1' };
-  const classGroup = { id: 'class-group-1', subjectId: 'subject-1' };
+  const classGroup = { id: 'class-group-1', courseId: 'course-1' };
   const subject = { id: 'subject-1', courseId: 'course-1' };
 
   function buildService(options: {

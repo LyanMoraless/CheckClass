@@ -1,8 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { EntityManager } from 'typeorm';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EntityManager, In } from 'typeorm';
 import {
   ClassGroupEnrollmentEntity,
   ClassGroupEntity,
+  ClassGroupSubjectEntity,
+  CourseEntity,
   LeadershipAssignmentEntity,
   LeadershipRoleEntity,
   RoomEntity,
@@ -21,8 +23,22 @@ const TEACHER_LEADERSHIP_ROLE_NAME = 'Professor';
 // never drift out of sync on the valid-values list.
 export const ENROLLMENT_STATUSES = ['active', 'on_leave', 'graduated', 'withdrawn'] as const;
 
+// A turma's subject list arrives from a multi-select form (RULE-INST-14's
+// montar-turma screen) — a repeated id there is a UI artifact, not a request
+// to link twice, and linkSubject's own no-op would already absorb it. Dedupe
+// up front anyway so the loop does one pass per real matéria.
+function dedupe(ids: string[]): string[] {
+  return [...new Set(ids)];
+}
+
 export interface CreateClassGroupInput {
-  subjectId: string;
+  // RULE-INST-14: the turma belongs to a Curso, not to a single Matéria. Its
+  // matérias are a separate, editable set (subjectIds below, then
+  // addSubject/removeSubject) — deliberately optional here so a coordinator
+  // can create the turma first and compose it afterwards, which is also the
+  // only way the "turma sem matéria" state stays reachable by construction.
+  courseId: string;
+  subjectIds?: string[];
   name: string;
   // RULE-INST-07: room lives on the turma itself (schema already migrated —
   // see AddClassGroupScheduleFields). RULE-INST-10 (schedule-conflict
@@ -35,6 +51,10 @@ export interface CreateClassGroupInput {
   termStartDate?: string;
   termEndDate?: string;
 }
+
+// RULE-INST-14: a turma read from the list screen without its matérias is
+// unusable — the set is the thing that replaced the old single subject column.
+export type ListedClassGroup = ClassGroupEntity & { subjectIds: string[] };
 
 export interface EnrollInput {
   classGroupId: string;
@@ -69,9 +89,9 @@ export class ClassGroupService {
     const manager = this.tenantContext.getManager();
     const tenantId = this.tenantContext.getTenantId();
 
-    const subject = await manager.getRepository(SubjectEntity).findOneBy({ id: input.subjectId });
-    if (!subject) {
-      throw new NotFoundException(`subject ${input.subjectId} not found`);
+    const course = await manager.getRepository(CourseEntity).findOneBy({ id: input.courseId });
+    if (!course) {
+      throw new NotFoundException(`course ${input.courseId} not found`);
     }
 
     // Same "validate FK exists, 404 if not" precedent as SubjectService.create
@@ -90,18 +110,18 @@ export class ClassGroupService {
     // against the whole course (coordinator) or institution-wide (Direção/
     // Reitoria), never a class_group-scoped assignment (there is nothing to
     // scope to yet).
-    const authorized = await this.leadershipScope.hasAuthorityOverCourse(authenticatedPersonId, subject.courseId);
+    const authorized = await this.leadershipScope.hasAuthorityOverCourse(authenticatedPersonId, input.courseId);
     if (!authorized) {
       throw new ForbiddenException(
-        `Person ${authenticatedPersonId} has no leadership authority over course ${subject.courseId} (RULE-INST-09)`,
+        `Person ${authenticatedPersonId} has no leadership authority over course ${input.courseId} (RULE-INST-09)`,
       );
     }
 
     const repository = manager.getRepository(ClassGroupEntity);
-    return repository.save(
+    const classGroup = await repository.save(
       repository.create({
         tenantId,
-        subjectId: input.subjectId,
+        courseId: input.courseId,
         name: input.name,
         roomId: input.roomId ?? null,
         // ClassGroupEntity's `date`-typed columns are Date | null — the DTO
@@ -111,18 +131,90 @@ export class ClassGroupService {
         termEndDate: input.termEndDate ? new Date(input.termEndDate) : null,
       }),
     );
+
+    for (const subjectId of dedupe(input.subjectIds ?? [])) {
+      await this.linkSubject(manager, tenantId, classGroup, subjectId);
+    }
+
+    return classGroup;
   }
 
-  // RULE-INST-03: class_group no longer links to course directly — its
-  // native filter is subjectId, one level down from before. There is
-  // deliberately no courseId filter here anymore: a caller that wants
-  // "every turma under this course" lists that course's subjects first
-  // (subject module) and then filters class groups per subjectId, rather
-  // than this service reaching across the subject join on every list().
-  async list(subjectId?: string): Promise<ClassGroupEntity[]> {
+  // RULE-INST-14: a turma's native filter is its course again — the matéria
+  // is no longer a property of the turma, so "turmas desta matéria" is a
+  // different question, answered by joining class_group_subject
+  // (subjectId below), not by filtering a column. Each row carries its
+  // subjectIds: the list screen has to show a set now, and resolving it per
+  // row from the client would be one request per turma.
+  async list(filter?: { courseId?: string; subjectId?: string }): Promise<ListedClassGroup[]> {
     const manager = this.tenantContext.getManager();
     const repository = manager.getRepository(ClassGroupEntity);
-    return subjectId ? repository.findBy({ subjectId }) : repository.find();
+    const linkRepository = manager.getRepository(ClassGroupSubjectEntity);
+
+    let classGroups: ClassGroupEntity[];
+    if (filter?.subjectId) {
+      const links = await linkRepository.find({ where: { subjectId: filter.subjectId }, select: ['classGroupId'] });
+      const classGroupIds = links.map((link) => link.classGroupId);
+      if (classGroupIds.length === 0) {
+        return [];
+      }
+      classGroups = await repository.findBy(
+        filter.courseId ? { id: In(classGroupIds), courseId: filter.courseId } : { id: In(classGroupIds) },
+      );
+    } else {
+      classGroups = filter?.courseId ? await repository.findBy({ courseId: filter.courseId }) : await repository.find();
+    }
+
+    if (classGroups.length === 0) {
+      return [];
+    }
+
+    const allLinks = await linkRepository.findBy({ classGroupId: In(classGroups.map((group) => group.id)) });
+    return classGroups.map((classGroup) => ({
+      ...classGroup,
+      subjectIds: allLinks.filter((link) => link.classGroupId === classGroup.id).map((link) => link.subjectId),
+    }));
+  }
+
+  // RULE-INST-14: the turma's set of matérias — read, add, remove. Read is
+  // ungated beyond the controller's MANAGE_INSTITUTION_STRUCTURE, same
+  // read-only shape as listEnrollments; the two writes are montar-turma
+  // actions and carry the full cumulative RULE-INST-09 check.
+  async listSubjects(classGroupId: string): Promise<ClassGroupSubjectEntity[]> {
+    const manager = this.tenantContext.getManager();
+    return manager.getRepository(ClassGroupSubjectEntity).find({ where: { classGroupId } });
+  }
+
+  async addSubject(classGroupId: string, subjectId: string, authenticatedPersonId: string): Promise<ClassGroupSubjectEntity> {
+    const manager = this.tenantContext.getManager();
+    const tenantId = this.tenantContext.getTenantId();
+
+    const classGroup = await this.resolveClassGroup(manager, classGroupId);
+    await this.assertAuthorityOverClassGroup(authenticatedPersonId, classGroup.courseId, classGroup.id);
+
+    return this.linkSubject(manager, tenantId, classGroup, subjectId);
+  }
+
+  // RULE-INST-14 + RULE-INST-08 addendum: unlinking a matéria removes that
+  // matéria's slots and sessions from this turma and nothing else. Removing
+  // the LAST one is allowed — the turma survives empty (user-confirmed,
+  // 2026-09-03), keeping its enrollments and its history, waiting for a new
+  // matéria. Blocked only by RULE-INST-13, scoped to this matéria's own
+  // sessions (ClassGroupDeletionOrchestrator.assertSubjectRemovable).
+  async removeSubject(classGroupId: string, subjectId: string, authenticatedPersonId: string): Promise<void> {
+    const manager = this.tenantContext.getManager();
+
+    const classGroup = await this.resolveClassGroup(manager, classGroupId);
+    await this.assertAuthorityOverClassGroup(authenticatedPersonId, classGroup.courseId, classGroup.id);
+
+    const link = await manager.getRepository(ClassGroupSubjectEntity).findOneBy({ classGroupId, subjectId });
+    if (!link) {
+      // Same "referenced entity not found" convention as unenroll's missing
+      // enrollment — there is no already-removed state to return instead.
+      throw new NotFoundException(`subject ${subjectId} is not linked to class_group ${classGroupId}`);
+    }
+
+    await this.deletionOrchestrator.assertSubjectRemovable(classGroupId, subjectId);
+    await this.deletionOrchestrator.removeSubjectFromClassGroup(manager, classGroupId, subjectId);
   }
 
   // RULE-INST-05: assigning a teacher to a turma automatically grants them
@@ -138,8 +230,8 @@ export class ClassGroupService {
     const manager = this.tenantContext.getManager();
     const tenantId = this.tenantContext.getTenantId();
 
-    const { classGroup, subject } = await this.resolveClassGroupAndSubject(manager, input.classGroupId);
-    await this.assertAuthorityOverClassGroup(authenticatedPersonId, subject.courseId, classGroup.id);
+    const classGroup = await this.resolveClassGroup(manager, input.classGroupId);
+    await this.assertAuthorityOverClassGroup(authenticatedPersonId, classGroup.courseId, classGroup.id);
 
     const repository = manager.getRepository(ClassGroupEnrollmentEntity);
     const existing = await repository.findOneBy({ classGroupId: input.classGroupId, personId: input.personId });
@@ -152,7 +244,7 @@ export class ClassGroupService {
     );
 
     if (input.role === 'teacher') {
-      await this.grantTeacherLeadership(manager, tenantId, input.personId, subject.courseId, classGroup.id);
+      await this.grantTeacherLeadership(manager, tenantId, input.personId, classGroup.courseId, classGroup.id);
     }
 
     return enrollment;
@@ -172,8 +264,8 @@ export class ClassGroupService {
   async unenroll(input: UnenrollInput, authenticatedPersonId: string): Promise<void> {
     const manager = this.tenantContext.getManager();
 
-    const { classGroup, subject } = await this.resolveClassGroupAndSubject(manager, input.classGroupId);
-    await this.assertAuthorityOverClassGroup(authenticatedPersonId, subject.courseId, classGroup.id);
+    const classGroup = await this.resolveClassGroup(manager, input.classGroupId);
+    await this.assertAuthorityOverClassGroup(authenticatedPersonId, classGroup.courseId, classGroup.id);
 
     const enrollmentRepository = manager.getRepository(ClassGroupEnrollmentEntity);
     const enrollment = await enrollmentRepository.findOneBy({
@@ -196,7 +288,7 @@ export class ClassGroupService {
     if (enrollment.role === 'teacher') {
       await manager.getRepository(LeadershipAssignmentEntity).delete({
         personId: input.personId,
-        courseId: subject.courseId,
+        courseId: classGroup.courseId,
         classGroupId: input.classGroupId,
       });
     }
@@ -213,8 +305,8 @@ export class ClassGroupService {
   async updateEnrollmentStatus(input: UpdateEnrollmentStatusInput, authenticatedPersonId: string): Promise<ClassGroupEnrollmentEntity> {
     const manager = this.tenantContext.getManager();
 
-    const { classGroup, subject } = await this.resolveClassGroupAndSubject(manager, input.classGroupId);
-    await this.assertAuthorityOverClassGroup(authenticatedPersonId, subject.courseId, classGroup.id);
+    const classGroup = await this.resolveClassGroup(manager, input.classGroupId);
+    await this.assertAuthorityOverClassGroup(authenticatedPersonId, classGroup.courseId, classGroup.id);
 
     const enrollmentRepository = manager.getRepository(ClassGroupEnrollmentEntity);
     const enrollment = await enrollmentRepository.findOneBy({
@@ -236,26 +328,50 @@ export class ClassGroupService {
   // orchestrator itself deliberately does not check authorization, only
   // deletability (attendance activity).
   async delete(classGroupId: string, authenticatedPersonId: string): Promise<void> {
-    const { classGroup, subject } = await this.resolveClassGroupAndSubject(
-      this.tenantContext.getManager(),
-      classGroupId,
-    );
-    await this.assertAuthorityOverClassGroup(authenticatedPersonId, subject.courseId, classGroup.id);
+    const classGroup = await this.resolveClassGroup(this.tenantContext.getManager(), classGroupId);
+    await this.assertAuthorityOverClassGroup(authenticatedPersonId, classGroup.courseId, classGroup.id);
     await this.deletionOrchestrator.deleteClassGroup(classGroupId);
   }
 
-  private async resolveClassGroupAndSubject(
-    manager: EntityManager,
-    classGroupId: string,
-  ): Promise<{ classGroup: ClassGroupEntity; subject: SubjectEntity }> {
+  // RULE-INST-14: the subject hop that used to be needed to reach the course
+  // is gone — class_group.courseId is the turma's own column again, which is
+  // also the only thing that still works for a turma with zero matérias.
+  private async resolveClassGroup(manager: EntityManager, classGroupId: string): Promise<ClassGroupEntity> {
     const classGroup = await manager.getRepository(ClassGroupEntity).findOneBy({ id: classGroupId });
     if (!classGroup) {
       throw new NotFoundException(`class_group ${classGroupId} not found`);
     }
-    // RULE-INST-03: course is no longer on class_group directly — resolve it
-    // one hop up through the turma's subject.
-    const subject = await manager.getRepository(SubjectEntity).findOneByOrFail({ id: classGroup.subjectId });
-    return { classGroup, subject };
+    return classGroup;
+  }
+
+  // RULE-INST-14: a turma may only study matérias of its OWN course — the
+  // invariant the schema deliberately does not encode (a composite FK would
+  // buy nothing here), so it is enforced at exactly this one write path,
+  // shared by create() and addSubject(). Re-linking an already-linked matéria
+  // is a silent no-op, same idempotency choice as enroll().
+  private async linkSubject(
+    manager: EntityManager,
+    tenantId: string,
+    classGroup: ClassGroupEntity,
+    subjectId: string,
+  ): Promise<ClassGroupSubjectEntity> {
+    const subject = await manager.getRepository(SubjectEntity).findOneBy({ id: subjectId });
+    if (!subject) {
+      throw new NotFoundException(`subject ${subjectId} not found`);
+    }
+    if (subject.courseId !== classGroup.courseId) {
+      throw new BadRequestException(
+        `subject ${subjectId} belongs to course ${subject.courseId}, not to class_group ${classGroup.id}'s course ${classGroup.courseId} (RULE-INST-14)`,
+      );
+    }
+
+    const repository = manager.getRepository(ClassGroupSubjectEntity);
+    const existing = await repository.findOneBy({ classGroupId: classGroup.id, subjectId });
+    if (existing) {
+      return existing;
+    }
+
+    return repository.save(repository.create({ tenantId, classGroupId: classGroup.id, subjectId }));
   }
 
   private async assertAuthorityOverClassGroup(personId: string, courseId: string, classGroupId: string): Promise<void> {

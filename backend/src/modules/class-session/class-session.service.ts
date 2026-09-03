@@ -3,10 +3,10 @@ import { EntityManager } from 'typeorm';
 import {
   ClassGroupEntity,
   ClassGroupEnrollmentEntity,
+  ClassGroupSubjectEntity,
   ClassSessionEntity,
   ClassSessionRequiredFactorEntity,
   RoomEntity,
-  SubjectEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { TenantConfigService } from '../config/tenant-config.service';
@@ -15,6 +15,12 @@ import { ScheduleConflictDetectionService } from '../schedule-conflict-detection
 
 export interface CreateClassSessionInput {
   classGroupId: string;
+  // RULE-INST-14: which of the turma's matérias this session is about.
+  // Required — a session with no matéria has nothing to attribute its
+  // frequência to (RULE-FREQ-01). SessionGenerationService passes the
+  // originating slot's subject; the manual-creation endpoint takes it from
+  // the caller.
+  subjectId: string;
   // RULE-INST-07: optional. When provided, stored as-is — a pontual
   // (one-off) override of this specific session's room. When omitted, this
   // method still validates that SOME room is resolvable (either this input
@@ -71,6 +77,18 @@ export class ClassSessionService {
     // write path that skipped it.
     await this.authorizeOverClassGroup(manager, input.classGroupId, authenticatedPersonId);
 
+    // RULE-INST-14: same application-level invariant ClassScheduleService
+    // enforces on the recurring slot — a session may only be about a matéria
+    // the turma currently has linked.
+    const link = await manager
+      .getRepository(ClassGroupSubjectEntity)
+      .findOneBy({ classGroupId: input.classGroupId, subjectId: input.subjectId });
+    if (!link) {
+      throw new BadRequestException(
+        `subject ${input.subjectId} is not linked to class_group ${input.classGroupId} (RULE-INST-14)`,
+      );
+    }
+
     const effective = await this.configService.resolveEffectiveConfig(input.classGroupId);
 
     // roomId is direct user input here (a pontual override, see
@@ -110,6 +128,7 @@ export class ClassSessionService {
     const session = repository.create({
       tenantId,
       classGroupId: input.classGroupId,
+      subjectId: input.subjectId,
       roomId: input.roomId ?? null,
       scheduledStart: input.scheduledStart,
       scheduledEnd: input.scheduledEnd,
@@ -133,12 +152,21 @@ export class ClassSessionService {
   // Added for the admin frontend: there was no read path for existing
   // sessions — the attendance-register screens need a classSessionId to
   // look anything up, and had no way to discover one.
-  async list(classGroupId?: string): Promise<ClassSessionEntity[]> {
+  // RULE-INST-14: subjectId narrows a turma's sessions to one matéria — the
+  // read behind "frequência desta matéria" (RULE-FREQ-01) and the
+  // per-matéria view of a turma's schedule.
+  async list(filter?: { classGroupId?: string; subjectId?: string }): Promise<ClassSessionEntity[]> {
     const manager = this.tenantContext.getManager();
-    const repository = manager.getRepository(ClassSessionEntity);
-    return classGroupId
-      ? repository.find({ where: { classGroupId }, order: { scheduledStart: 'DESC' } })
-      : repository.find({ order: { scheduledStart: 'DESC' } });
+    const where: { classGroupId?: string; subjectId?: string } = {};
+    if (filter?.classGroupId) {
+      where.classGroupId = filter.classGroupId;
+    }
+    if (filter?.subjectId) {
+      where.subjectId = filter.subjectId;
+    }
+    return manager
+      .getRepository(ClassSessionEntity)
+      .find({ where, order: { scheduledStart: 'DESC' } });
   }
 
   // RULE-INST-04 (third-round update, item #1 & #2): cancels one already-
@@ -255,8 +283,8 @@ export class ClassSessionService {
     return classGroup.roomId;
   }
 
-  // Shared by createSession/cancelSession/editSession — same courseId
-  // derivation (one hop through the turma's subject, RULE-INST-03) and the
+  // Shared by createSession/cancelSession/editSession — same courseId source
+  // (class_group.courseId directly, RULE-INST-14) and the
   // same cumulative authorization check already used by ClassScheduleService
   // (resolveClassGroupWithAuthority) and PendingReviewService.resolve
   // (RULE-ATT-12), not a fourth parallel implementation of it.
@@ -275,11 +303,10 @@ export class ClassSessionService {
     if (!classGroup) {
       throw new NotFoundException(`class_group ${classGroupId} not found`);
     }
-    const subject = await manager.getRepository(SubjectEntity).findOneByOrFail({ id: classGroup.subjectId });
 
     const authorized = await this.leadershipScope.hasAuthorityOverClassGroup(
       authenticatedPersonId,
-      subject.courseId,
+      classGroup.courseId,
       classGroup.id,
     );
     if (!authorized) {

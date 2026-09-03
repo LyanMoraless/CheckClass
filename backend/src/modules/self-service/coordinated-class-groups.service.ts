@@ -5,7 +5,9 @@ import { LeadershipScopeService } from '../leadership-scope/leadership-scope.ser
 export interface CoordinatedClassGroupEntry {
   classGroupId: string;
   classGroupName: string;
-  subjectName: string;
+  // RULE-INST-14: a turma studies N matérias — plural by construction, and
+  // empty for a turma that currently has none (RULE-INST-08 addendum).
+  subjectNames: string[];
   courseName: string;
 }
 
@@ -37,13 +39,18 @@ export class CoordinatedClassGroupsService {
       SELECT
         cg.id AS "classGroupId",
         cg.name AS "classGroupName",
-        sub.name AS "subjectName",
+        subs.names AS "subjectNames",
         c.name AS "courseName"
       FROM class_group cg
-      JOIN subject sub ON sub.id = cg.subject_id
-      JOIN course c ON c.id = sub.course_id
-      WHERE cg.tenant_id = $1 AND ($2::boolean OR sub.course_id = ANY($3::uuid[]))
-      ORDER BY c.name ASC, sub.name ASC, cg.name ASC
+      JOIN course c ON c.id = cg.course_id
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(array_agg(s.name ORDER BY s.name), '{}'::text[]) AS names
+        FROM class_group_subject cgs
+        JOIN subject s ON s.id = cgs.subject_id
+        WHERE cgs.class_group_id = cg.id
+      ) subs ON TRUE
+      WHERE cg.tenant_id = $1 AND ($2::boolean OR cg.course_id = ANY($3::uuid[]))
+      ORDER BY c.name ASC, cg.name ASC
       `,
       [tenantId, allCourses, courseIds],
     );

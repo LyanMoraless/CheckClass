@@ -7,10 +7,14 @@ import { ClassSessionService } from '../modules/class-session/class-session.serv
 // Dev-only: exercises the real ClassSessionService (config resolution +
 // snapshot), the only sanctioned way class_session rows should be created.
 async function main() {
-  const [tenantId, classGroupId, roomId, scheduledStart, scheduledEnd, authenticatedPersonId] = process.argv.slice(2);
-  if (!tenantId || !classGroupId || !roomId || !scheduledStart || !scheduledEnd || !authenticatedPersonId) {
+  const [tenantId, classGroupId, subjectId, roomId, scheduledStart, scheduledEnd, authenticatedPersonId] =
+    process.argv.slice(2);
+  if (!tenantId || !classGroupId || !subjectId || !roomId || !scheduledStart || !scheduledEnd || !authenticatedPersonId) {
     console.error(
-      'Usage: npm run session:create -- <tenantId> <classGroupId> <roomId> <scheduledStartISO> <scheduledEndISO> <authenticatedPersonId>',
+      'Usage: npm run session:create -- <tenantId> <classGroupId> <subjectId> <roomId> <scheduledStartISO> <scheduledEndISO> <authenticatedPersonId>',
+    );
+    console.error(
+      '  subjectId must be one of the turma\'s linked matérias (RULE-INST-14) — see GET /v1/class-groups/<id>/subjects.',
     );
     console.error(
       '  authenticatedPersonId must have leadership authority (RULE-INST-09) over the turma\'s course — e.g. the tenant\'s root admin, seeded with institution-wide authority at onboarding.',
@@ -27,6 +31,7 @@ async function main() {
     const session = await classSessionService.createSession(
       {
         classGroupId,
+        subjectId,
         roomId,
         scheduledStart: new Date(scheduledStart),
         scheduledEnd: new Date(scheduledEnd),

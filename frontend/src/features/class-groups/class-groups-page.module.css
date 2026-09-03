@@ -13,3 +13,18 @@
   align-items: center;
   gap: 0.4rem;
 }
+
+/* RULE-INST-14: the turma's matérias are a set, so the creation form offers
+   checkboxes instead of the single <select> it used to have. */
+.subjectPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.subjectOption {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}

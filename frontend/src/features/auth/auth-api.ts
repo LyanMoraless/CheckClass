@@ -17,7 +17,9 @@ export async function fetchCurrentPerson(): Promise<{ personId: string; permissi
 export interface RoleContextTeachingEntry {
   classGroupId: string;
   classGroupName: string;
-  subjectName: string;
+  // RULE-INST-14: a turma studies N matérias — plural, and empty for a
+  // turma that currently has none.
+  subjectNames: string[];
   courseName: string;
 }
 

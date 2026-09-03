@@ -2,12 +2,17 @@ import { ConflictException } from '@nestjs/common';
 import { combineUtc, dateKey, extractUtcYmd } from '../../common/utc-date.util';
 
 export interface ScheduleSlotLike {
+  // RULE-INST-14: carried through to the generated session — the matéria is a
+  // property of the slot, so a turma's Monday and Wednesday sessions can be
+  // different matérias.
+  subjectId: string;
   dayOfWeek: number;
   startTime: string;
   endTime: string;
 }
 
 export interface ProjectedCandidateSession {
+  subjectId: string;
   scheduledStart: Date;
   scheduledEnd: Date;
 }
@@ -75,7 +80,7 @@ export function projectCandidateSessions(input: ProjectCandidateSessionsInput): 
           input.existingStartKeys.has(scheduledStart.toISOString()) ||
           (input.strictlyAfter !== undefined && scheduledStart.getTime() <= input.strictlyAfter.getTime());
         if (!alreadyAccountedFor) {
-          candidates.push({ scheduledStart, scheduledEnd });
+          candidates.push({ subjectId: slot.subjectId, scheduledStart, scheduledEnd });
         }
       }
     }

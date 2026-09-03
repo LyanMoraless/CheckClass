@@ -5,6 +5,7 @@ import {
   ClassGroupEnrollmentEntity,
   ClassGroupEntity,
   ClassGroupScheduleSlotEntity,
+  ClassGroupSubjectEntity,
   ClassSessionEntity,
   ClassSessionRequiredFactorEntity,
   IdentificationCheckinEntity,
@@ -42,7 +43,7 @@ export class ClassGroupDeletionOrchestrator {
   // recorded attendance activity.
   async assertDeletable(classGroupId: string): Promise<void> {
     const manager = this.tenantContext.getManager();
-    const blocked = await this.hasAttendanceActivity(manager, classGroupId);
+    const blocked = await this.hasAttendanceActivity(manager, await this.findSessionIds(manager, { classGroupId }));
     if (blocked) {
       throw new ConflictException(
         `class_group ${classGroupId} cannot be deleted: it has recorded attendance activity (RULE-INST-13)`,
@@ -72,9 +73,9 @@ export class ClassGroupDeletionOrchestrator {
   }
 
   // Internal: deletes without re-checking deletability. Used by
-  // SubjectService/CourseService cascades, which already ran
-  // assertAllDeletable for the whole batch up front — re-querying attendance
-  // activity a second time per turma would be redundant.
+  // CourseService's cascade, which already ran assertAllDeletable for the
+  // whole batch up front — re-querying attendance activity a second time per
+  // turma would be redundant.
   async deleteClassGroupUnchecked(manager: EntityManager, classGroupId: string): Promise<void> {
     const sessionIds = (
       await manager.getRepository(ClassSessionEntity).find({ where: { classGroupId }, select: ['id'] })
@@ -85,14 +86,53 @@ export class ClassGroupDeletionOrchestrator {
       await manager.getRepository(ClassSessionEntity).delete({ id: In(sessionIds) });
     }
     await manager.getRepository(ClassGroupScheduleSlotEntity).delete({ classGroupId });
+    await manager.getRepository(ClassGroupSubjectEntity).delete({ classGroupId });
     await manager.getRepository(ClassGroupEnrollmentEntity).delete({ classGroupId });
     await manager.getRepository(ClassGroupEntity).delete({ id: classGroupId });
   }
 
-  private async hasAttendanceActivity(manager: EntityManager, classGroupId: string): Promise<boolean> {
-    const sessionIds = (
-      await manager.getRepository(ClassSessionEntity).find({ where: { classGroupId }, select: ['id'] })
-    ).map((session) => session.id);
+  // RULE-INST-14 + RULE-INST-08 addendum: the narrower sibling of
+  // deleteClassGroup — unlinks ONE matéria from ONE turma. Everything scoped
+  // to that pairing goes (its recurring slots, its generated sessions, their
+  // required-factor snapshots); the turma itself, its enrollments, its other
+  // matérias and their sessions are all left untouched. Removing the turma's
+  // LAST matéria is explicitly allowed: the turma survives with zero subjects
+  // (user-confirmed, 2026-09-03), waiting for a new one to be linked.
+  //
+  // Same RULE-INST-13 protection as a full turma deletion, but scoped to this
+  // matéria's own sessions: a matéria whose sessions already carry attendance
+  // activity cannot be silently unlinked (which would destroy that history),
+  // even when the rest of the turma is untouched.
+  async assertSubjectRemovable(classGroupId: string, subjectId: string): Promise<void> {
+    const manager = this.tenantContext.getManager();
+    const sessionIds = await this.findSessionIds(manager, { classGroupId, subjectId });
+    if (await this.hasAttendanceActivity(manager, sessionIds)) {
+      throw new ConflictException(
+        `subject ${subjectId} cannot be removed from class_group ${classGroupId}: its sessions have recorded attendance activity (RULE-INST-13)`,
+      );
+    }
+  }
+
+  async removeSubjectFromClassGroup(manager: EntityManager, classGroupId: string, subjectId: string): Promise<void> {
+    const sessionIds = await this.findSessionIds(manager, { classGroupId, subjectId });
+
+    if (sessionIds.length > 0) {
+      await manager.getRepository(ClassSessionRequiredFactorEntity).delete({ classSessionId: In(sessionIds) });
+      await manager.getRepository(ClassSessionEntity).delete({ id: In(sessionIds) });
+    }
+    await manager.getRepository(ClassGroupScheduleSlotEntity).delete({ classGroupId, subjectId });
+    await manager.getRepository(ClassGroupSubjectEntity).delete({ classGroupId, subjectId });
+  }
+
+  private async findSessionIds(
+    manager: EntityManager,
+    where: { classGroupId: string; subjectId?: string },
+  ): Promise<string[]> {
+    const sessions = await manager.getRepository(ClassSessionEntity).find({ where, select: ['id'] });
+    return sessions.map((session) => session.id);
+  }
+
+  private async hasAttendanceActivity(manager: EntityManager, sessionIds: string[]): Promise<boolean> {
     if (sessionIds.length === 0) {
       return false;
     }

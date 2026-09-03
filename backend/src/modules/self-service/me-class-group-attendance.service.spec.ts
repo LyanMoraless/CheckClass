@@ -11,7 +11,7 @@ describe('MeClassGroupAttendanceService', () => {
     summary?: unknown[];
   }) {
     const classGroupRepo = createMockRepository({
-      findOneBy: jest.fn().mockResolvedValue(options.classGroup === undefined ? { id: 'class-group-1', subjectId: 'subject-1' } : options.classGroup),
+      findOneBy: jest.fn().mockResolvedValue(options.classGroup === undefined ? { id: 'class-group-1', courseId: 'course-42' } : options.classGroup),
     });
     const subjectRepo = createMockRepository({
       findOneByOrFail: jest.fn().mockResolvedValue(options.subject ?? { id: 'subject-1', courseId: 'course-1' }),

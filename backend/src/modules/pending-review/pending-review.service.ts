@@ -72,7 +72,6 @@ export class PendingReviewService {
       FROM attendance_pending_review r
       JOIN class_session cs ON cs.id = r.class_session_id
       JOIN class_group cg ON cg.id = cs.class_group_id
-      JOIN subject sub ON sub.id = cg.subject_id
       WHERE r.tenant_id = $1
         AND r.resolved_at IS NULL
         AND EXISTS (
@@ -81,8 +80,8 @@ export class PendingReviewService {
           WHERE la.tenant_id = $1
             AND la.person_id = $2
             AND (
-              (la.course_id = sub.course_id AND la.class_group_id = cg.id)
-              OR (la.course_id = sub.course_id AND la.class_group_id IS NULL)
+              (la.course_id = cg.course_id AND la.class_group_id = cg.id)
+              OR (la.course_id = cg.course_id AND la.class_group_id IS NULL)
               OR la.course_id IS NULL
             )
         )
@@ -113,11 +112,8 @@ export class PendingReviewService {
 
     const session = await manager.getRepository(ClassSessionEntity).findOneByOrFail({ id: pending.classSessionId });
     const classGroup = await manager.getRepository(ClassGroupEntity).findOneByOrFail({ id: session.classGroupId });
-    // RULE-INST-03: course is no longer on class_group directly — resolve it
-    // one hop up through the turma's subject.
-    const subject = await manager.getRepository(SubjectEntity).findOneByOrFail({ id: classGroup.subjectId });
 
-    const authorized = await this.leadershipScope.hasAuthorityOverClassGroup(resolvingPersonId, subject.courseId, classGroup.id);
+    const authorized = await this.leadershipScope.hasAuthorityOverClassGroup(resolvingPersonId, classGroup.courseId, classGroup.id);
     if (!authorized) {
       throw new ForbiddenException(
         `Person ${resolvingPersonId} is not in the direct leadership chain above class_group ${classGroup.id} (RULE-ATT-12)`,

@@ -1,6 +1,8 @@
 import {
   ClassGroupEnrollmentEntity,
   ClassGroupEntity,
+  ClassGroupSubjectEntity,
+  CourseEntity,
   LeadershipAssignmentEntity,
   LeadershipRoleEntity,
   RoomEntity,
@@ -27,7 +29,7 @@ import {
 // coverage lives in leadership-scope.service.spec.ts.
 describe('ClassGroupService', () => {
   const subject = { id: 'subject-1', courseId: 'course-1' };
-  const classGroup = { id: 'class-group-1', subjectId: 'subject-1' };
+  const classGroup = { id: 'class-group-1', courseId: 'course-1' };
   const professorRole = { id: 'leadership-role-professor', name: 'Professor' };
 
   function buildService(options: {
@@ -38,8 +40,18 @@ describe('ClassGroupService', () => {
     leadershipRepo?: MockRepository;
     leadershipRoleRepo?: MockRepository;
     roomRepo?: MockRepository;
+    courseRepo?: MockRepository;
+    classGroupSubjectRepo?: MockRepository;
   } = {}) {
-    const classGroupRepo = options.classGroupRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue(classGroup) });
+    const classGroupRepo =
+      options.classGroupRepo ??
+      createMockRepository({
+        findOneBy: jest.fn().mockResolvedValue(classGroup),
+        // create() alone can't produce an id, and RULE-INST-14's subject
+        // linking happens right after the turma is saved — so the save mock
+        // has to hand back a persisted-looking row, id included.
+        save: jest.fn((entity: unknown) => Promise.resolve({ id: 'class-group-1', ...(entity as object) })),
+      });
     const subjectRepo =
       options.subjectRepo ??
       createMockRepository({
@@ -51,6 +63,10 @@ describe('ClassGroupService', () => {
     const leadershipRoleRepo =
       options.leadershipRoleRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue(professorRole) });
     const roomRepo = options.roomRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'room-1' }) });
+    const courseRepo =
+      options.courseRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'course-1' }) });
+    const classGroupSubjectRepo =
+      options.classGroupSubjectRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
 
     const manager = createMockEntityManager(
       new Map([
@@ -60,6 +76,8 @@ describe('ClassGroupService', () => {
         [LeadershipAssignmentEntity, leadershipRepo],
         [LeadershipRoleEntity, leadershipRoleRepo],
         [RoomEntity, roomRepo],
+        [CourseEntity, courseRepo],
+        [ClassGroupSubjectEntity, classGroupSubjectRepo],
       ]),
     );
     const tenantContext = createMockTenantContext(manager);
@@ -67,7 +85,11 @@ describe('ClassGroupService', () => {
       hasAuthorityOverClassGroup: jest.fn().mockResolvedValue(options.authorized ?? true),
       hasAuthorityOverCourse: jest.fn().mockResolvedValue(options.authorized ?? true),
     };
-    const deletionOrchestrator = { deleteClassGroup: jest.fn().mockResolvedValue(undefined) };
+    const deletionOrchestrator = {
+      deleteClassGroup: jest.fn().mockResolvedValue(undefined),
+      assertSubjectRemovable: jest.fn().mockResolvedValue(undefined),
+      removeSubjectFromClassGroup: jest.fn().mockResolvedValue(undefined),
+    };
     const service = new ClassGroupService(tenantContext as never, leadershipScope as never, deletionOrchestrator as never);
     return {
       service,
@@ -77,13 +99,15 @@ describe('ClassGroupService', () => {
       leadershipRepo,
       leadershipRoleRepo,
       roomRepo,
+      courseRepo,
+      classGroupSubjectRepo,
       leadershipScope,
       deletionOrchestrator,
     };
   }
 
   describe('create', () => {
-    const input: CreateClassGroupInput = { subjectId: 'subject-1', name: 'Turma A' };
+    const input: CreateClassGroupInput = { courseId: 'course-1', name: 'Turma A' };
 
     test('test_create_authorizedOverCourse_savesNewClassGroup', async () => {
       const { service, classGroupRepo } = buildService({ authorized: true });
@@ -91,7 +115,53 @@ describe('ClassGroupService', () => {
       await service.create(input, 'coordinator-1');
 
       expect(classGroupRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ subjectId: 'subject-1', name: 'Turma A', roomId: null, termStartDate: null, termEndDate: null }),
+        expect.objectContaining({ courseId: 'course-1', name: 'Turma A', roomId: null, termStartDate: null, termEndDate: null }),
+      );
+    });
+
+    // RULE-INST-14: a turma is created under a Curso and composed with N
+    // matérias — the set is optional here on purpose, and an omitted one
+    // leaves a perfectly valid turma with no matéria yet.
+    test('test_create_withSubjectIds_linksEachSubjectToTheNewClassGroup', async () => {
+      const { service, classGroupSubjectRepo } = buildService({ authorized: true });
+
+      await service.create({ ...input, subjectIds: ['subject-1', 'subject-2'] }, 'coordinator-1');
+
+      expect(classGroupSubjectRepo.save).toHaveBeenCalledTimes(2);
+      expect(classGroupSubjectRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ classGroupId: 'class-group-1', subjectId: 'subject-1' }),
+      );
+      expect(classGroupSubjectRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ classGroupId: 'class-group-1', subjectId: 'subject-2' }),
+      );
+    });
+
+    test('test_create_repeatedSubjectIdInInput_linksItOnlyOnce', async () => {
+      const { service, classGroupSubjectRepo } = buildService({ authorized: true });
+
+      await service.create({ ...input, subjectIds: ['subject-1', 'subject-1'] }, 'coordinator-1');
+
+      expect(classGroupSubjectRepo.save).toHaveBeenCalledTimes(1);
+    });
+
+    test('test_create_noSubjectIds_savesTurmaWithoutLinkingAnySubject', async () => {
+      const { service, classGroupRepo, classGroupSubjectRepo } = buildService({ authorized: true });
+
+      await service.create(input, 'coordinator-1');
+
+      expect(classGroupRepo.save).toHaveBeenCalled();
+      expect(classGroupSubjectRepo.save).not.toHaveBeenCalled();
+    });
+
+    // RULE-INST-14: a turma may only study matérias of its own course.
+    test('test_create_subjectFromAnotherCourse_throwsBadRequest', async () => {
+      const subjectRepo = createMockRepository({
+        findOneBy: jest.fn().mockResolvedValue({ id: 'subject-x', courseId: 'course-other' }),
+      });
+      const { service } = buildService({ subjectRepo });
+
+      await expect(service.create({ ...input, subjectIds: ['subject-x'] }, 'coordinator-1')).rejects.toThrow(
+        /RULE-INST-14/,
       );
     });
 
@@ -115,11 +185,20 @@ describe('ClassGroupService', () => {
       expect(leadershipScope.hasAuthorityOverCourse).toHaveBeenCalledWith('random-person', 'course-1');
     });
 
+    test('test_create_courseNotFound_throwsNotFound', async () => {
+      const courseRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
+      const { service } = buildService({ courseRepo });
+
+      await expect(service.create(input, 'coordinator-1')).rejects.toThrow(/course course-1 not found/);
+    });
+
     test('test_create_subjectNotFound_throwsNotFound', async () => {
       const subjectRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
       const { service } = buildService({ subjectRepo });
 
-      await expect(service.create(input, 'coordinator-1')).rejects.toThrow(/subject subject-1 not found/);
+      await expect(service.create({ ...input, subjectIds: ['subject-1'] }, 'coordinator-1')).rejects.toThrow(
+        /subject subject-1 not found/,
+      );
     });
 
     // Same "validate FK exists, 404 if not" precedent as SubjectService.create
@@ -145,7 +224,7 @@ describe('ClassGroupService', () => {
   });
 
   describe('list', () => {
-    test('test_list_noSubjectIdFilter_returnsAllClassGroups', async () => {
+    test('test_list_noFilter_returnsAllClassGroups', async () => {
       const { service, classGroupRepo } = buildService();
 
       await service.list();
@@ -154,12 +233,131 @@ describe('ClassGroupService', () => {
       expect(classGroupRepo.findBy).not.toHaveBeenCalled();
     });
 
-    test('test_list_withSubjectIdFilter_filtersBySubject', async () => {
+    test('test_list_withCourseIdFilter_filtersByCourse', async () => {
       const { service, classGroupRepo } = buildService();
 
-      await service.list('subject-1');
+      await service.list({ courseId: 'course-1' });
 
-      expect(classGroupRepo.findBy).toHaveBeenCalledWith({ subjectId: 'subject-1' });
+      expect(classGroupRepo.findBy).toHaveBeenCalledWith({ courseId: 'course-1' });
+    });
+
+    // RULE-INST-14: "turmas desta matéria" is now a join through
+    // class_group_subject, not a column filter on the turma.
+    test('test_list_withSubjectIdFilter_resolvesClassGroupsThroughTheJunctionTable', async () => {
+      const classGroupSubjectRepo = createMockRepository({
+        find: jest.fn().mockResolvedValue([{ classGroupId: 'class-group-1' }, { classGroupId: 'class-group-2' }]),
+      });
+      const { service, classGroupRepo } = buildService({ classGroupSubjectRepo });
+
+      await service.list({ subjectId: 'subject-1' });
+
+      expect(classGroupSubjectRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { subjectId: 'subject-1' } }),
+      );
+      expect(classGroupRepo.findBy).toHaveBeenCalledWith({ id: expect.anything() });
+    });
+
+    // RULE-INST-14: the list screen shows a SET of matérias per turma, so
+    // each row carries its subjectIds — including an empty one for a turma
+    // that currently has no matéria.
+    test('test_list_attachesEachTurmasSubjectIds_emptyArrayForATurmaWithNone', async () => {
+      const classGroupRepo = createMockRepository({
+        find: jest.fn().mockResolvedValue([{ id: 'class-group-1' }, { id: 'class-group-2' }]),
+      });
+      const classGroupSubjectRepo = createMockRepository({
+        findBy: jest.fn().mockResolvedValue([
+          { classGroupId: 'class-group-1', subjectId: 'subject-1' },
+          { classGroupId: 'class-group-1', subjectId: 'subject-2' },
+        ]),
+      });
+      const { service } = buildService({ classGroupRepo, classGroupSubjectRepo });
+
+      const result = await service.list();
+
+      expect(result).toEqual([
+        { id: 'class-group-1', subjectIds: ['subject-1', 'subject-2'] },
+        { id: 'class-group-2', subjectIds: [] },
+      ]);
+    });
+
+    test('test_list_withSubjectIdFilter_noTurmaStudiesIt_returnsEmptyWithoutQueryingClassGroups', async () => {
+      const classGroupSubjectRepo = createMockRepository({ find: jest.fn().mockResolvedValue([]) });
+      const { service, classGroupRepo } = buildService({ classGroupSubjectRepo });
+
+      const result = await service.list({ subjectId: 'subject-1' });
+
+      expect(result).toEqual([]);
+      expect(classGroupRepo.findBy).not.toHaveBeenCalled();
+      expect(classGroupRepo.find).not.toHaveBeenCalled();
+    });
+  });
+
+  // RULE-INST-14 / RULE-INST-08 addendum: the turma's set of matérias is
+  // editable after creation, and emptying it completely is allowed.
+  describe('subjects', () => {
+    test('test_addSubject_authorized_linksSubjectToClassGroup', async () => {
+      const { service, classGroupSubjectRepo } = buildService({ authorized: true });
+
+      await service.addSubject('class-group-1', 'subject-1', 'coordinator-1');
+
+      expect(classGroupSubjectRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ classGroupId: 'class-group-1', subjectId: 'subject-1' }),
+      );
+    });
+
+    test('test_addSubject_alreadyLinked_returnsExistingWithoutDuplicateSave', async () => {
+      const existing = { id: 'link-1', classGroupId: 'class-group-1', subjectId: 'subject-1' };
+      const classGroupSubjectRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(existing) });
+      const { service } = buildService({ classGroupSubjectRepo });
+
+      const result = await service.addSubject('class-group-1', 'subject-1', 'coordinator-1');
+
+      expect(result).toBe(existing);
+      expect(classGroupSubjectRepo.save).not.toHaveBeenCalled();
+    });
+
+    test('test_addSubject_notAuthorizedOverClassGroup_throwsForbiddenWithoutLinking', async () => {
+      const { service, classGroupSubjectRepo } = buildService({ authorized: false });
+
+      await expect(service.addSubject('class-group-1', 'subject-1', 'random-person')).rejects.toThrow(/RULE-INST-09/);
+      expect(classGroupSubjectRepo.save).not.toHaveBeenCalled();
+    });
+
+    test('test_removeSubject_linked_delegatesRemovalToOrchestrator', async () => {
+      const classGroupSubjectRepo = createMockRepository({
+        findOneBy: jest.fn().mockResolvedValue({ id: 'link-1' }),
+      });
+      const { service, deletionOrchestrator } = buildService({ classGroupSubjectRepo });
+
+      await service.removeSubject('class-group-1', 'subject-1', 'coordinator-1');
+
+      expect(deletionOrchestrator.assertSubjectRemovable).toHaveBeenCalledWith('class-group-1', 'subject-1');
+      expect(deletionOrchestrator.removeSubjectFromClassGroup).toHaveBeenCalledWith(
+        expect.anything(),
+        'class-group-1',
+        'subject-1',
+      );
+    });
+
+    test('test_removeSubject_notLinked_throwsNotFound', async () => {
+      const { service, deletionOrchestrator } = buildService();
+
+      await expect(service.removeSubject('class-group-1', 'subject-9', 'coordinator-1')).rejects.toThrow(
+        /subject subject-9 is not linked to class_group class-group-1/,
+      );
+      expect(deletionOrchestrator.removeSubjectFromClassGroup).not.toHaveBeenCalled();
+    });
+
+    test('test_removeSubject_notAuthorizedOverClassGroup_throwsForbiddenWithoutRemoving', async () => {
+      const classGroupSubjectRepo = createMockRepository({
+        findOneBy: jest.fn().mockResolvedValue({ id: 'link-1' }),
+      });
+      const { service, deletionOrchestrator } = buildService({ authorized: false, classGroupSubjectRepo });
+
+      await expect(service.removeSubject('class-group-1', 'subject-1', 'random-person')).rejects.toThrow(
+        /RULE-INST-09/,
+      );
+      expect(deletionOrchestrator.removeSubjectFromClassGroup).not.toHaveBeenCalled();
     });
   });
 

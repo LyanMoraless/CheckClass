@@ -16,7 +16,7 @@ describe('ExamAccessService', () => {
     const classGroupRepo: MockRepository = createMockRepository({
       findOneBy: jest
         .fn()
-        .mockResolvedValue(options.classGroup === undefined ? { id: 'class-group-1', subjectId: 'subject-1' } : options.classGroup),
+        .mockResolvedValue(options.classGroup === undefined ? { id: 'class-group-1', courseId: 'course-1' } : options.classGroup),
     });
     const subjectRepo: MockRepository = createMockRepository({
       findOneByOrFail: jest.fn().mockResolvedValue({ id: 'subject-1', courseId: 'course-1' }),
@@ -50,8 +50,8 @@ describe('ExamAccessService', () => {
     return { service, leadershipScope, examRlsContext };
   }
 
-  // RULE-INST-03: the course is resolved one hop up through the turma's
-  // subject, the same way every other leadership-scoped read does it.
+  // RULE-INST-14: the course is the turma's own column — no subject hop,
+  // and it still works for a turma that currently has no matéria at all.
   test('test_authorizeClassGroup_authorized_opensManagementScope', async () => {
     const { service, leadershipScope, examRlsContext } = buildService({ authorized: true });
 

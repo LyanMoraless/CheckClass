@@ -110,6 +110,9 @@ export async function cleanupTenants(superuser: Client, tenantIds: string[]): Pr
     'wristband_category',
     'device',
     'class_group_enrollment',
+    // RULE-INST-14: both reference class_group and must go before it.
+    'class_group_schedule_slot',
+    'class_group_subject',
     'class_group',
     'course',
     'room',

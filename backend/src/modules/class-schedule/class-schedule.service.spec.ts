@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { ClassGroupEntity, ClassGroupScheduleSlotEntity, SubjectEntity } from '../../database/entities';
+import { ClassGroupEntity, ClassGroupScheduleSlotEntity, ClassGroupSubjectEntity, SubjectEntity } from '../../database/entities';
 import {
   createMockEntityManager,
   createMockRepository,
@@ -21,17 +21,25 @@ describe('ClassScheduleService', () => {
   const subject = { id: 'subject-1', courseId: 'course-1' };
   const classGroupWithTermAndRoom = {
     id: 'class-group-1',
-    subjectId: 'subject-1',
+    courseId: 'course-1',
     roomId: 'room-1',
     termStartDate: new Date(Date.UTC(2026, 8, 7)), // Monday 2026-09-07
     termEndDate: new Date(Date.UTC(2026, 8, 13)), // Sunday 2026-09-13 (one week)
   };
-  const mondaySlot = { id: 'slot-1', classGroupId: 'class-group-1', dayOfWeek: 1, startTime: '13:00:00', endTime: '15:00:00' };
+  const mondaySlot = {
+    id: 'slot-1',
+    classGroupId: 'class-group-1',
+    subjectId: 'subject-1',
+    dayOfWeek: 1,
+    startTime: '13:00:00',
+    endTime: '15:00:00',
+  };
 
   function buildService(options: {
     authorized?: boolean;
     classGroupRepo?: MockRepository;
     subjectRepo?: MockRepository;
+    classGroupSubjectRepo?: MockRepository;
     slotRepo?: MockRepository;
     generateForRange?: jest.Mock;
     regenerateFutureSessions?: jest.Mock;
@@ -40,12 +48,16 @@ describe('ClassScheduleService', () => {
       options.classGroupRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue(classGroupWithTermAndRoom) });
     const subjectRepo =
       options.subjectRepo ?? createMockRepository({ findOneByOrFail: jest.fn().mockResolvedValue(subject) });
+    const classGroupSubjectRepo =
+      options.classGroupSubjectRepo ??
+      createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'link-1', subjectId: 'subject-1' }) });
     const slotRepo = options.slotRepo ?? createMockRepository({ findBy: jest.fn().mockResolvedValue([mondaySlot]) });
 
     const manager = createMockEntityManager(
       new Map([
         [ClassGroupEntity, classGroupRepo],
         [SubjectEntity, subjectRepo],
+        [ClassGroupSubjectEntity, classGroupSubjectRepo],
         [ClassGroupScheduleSlotEntity, slotRepo],
       ]),
     );
@@ -64,11 +76,25 @@ describe('ClassScheduleService', () => {
       sessionGeneration as never,
       scheduleRegeneration as never,
     );
-    return { service, classGroupRepo, subjectRepo, slotRepo, leadershipScope, sessionGeneration, scheduleRegeneration };
+    return {
+      service,
+      classGroupRepo,
+      subjectRepo,
+      classGroupSubjectRepo,
+      slotRepo,
+      leadershipScope,
+      sessionGeneration,
+      scheduleRegeneration,
+    };
   }
 
   describe('createSlot', () => {
-    const input: CreateScheduleSlotInput = { dayOfWeek: 1, startTime: '13:00', endTime: '15:00' };
+    const input: CreateScheduleSlotInput = {
+      subjectId: 'subject-1',
+      dayOfWeek: 1,
+      startTime: '13:00',
+      endTime: '15:00',
+    };
 
     test('test_createSlot_authorizedAndValidTimes_savesSlot', async () => {
       const { service, slotRepo } = buildService();
@@ -76,7 +102,13 @@ describe('ClassScheduleService', () => {
       await service.createSlot('class-group-1', input, 'coordinator-1');
 
       expect(slotRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ classGroupId: 'class-group-1', dayOfWeek: 1, startTime: '13:00', endTime: '15:00' }),
+        expect.objectContaining({
+          classGroupId: 'class-group-1',
+          subjectId: 'subject-1',
+          dayOfWeek: 1,
+          startTime: '13:00',
+          endTime: '15:00',
+        }),
       );
     });
 
@@ -106,6 +138,20 @@ describe('ClassScheduleService', () => {
       expect(slotRepo.save).not.toHaveBeenCalled();
     });
 
+    // RULE-INST-14: a slot teaches one of the turma's matérias — scheduling a
+    // matéria the turma doesn't have is rejected at the application level (no
+    // composite FK exists to catch it in the database).
+    test('test_createSlot_subjectNotLinkedToTheTurma_throwsBadRequestWithoutSavingOrRegenerating', async () => {
+      const classGroupSubjectRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
+      const { service, slotRepo, scheduleRegeneration } = buildService({ classGroupSubjectRepo });
+
+      await expect(
+        service.createSlot('class-group-1', { ...input, subjectId: 'subject-9' }, 'coordinator-1'),
+      ).rejects.toThrow(/RULE-INST-14/);
+      expect(slotRepo.save).not.toHaveBeenCalled();
+      expect(scheduleRegeneration.regenerateFutureSessions).not.toHaveBeenCalled();
+    });
+
     test('test_createSlot_classGroupNotFound_throwsNotFound', async () => {
       const classGroupRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
       const { service } = buildService({ classGroupRepo });
@@ -129,7 +175,7 @@ describe('ClassScheduleService', () => {
       expect(result).toBe(slots);
       expect(slotRepo.find).toHaveBeenCalledWith({
         where: { classGroupId: 'class-group-1' },
-        order: { dayOfWeek: 'ASC', startTime: 'ASC' },
+        order: { dayOfWeek: 'ASC', startTime: 'ASC', subjectId: 'ASC' },
       });
     });
 

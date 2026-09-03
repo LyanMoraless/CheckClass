@@ -34,12 +34,13 @@ export class ExamAccessService {
     if (!classGroup) {
       throw new NotFoundException(`class_group ${classGroupId} not found`);
     }
-    // RULE-INST-03: the course lives one hop up, through the turma's
-    // subject — same resolution ClassGroupService/MeClassGroupAttendanceService
-    // already use.
-    const subject = await manager.getRepository(SubjectEntity).findOneByOrFail({ id: classGroup.subjectId });
-
-    const authorized = await this.leadershipScope.hasAuthorityOverClassGroup(personId, subject.courseId, classGroupId);
+    // RULE-INST-14: the course is the turma's own column again — same
+    // resolution ClassGroupService/MeClassGroupAttendanceService now use.
+    const authorized = await this.leadershipScope.hasAuthorityOverClassGroup(
+      personId,
+      classGroup.courseId,
+      classGroupId,
+    );
     if (!authorized) {
       throw new ForbiddenException(
         `Person ${personId} has no leadership authority over class_group ${classGroupId} (RULE-EXAM-16)`,

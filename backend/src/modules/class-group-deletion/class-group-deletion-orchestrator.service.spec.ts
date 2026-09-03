@@ -3,6 +3,7 @@ import {
   ClassGroupEnrollmentEntity,
   ClassGroupEntity,
   ClassGroupScheduleSlotEntity,
+  ClassGroupSubjectEntity,
   ClassSessionEntity,
   ClassSessionRequiredFactorEntity,
   IdentificationCheckinEntity,
@@ -36,6 +37,7 @@ describe('ClassGroupDeletionOrchestrator', () => {
     const classGroupRepo = createMockRepository();
     const scheduleSlotRepo = createMockRepository();
     const enrollmentRepo = createMockRepository();
+    const classGroupSubjectRepo = createMockRepository();
 
     const manager = createMockEntityManager(
       new Map<unknown, MockRepository>([
@@ -48,6 +50,7 @@ describe('ClassGroupDeletionOrchestrator', () => {
         [ClassGroupEntity, classGroupRepo],
         [ClassGroupScheduleSlotEntity, scheduleSlotRepo],
         [ClassGroupEnrollmentEntity, enrollmentRepo],
+        [ClassGroupSubjectEntity, classGroupSubjectRepo],
       ]),
     );
     const tenantContext = createMockTenantContext(manager);
@@ -64,6 +67,7 @@ describe('ClassGroupDeletionOrchestrator', () => {
       classGroupRepo,
       scheduleSlotRepo,
       enrollmentRepo,
+      classGroupSubjectRepo,
     };
   }
 
@@ -142,6 +146,17 @@ describe('ClassGroupDeletionOrchestrator', () => {
       expect(classGroupRepo.delete).toHaveBeenCalledWith({ id: 'class-group-1' });
     });
 
+    // RULE-INST-14: the turma's matéria links are scoped to the turma and go
+    // with it — leaving them behind would strand rows pointing at a
+    // class_group that no longer exists.
+    test('test_deleteClassGroup_alsoDeletesTheTurmasSubjectLinks', async () => {
+      const { orchestrator, classGroupSubjectRepo } = buildOrchestrator();
+
+      await orchestrator.deleteClassGroup('class-group-1');
+
+      expect(classGroupSubjectRepo.delete).toHaveBeenCalledWith({ classGroupId: 'class-group-1' });
+    });
+
     test('test_deleteClassGroup_hasAttendanceActivity_throwsConflict_deletesNothing', async () => {
       const consolidationRepo = createMockRepository({ count: jest.fn().mockResolvedValue(1) });
       const { orchestrator, classGroupRepo, enrollmentRepo } = buildOrchestrator({ consolidationRepo });
@@ -159,6 +174,66 @@ describe('ClassGroupDeletionOrchestrator', () => {
 
       expect(requiredFactorRepo.delete).not.toHaveBeenCalled();
       expect(classGroupRepo.delete).toHaveBeenCalledWith({ id: 'class-group-1' });
+    });
+  });
+
+  // RULE-INST-14 + RULE-INST-08 addendum: unlinking ONE matéria from a turma
+  // — the narrow sibling of a full turma deletion.
+  describe('assertSubjectRemovable / removeSubjectFromClassGroup', () => {
+    test('test_assertSubjectRemovable_scopesTheActivityCheckToThatSubjectsSessionsOnly', async () => {
+      const { orchestrator, sessionRepo } = buildOrchestrator();
+
+      await orchestrator.assertSubjectRemovable('class-group-1', 'subject-1');
+
+      expect(sessionRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { classGroupId: 'class-group-1', subjectId: 'subject-1' } }),
+      );
+    });
+
+    test('test_assertSubjectRemovable_thatSubjectsSessionsHaveAttendanceActivity_throwsConflict', async () => {
+      const consolidationRepo = createMockRepository({ count: jest.fn().mockResolvedValue(1) });
+      const { orchestrator } = buildOrchestrator({ consolidationRepo });
+
+      await expect(orchestrator.assertSubjectRemovable('class-group-1', 'subject-1')).rejects.toThrow(/RULE-INST-13/);
+    });
+
+    test('test_assertSubjectRemovable_noSessionsForThatSubject_resolves', async () => {
+      const sessionRepo = createMockRepository({ find: jest.fn().mockResolvedValue([]) });
+      const { orchestrator } = buildOrchestrator({ sessionRepo });
+
+      await expect(orchestrator.assertSubjectRemovable('class-group-1', 'subject-1')).resolves.toBeUndefined();
+    });
+
+    // The turma itself, its enrollments and its other matérias survive — this
+    // is exactly what separates unlinking a matéria from deleting the turma.
+    test('test_removeSubjectFromClassGroup_deletesOnlyThatSubjectsSlotsSessionsAndLink', async () => {
+      const { orchestrator, manager, requiredFactorRepo, sessionRepo, scheduleSlotRepo, classGroupSubjectRepo, enrollmentRepo, classGroupRepo } =
+        buildOrchestrator();
+
+      await orchestrator.removeSubjectFromClassGroup(manager as never, 'class-group-1', 'subject-1');
+
+      expect(requiredFactorRepo.delete).toHaveBeenCalled();
+      expect(sessionRepo.delete).toHaveBeenCalled();
+      expect(scheduleSlotRepo.delete).toHaveBeenCalledWith({ classGroupId: 'class-group-1', subjectId: 'subject-1' });
+      expect(classGroupSubjectRepo.delete).toHaveBeenCalledWith({
+        classGroupId: 'class-group-1',
+        subjectId: 'subject-1',
+      });
+      expect(enrollmentRepo.delete).not.toHaveBeenCalled();
+      expect(classGroupRepo.delete).not.toHaveBeenCalled();
+    });
+
+    // RULE-INST-08 addendum, user-confirmed 2026-09-03: removing the LAST
+    // matéria is not special-cased anywhere — the turma is simply left with
+    // zero links, never deleted.
+    test('test_removeSubjectFromClassGroup_lastSubject_neverDeletesTheTurma', async () => {
+      const sessionRepo = createMockRepository({ find: jest.fn().mockResolvedValue([]) });
+      const { orchestrator, manager, classGroupRepo, enrollmentRepo } = buildOrchestrator({ sessionRepo });
+
+      await orchestrator.removeSubjectFromClassGroup(manager as never, 'class-group-1', 'subject-1');
+
+      expect(classGroupRepo.delete).not.toHaveBeenCalled();
+      expect(enrollmentRepo.delete).not.toHaveBeenCalled();
     });
   });
 });

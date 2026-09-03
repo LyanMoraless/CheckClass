@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
-import { ClassGroupEntity, ClassGroupScheduleSlotEntity, SubjectEntity } from '../../database/entities';
+import { ClassGroupEntity, ClassGroupScheduleSlotEntity, ClassGroupSubjectEntity } from '../../database/entities';
 import { timeToSeconds } from '../../common/utc-date.util';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { LeadershipScopeService } from '../leadership-scope/leadership-scope.service';
@@ -8,6 +8,9 @@ import { GenerateForRangeResult, SessionGenerationService } from './session-gene
 import { ScheduleRegenerationService } from './schedule-regeneration.service';
 
 export interface CreateScheduleSlotInput {
+  // RULE-INST-14: which of the turma's matérias this weekly slot teaches —
+  // must be one the turma currently has linked (class_group_subject).
+  subjectId: string;
   dayOfWeek: number;
   startTime: string;
   endTime: string;
@@ -47,11 +50,18 @@ export class ClassScheduleService {
       throw new BadRequestException('endTime must be after startTime');
     }
 
+    // RULE-INST-14: a slot can only teach a matéria the turma actually has.
+    // Application-level by design (architecture-overview.md, Frente 05) — the
+    // schema keeps a plain FK to subject so unlinking a matéria later doesn't
+    // orphan the historical sessions it generated.
+    await this.assertSubjectBelongsToClassGroup(manager, classGroupId, input.subjectId);
+
     const repository = manager.getRepository(ClassGroupScheduleSlotEntity);
     const saved = await repository.save(
       repository.create({
         tenantId,
         classGroupId,
+        subjectId: input.subjectId,
         dayOfWeek: input.dayOfWeek,
         startTime: input.startTime,
         endTime: input.endTime,
@@ -79,7 +89,7 @@ export class ClassScheduleService {
     const manager = this.tenantContext.getManager();
     return manager
       .getRepository(ClassGroupScheduleSlotEntity)
-      .find({ where: { classGroupId }, order: { dayOfWeek: 'ASC', startTime: 'ASC' } });
+      .find({ where: { classGroupId }, order: { dayOfWeek: 'ASC', startTime: 'ASC', subjectId: 'ASC' } });
   }
 
   async deleteSlot(classGroupId: string, slotId: string, authenticatedPersonId: string): Promise<void> {
@@ -155,13 +165,10 @@ export class ClassScheduleService {
     if (!classGroup) {
       throw new NotFoundException(`class_group ${classGroupId} not found`);
     }
-    // RULE-INST-03: course is no longer on class_group directly — resolve it
-    // one hop up through the turma's subject, same as ClassGroupService.
-    const subject = await manager.getRepository(SubjectEntity).findOneByOrFail({ id: classGroup.subjectId });
 
     const authorized = await this.leadershipScope.hasAuthorityOverClassGroup(
       authenticatedPersonId,
-      subject.courseId,
+      classGroup.courseId,
       classGroupId,
     );
     if (!authorized) {
@@ -170,5 +177,18 @@ export class ClassScheduleService {
       );
     }
     return classGroup;
+  }
+
+  private async assertSubjectBelongsToClassGroup(
+    manager: EntityManager,
+    classGroupId: string,
+    subjectId: string,
+  ): Promise<void> {
+    const link = await manager.getRepository(ClassGroupSubjectEntity).findOneBy({ classGroupId, subjectId });
+    if (!link) {
+      throw new BadRequestException(
+        `subject ${subjectId} is not linked to class_group ${classGroupId} — add it to the turma before scheduling it (RULE-INST-14)`,
+      );
+    }
   }
 }

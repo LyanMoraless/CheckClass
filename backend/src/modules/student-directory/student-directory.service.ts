@@ -4,7 +4,10 @@ import { TenantContextService } from '../../database/tenant-context.service';
 export interface StudentEnrollment {
   classGroupId: string;
   classGroupName: string;
-  subjectName: string;
+  // RULE-INST-14: a turma studies N matérias — the enrollment is to the turma
+  // as a whole (RULE-INST-11), so this carries the turma's full set, empty
+  // included.
+  subjectNames: string[];
   courseName: string;
   enrollmentStatus: string;
 }
@@ -22,7 +25,7 @@ interface StudentEnrollmentRow {
   hasLoginCredential: boolean;
   classGroupId: string;
   classGroupName: string;
-  subjectName: string;
+  subjectNames: string[];
   courseName: string;
   enrollmentStatus: string;
 }
@@ -58,14 +61,19 @@ export class StudentDirectoryService {
         (pc.id IS NOT NULL) AS "hasLoginCredential",
         cge.class_group_id AS "classGroupId",
         cg.name AS "classGroupName",
-        sub.name AS "subjectName",
+        subs.names AS "subjectNames",
         c.name AS "courseName",
         cge.enrollment_status AS "enrollmentStatus"
       FROM person p
       JOIN class_group_enrollment cge ON cge.person_id = p.id AND cge.role = 'student'
       JOIN class_group cg ON cg.id = cge.class_group_id
-      JOIN subject sub ON sub.id = cg.subject_id
-      JOIN course c ON c.id = sub.course_id
+      JOIN course c ON c.id = cg.course_id
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(array_agg(s.name ORDER BY s.name), '{}'::text[]) AS names
+        FROM class_group_subject cgs
+        JOIN subject s ON s.id = cgs.subject_id
+        WHERE cgs.class_group_id = cg.id
+      ) subs ON TRUE
       LEFT JOIN person_credential pc ON pc.person_id = p.id
       ORDER BY p.full_name ASC, cg.name ASC
     `);
@@ -96,7 +104,7 @@ export class StudentDirectoryService {
       student.enrollments.push({
         classGroupId: row.classGroupId,
         classGroupName: row.classGroupName,
-        subjectName: row.subjectName,
+        subjectNames: row.subjectNames,
         courseName: row.courseName,
         enrollmentStatus: row.enrollmentStatus,
       });

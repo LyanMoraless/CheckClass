@@ -5,6 +5,7 @@ import { PermissionCheckInterceptor } from '../auth/permission-check.interceptor
 import { Permission } from '../auth/permission.enum';
 import { RequirePermission } from '../auth/require-permission.decorator';
 import { ClassGroupService } from './class-group.service';
+import { AddClassGroupSubjectDto } from './dto/add-class-group-subject.dto';
 import { CreateClassGroupDto } from './dto/create-class-group.dto';
 import { EnrollPersonDto } from './dto/enroll-person.dto';
 import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
@@ -26,9 +27,41 @@ export class ClassGroupController {
     return this.classGroupService.create(body, request.personId);
   }
 
+  // RULE-INST-14: courseId is the turma's own column; subjectId still works
+  // as a filter ("turmas que estudam esta matéria"), now resolved through
+  // class_group_subject instead of a column on the turma.
   @Get()
-  list(@Query('subjectId') subjectId?: string) {
-    return this.classGroupService.list(subjectId);
+  list(@Query('courseId') courseId?: string, @Query('subjectId') subjectId?: string) {
+    return this.classGroupService.list({ courseId, subjectId });
+  }
+
+  // RULE-INST-14: the turma's set of matérias.
+  @Get(':classGroupId/subjects')
+  listSubjects(@Param('classGroupId', ParseUUIDPipe) classGroupId: string) {
+    return this.classGroupService.listSubjects(classGroupId);
+  }
+
+  @Post(':classGroupId/subjects')
+  addSubject(
+    @Param('classGroupId', ParseUUIDPipe) classGroupId: string,
+    @Body() body: AddClassGroupSubjectDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.classGroupService.addSubject(classGroupId, body.subjectId, request.personId);
+  }
+
+  // RULE-INST-08 addendum/RULE-INST-13: removes this matéria's slots and
+  // sessions from this turma only — the turma itself survives, even when this
+  // was its last matéria. 409 if that matéria's sessions already have
+  // attendance activity.
+  @Delete(':classGroupId/subjects/:subjectId')
+  async removeSubject(
+    @Param('classGroupId', ParseUUIDPipe) classGroupId: string,
+    @Param('subjectId', ParseUUIDPipe) subjectId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    await this.classGroupService.removeSubject(classGroupId, subjectId, request.personId);
+    return { classGroupId, subjectId };
   }
 
   // RULE-INST-08/13: hard delete, blocked if the turma has recorded

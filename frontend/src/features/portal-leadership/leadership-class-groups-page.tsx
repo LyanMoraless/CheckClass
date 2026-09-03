@@ -6,6 +6,7 @@ import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
 import { PageHeader } from '../../components/page-header';
 import { errorMessage } from '../../lib/api-client';
+import { formatSubjectNames } from '../../lib/subject-names';
 import { listMyCoordinatedClassGroups, type CoordinatedClassGroupEntry } from './coordinated-class-groups-api';
 
 export type LeadershipScope = 'coordinator' | 'direction';
@@ -51,7 +52,7 @@ export function LeadershipClassGroupsPage({ scope }: { scope: LeadershipScope })
           emptyMessage={copy.emptyMessage}
           columns={[
             { header: 'Turma', cell: (entry) => entry.classGroupName },
-            { header: 'Matéria', cell: (entry) => entry.subjectName },
+            { header: 'Matérias', cell: (entry) => formatSubjectNames(entry.subjectNames) },
             { header: 'Curso', cell: (entry) => entry.courseName },
             {
               header: 'Presença',

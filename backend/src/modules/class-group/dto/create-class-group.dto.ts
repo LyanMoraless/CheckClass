@@ -1,8 +1,17 @@
-import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsArray, IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateClassGroupDto {
+  // RULE-INST-14: the turma belongs to a Curso; its Matérias are a set that
+  // can be given here and edited afterwards via
+  // POST/DELETE :classGroupId/subjects. Omitting subjectIds creates a turma
+  // with no matéria yet — a valid, composable state.
   @IsUUID()
-  subjectId: string;
+  courseId: string;
+
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  @IsOptional()
+  subjectIds?: string[];
 
   @IsString()
   @IsNotEmpty()

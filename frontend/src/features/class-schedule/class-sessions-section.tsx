@@ -8,7 +8,9 @@ import { Loading } from '../../components/loading';
 import { PermissionHint } from '../../components/permission-hint';
 import { errorMessage } from '../../lib/api-client';
 import { useAuth } from '../auth/auth-context';
+import { listClassGroupSubjects } from '../class-groups/class-groups-api';
 import type { Room } from '../rooms/rooms-api';
+import { listSubjects } from '../subjects/subjects-api';
 import {
   cancelClassSession,
   createClassSession,
@@ -47,6 +49,9 @@ interface ClassSessionsSectionProps {
   // RULE-INST-06/07: needed to show which room a session with roomId = null
   // is actually inheriting, directly on this operational screen.
   classGroupRoomId: string | null | undefined;
+  // RULE-INST-14: needed to resolve the turma's matérias — both to label each
+  // aula and to offer them when creating one avulsa.
+  classGroupCourseId: string | undefined;
 }
 
 // RULE-INST-04 (third-round update): shows every generated session
@@ -54,7 +59,12 @@ interface ClassSessionsSectionProps {
 // pre-existing ad-hoc "Nova aula" manual creation — kept because the backend
 // still supports it as a separate, always-available creation path alongside
 // bulk generation from the grade above (see class-session.service.ts).
-export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: ClassSessionsSectionProps) {
+export function ClassSessionsSection({
+  classGroupId,
+  rooms,
+  classGroupRoomId,
+  classGroupCourseId,
+}: ClassSessionsSectionProps) {
   const { hasPermission } = useAuth();
   const canManage = hasPermission('manage_institution_structure');
   const queryClient = useQueryClient();
@@ -64,6 +74,20 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
     isLoading,
     error,
   } = useQuery({ queryKey: ['class-sessions', classGroupId], queryFn: () => listClassSessions(classGroupId) });
+
+  const { data: classGroupSubjects } = useQuery({
+    queryKey: ['class-group-subjects', classGroupId],
+    queryFn: () => listClassGroupSubjects(classGroupId),
+  });
+  const { data: subjectsForCourse } = useQuery({
+    queryKey: ['subjects', 'by-course', classGroupCourseId],
+    queryFn: () => listSubjects(classGroupCourseId),
+    enabled: Boolean(classGroupCourseId),
+  });
+
+  function subjectName(id: string): string {
+    return subjectsForCourse?.find((subject) => subject.id === id)?.name ?? id;
+  }
 
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editStart, setEditStart] = useState('');
@@ -88,6 +112,7 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['class-sessions', classGroupId] }),
   });
 
+  const [manualSubjectId, setManualSubjectId] = useState('');
   const [manualRoomId, setManualRoomId] = useState('');
   const [manualStart, setManualStart] = useState('');
   const [manualEnd, setManualEnd] = useState('');
@@ -95,6 +120,7 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
     mutationFn: () =>
       createClassSession({
         classGroupId,
+        subjectId: manualSubjectId,
         roomId: manualRoomId || undefined,
         scheduledStart: new Date(manualStart).toISOString(),
         scheduledEnd: new Date(manualEnd).toISOString(),
@@ -143,6 +169,7 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
           getRowKey={(session) => session.id}
           emptyMessage="Nenhuma aula gerada ainda para esta turma."
           columns={[
+            { header: 'Matéria', cell: (session) => subjectName(session.subjectId) },
             {
               header: 'Início',
               cell: (session) =>
@@ -252,6 +279,21 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
         <form onSubmit={handleManualSubmit}>
           {createMutation.isError && <ErrorBanner message={errorMessage(createMutation.error)} />}
           <label>
+            Matéria
+            <select value={manualSubjectId} onChange={(event) => setManualSubjectId(event.target.value)} required>
+              <option value="" disabled>
+                {classGroupSubjects && classGroupSubjects.length > 0
+                  ? 'Selecione uma matéria'
+                  : 'Adicione uma matéria à turma primeiro'}
+              </option>
+              {classGroupSubjects?.map((link) => (
+                <option key={link.id} value={link.subjectId}>
+                  {subjectName(link.subjectId)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
             Sala (opcional, herda a sala da turma se vazio)
             <select value={manualRoomId} onChange={(event) => setManualRoomId(event.target.value)}>
               <option value="">Herdar sala da turma</option>
@@ -272,7 +314,7 @@ export function ClassSessionsSection({ classGroupId, rooms, classGroupRoomId }: 
           </label>
           <button
             type="submit"
-            disabled={createMutation.isPending || !manualStart || !manualEnd}
+            disabled={createMutation.isPending || !manualSubjectId || !manualStart || !manualEnd}
             className={styles.iconButton}
           >
             <Plus size={16} />

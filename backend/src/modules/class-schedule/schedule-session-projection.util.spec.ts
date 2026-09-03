@@ -3,7 +3,7 @@ import { assertNoSelfOverlap, projectCandidateSessions } from './schedule-sessio
 
 // Pure-function coverage — no DB/DI involved. RULE-INST-04/10.
 describe('projectCandidateSessions', () => {
-  const mondaySlot = { dayOfWeek: 1, startTime: '13:00:00', endTime: '15:00:00' };
+  const mondaySlot = { subjectId: 'subject-1', dayOfWeek: 1, startTime: '13:00:00', endTime: '15:00:00' };
   // 2026-09-07 is a Monday (UTC).
   const oneWeekRange = { rangeStartDate: new Date(Date.UTC(2026, 8, 7)), rangeEndDate: new Date(Date.UTC(2026, 8, 13)) };
 
@@ -16,7 +16,15 @@ describe('projectCandidateSessions', () => {
     });
 
     expect(result).toEqual({
-      candidates: [{ scheduledStart: new Date('2026-09-07T13:00:00.000Z'), scheduledEnd: new Date('2026-09-07T15:00:00.000Z') }],
+      candidates: [
+        {
+          // RULE-INST-14: the candidate carries the slot's matéria through to
+          // the session it becomes.
+          subjectId: 'subject-1',
+          scheduledStart: new Date('2026-09-07T13:00:00.000Z'),
+          scheduledEnd: new Date('2026-09-07T15:00:00.000Z'),
+        },
+      ],
       consideredCount: 1,
     });
   });
@@ -31,7 +39,13 @@ describe('projectCandidateSessions', () => {
     });
 
     expect(result).toEqual({
-      candidates: [{ scheduledStart: new Date('2026-09-14T13:00:00.000Z'), scheduledEnd: new Date('2026-09-14T15:00:00.000Z') }],
+      candidates: [
+        {
+          subjectId: 'subject-1',
+          scheduledStart: new Date('2026-09-14T13:00:00.000Z'),
+          scheduledEnd: new Date('2026-09-14T15:00:00.000Z'),
+        },
+      ],
       consideredCount: 1,
     });
   });

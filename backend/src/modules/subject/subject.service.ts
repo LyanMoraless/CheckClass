@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ClassGroupEntity, CourseEntity, SubjectEntity } from '../../database/entities';
+import { ClassGroupSubjectEntity, CourseEntity, SubjectEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { ClassGroupDeletionOrchestrator } from '../class-group-deletion/class-group-deletion-orchestrator.service';
 import { LeadershipScopeService } from '../leadership-scope/leadership-scope.service';
@@ -47,14 +47,21 @@ export class SubjectService {
     return courseId ? repository.findBy({ courseId }) : repository.find();
   }
 
-  // RULE-INST-08: deleting a Matéria cascades to its Turmas — via
-  // RULE-INST-13, the whole deletion is rejected tudo-ou-nada (nothing
-  // deleted) if ANY of those turmas has recorded attendance activity, rather
-  // than silently deleting what it can and skipping the rest (same pattern
-  // already established by SessionGenerationService/ScheduleRegenerationService
-  // elsewhere in this pivot). Authority: hasAuthorityOverCourse — deleting a
-  // Matéria is a course-level action (RULE-INST-09), same check already used
-  // by ClassGroupService.create() when creating a turma under a course.
+  // RULE-INST-08 (addendum, 2026-09-03): deleting a Matéria no longer
+  // cascades into deleting Turmas. RULE-INST-14 made a turma a cohort of N
+  // matérias, so a turma that also studies other matérias must obviously
+  // survive — and the extreme case, the matéria being the turma's ONLY one,
+  // was confirmed by the user to behave the same way, just taken to zero: the
+  // turma survives empty, keeps its enrollments and history, and waits for a
+  // new matéria. What IS removed, per turma, is exactly this matéria's own
+  // footprint: the link, its recurring slots, its generated sessions.
+  //
+  // RULE-INST-13 still applies, now scoped to those sessions: tudo-ou-nada,
+  // nothing is deleted anywhere if this matéria has recorded attendance
+  // activity in ANY turma (same all-or-nothing precedent as before).
+  // Authority: hasAuthorityOverCourse — deleting a Matéria is a course-level
+  // action (RULE-INST-09), same check already used by
+  // ClassGroupService.create() when creating a turma under a course.
   async delete(subjectId: string, authenticatedPersonId: string): Promise<void> {
     const manager = this.tenantContext.getManager();
 
@@ -70,12 +77,16 @@ export class SubjectService {
       );
     }
 
-    const classGroups = await manager.getRepository(ClassGroupEntity).find({ where: { subjectId }, select: ['id'] });
-    const classGroupIds = classGroups.map((classGroup) => classGroup.id);
+    const links = await manager
+      .getRepository(ClassGroupSubjectEntity)
+      .find({ where: { subjectId }, select: ['classGroupId'] });
+    const classGroupIds = links.map((link) => link.classGroupId);
 
-    await this.deletionOrchestrator.assertAllDeletable(classGroupIds);
     for (const classGroupId of classGroupIds) {
-      await this.deletionOrchestrator.deleteClassGroupUnchecked(manager, classGroupId);
+      await this.deletionOrchestrator.assertSubjectRemovable(classGroupId, subjectId);
+    }
+    for (const classGroupId of classGroupIds) {
+      await this.deletionOrchestrator.removeSubjectFromClassGroup(manager, classGroupId, subjectId);
     }
     await manager.getRepository(SubjectEntity).delete({ id: subjectId });
   }

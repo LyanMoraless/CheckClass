@@ -23,6 +23,7 @@ export class ClassSessionController {
     const session = await this.classSessionService.createSession(
       {
         classGroupId: body.classGroupId,
+        subjectId: body.subjectId,
         roomId: body.roomId,
         scheduledStart: new Date(body.scheduledStart),
         scheduledEnd: new Date(body.scheduledEnd),
@@ -38,8 +39,8 @@ export class ClassSessionController {
   // sessions exist (permission-boundary gap fixed per Solution Architect).
   @Get()
   @RequirePermission(Permission.MANAGE_INSTITUTION_STRUCTURE, Permission.VIEW_ATTENDANCE_REGISTER)
-  list(@Query('classGroupId') classGroupId?: string) {
-    return this.classSessionService.list(classGroupId);
+  list(@Query('classGroupId') classGroupId?: string, @Query('subjectId') subjectId?: string) {
+    return this.classSessionService.list({ classGroupId, subjectId });
   }
 
   // RULE-INST-04 (third-round update, item #3): pontual edit of one already-

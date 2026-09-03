@@ -15,7 +15,14 @@ import { GenerateForRangeInput, SessionGenerationService } from './session-gener
 // create loop. Shared by both ClassScheduleService.generateSessions and
 // ScheduleRegenerationService.regenerateFutureSessions.
 describe('SessionGenerationService', () => {
-  const mondaySlot = { id: 'slot-1', classGroupId: 'class-group-1', dayOfWeek: 1, startTime: '13:00:00', endTime: '15:00:00' };
+  const mondaySlot = {
+    id: 'slot-1',
+    classGroupId: 'class-group-1',
+    subjectId: 'subject-1',
+    dayOfWeek: 1,
+    startTime: '13:00:00',
+    endTime: '15:00:00',
+  };
   const oneWeekRange = { rangeStartDate: new Date(Date.UTC(2026, 8, 7)), rangeEndDate: new Date(Date.UTC(2026, 8, 13)) }; // Mon 09-07 .. Sun 09-13
 
   function buildService(options: {
@@ -81,6 +88,7 @@ describe('SessionGenerationService', () => {
     expect(classSessionService.createSession).toHaveBeenCalledWith(
       {
         classGroupId: 'class-group-1',
+        subjectId: 'subject-1',
         scheduledStart: new Date('2026-09-07T13:00:00.000Z'),
         scheduledEnd: new Date('2026-09-07T15:00:00.000Z'),
       },
@@ -167,8 +175,32 @@ describe('SessionGenerationService', () => {
     expect(classSessionService.createSession).not.toHaveBeenCalled();
   });
 
+  // RULE-INST-14: the whole point of the slot-level matéria — one turma, two
+  // weekdays, two different matérias, each session created for its own.
+  test('test_generateForRange_slotsOfDifferentSubjects_eachSessionCarriesItsOwnSlotsSubject', async () => {
+    const wednesdaySlot = { ...mondaySlot, id: 'slot-2', subjectId: 'subject-2', dayOfWeek: 3 };
+    const { service, classSessionService } = buildService();
+
+    const result = await service.generateForRange(baseInput({ slots: [mondaySlot, wednesdaySlot] }));
+
+    expect(result).toEqual({ created: 2, skipped: 0 });
+    expect(classSessionService.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({ subjectId: 'subject-1', scheduledStart: new Date('2026-09-07T13:00:00.000Z') }),
+      'coordinator-1',
+    );
+    expect(classSessionService.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({ subjectId: 'subject-2', scheduledStart: new Date('2026-09-09T13:00:00.000Z') }),
+      'coordinator-1',
+    );
+  });
+
+  // Two matérias in the same room at the same time is still the same
+  // RULE-INST-10 conflict — the matéria was never a conflict criterion.
   test('test_generateForRange_ownSlotsOverlapEachOther_throwsConflictBeforeCheckingPersistedSessions', async () => {
-    const overlappingSlots = [mondaySlot, { id: 'slot-2', classGroupId: 'class-group-1', dayOfWeek: 1, startTime: '14:00:00', endTime: '16:00:00' }];
+    const overlappingSlots = [
+      mondaySlot,
+      { id: 'slot-2', classGroupId: 'class-group-1', subjectId: 'subject-2', dayOfWeek: 1, startTime: '14:00:00', endTime: '16:00:00' },
+    ];
     const { service, conflictDetection, classSessionService } = buildService();
 
     await expect(service.generateForRange(baseInput({ slots: overlappingSlots }))).rejects.toThrow(ConflictException);

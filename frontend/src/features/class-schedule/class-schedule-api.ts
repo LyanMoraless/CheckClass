@@ -6,6 +6,9 @@ import { api, buildQuery } from '../../lib/api-client';
 export interface ScheduleSlot {
   id: string;
   classGroupId: string;
+  // RULE-INST-14: which of the turma's matérias this weekly slot teaches —
+  // a Mon/Wed turma can hold Matemática na segunda e Física na quarta.
+  subjectId: string;
   dayOfWeek: number;
   startTime: string; // "HH:mm:ss"
   endTime: string; // "HH:mm:ss"
@@ -14,6 +17,7 @@ export interface ScheduleSlot {
 }
 
 export interface CreateScheduleSlotInput {
+  subjectId: string;
   dayOfWeek: number;
   startTime: string; // "HH:mm"
   endTime: string; // "HH:mm"
@@ -55,6 +59,9 @@ export type ClassSessionStatus = 'scheduled' | 'edited' | 'cancelled';
 export interface ClassSession {
   id: string;
   classGroupId: string;
+  // RULE-INST-14: the matéria THIS occurrence is about — propagated from the
+  // slot that generated it, or chosen when the aula is created avulsa.
+  subjectId: string;
   // RULE-INST-07: null means "inherit the room assigned on the turma
   // itself" — only a pontual edit overrides this per-session.
   roomId: string | null;
@@ -70,6 +77,7 @@ export interface ClassSession {
 
 export interface CreateClassSessionInput {
   classGroupId: string;
+  subjectId: string;
   roomId?: string;
   scheduledStart: string;
   scheduledEnd: string;
@@ -97,8 +105,8 @@ export interface CancelClassSessionResult {
   status: ClassSessionStatus;
 }
 
-export async function listClassSessions(classGroupId?: string): Promise<ClassSession[]> {
-  return api.get(`/v1/class-sessions${buildQuery({ classGroupId })}`);
+export async function listClassSessions(classGroupId?: string, subjectId?: string): Promise<ClassSession[]> {
+  return api.get(`/v1/class-sessions${buildQuery({ classGroupId, subjectId })}`);
 }
 
 // Ad-hoc single-session creation — kept alongside the recurring-grade

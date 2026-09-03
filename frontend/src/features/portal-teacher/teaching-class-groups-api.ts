@@ -6,7 +6,9 @@ import { api } from '../../lib/api-client';
 export interface TeachingClassGroupEntry {
   classGroupId: string;
   classGroupName: string;
-  subjectName: string;
+  // RULE-INST-14: a turma studies N matérias — plural, and empty for a
+  // turma that currently has none.
+  subjectNames: string[];
   courseName: string;
 }
 

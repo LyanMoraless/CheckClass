@@ -21,7 +21,7 @@ describe('StudentDirectoryService', () => {
     hasLoginCredential: true,
     classGroupId: 'class-group-1',
     classGroupName: 'Cálculo I - Turma A',
-    subjectName: 'Cálculo I',
+    subjectNames: ['Cálculo I', 'Física I'],
     courseName: 'Engenharia',
     enrollmentStatus: 'active',
   };
@@ -40,7 +40,7 @@ describe('StudentDirectoryService', () => {
           {
             classGroupId: 'class-group-1',
             classGroupName: 'Cálculo I - Turma A',
-            subjectName: 'Cálculo I',
+            subjectNames: ['Cálculo I', 'Física I'],
             courseName: 'Engenharia',
             enrollmentStatus: 'active',
           },
@@ -54,7 +54,7 @@ describe('StudentDirectoryService', () => {
       ...baseRow,
       classGroupId: 'class-group-2',
       classGroupName: 'Álgebra Linear - Turma B',
-      subjectName: 'Álgebra Linear',
+      subjectNames: ['Álgebra Linear'],
       courseName: 'Engenharia',
       enrollmentStatus: 'on_leave',
     };
@@ -114,13 +114,22 @@ describe('StudentDirectoryService', () => {
     expect(result).toEqual([]);
   });
 
-  test('test_list_queriesPersonJoinedThroughEnrollmentSubjectAndCourse', async () => {
+  // RULE-INST-14: the course comes off the turma directly, and the matérias
+  // are aggregated from class_group_subject — the join through cg.subject_id
+  // is gone, and a turma with no matéria must still list its students
+  // (LEFT JOIN LATERAL + empty-array fallback).
+  test('test_list_queriesPersonJoinedThroughEnrollmentCourseAndAggregatedSubjects', async () => {
     const { service, manager } = buildService([baseRow]);
 
     await service.list();
 
     expect(manager.query).toHaveBeenCalledWith(
-      expect.stringMatching(/FROM person p[\s\S]*class_group_enrollment[\s\S]*class_group[\s\S]*subject[\s\S]*course/),
+      expect.stringMatching(/FROM person p[\s\S]*class_group_enrollment[\s\S]*class_group[\s\S]*course/),
     );
+    const [query] = manager.query.mock.calls[0] as [string];
+    expect(query).toMatch(/JOIN course c ON c\.id = cg\.course_id/);
+    expect(query).toMatch(/LEFT JOIN LATERAL/);
+    expect(query).toMatch(/COALESCE\(array_agg\(s\.name ORDER BY s\.name\), '\{\}'::text\[\]\)/);
+    expect(query).not.toMatch(/cg\.subject_id/);
   });
 });

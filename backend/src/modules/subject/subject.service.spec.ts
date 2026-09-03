@@ -1,4 +1,4 @@
-import { ClassGroupEntity, CourseEntity, SubjectEntity } from '../../database/entities';
+import { ClassGroupSubjectEntity, CourseEntity, SubjectEntity } from '../../database/entities';
 import { createMockEntityManager, createMockRepository, createMockTenantContext, MockRepository } from '../../../test/unit/support/mock-entity-manager';
 import { SubjectService } from './subject.service';
 
@@ -8,7 +8,7 @@ describe('SubjectService', () => {
       course?: CourseEntity | null;
       subject?: SubjectEntity | null;
       subjectRepo?: MockRepository;
-      classGroups?: { id: string }[];
+      linkedClassGroupIds?: string[];
       authorized?: boolean;
     } = {},
   ) {
@@ -18,22 +18,26 @@ describe('SubjectService', () => {
       createMockRepository({
         findOneBy: jest.fn().mockResolvedValue(options.subject ?? { id: 'subject-1', courseId: 'course-1' }),
       });
-    const classGroupRepo: MockRepository = createMockRepository({ find: jest.fn().mockResolvedValue(options.classGroups ?? []) });
+    const classGroupSubjectRepo: MockRepository = createMockRepository({
+      find: jest
+        .fn()
+        .mockResolvedValue((options.linkedClassGroupIds ?? []).map((classGroupId) => ({ classGroupId }))),
+    });
     const manager = createMockEntityManager(
       new Map([
         [CourseEntity, courseRepo],
         [SubjectEntity, subjectRepo],
-        [ClassGroupEntity, classGroupRepo],
+        [ClassGroupSubjectEntity, classGroupSubjectRepo],
       ]),
     );
     const tenantContext = createMockTenantContext(manager);
     const leadershipScope = { hasAuthorityOverCourse: jest.fn().mockResolvedValue(options.authorized ?? true) };
     const deletionOrchestrator = {
-      assertAllDeletable: jest.fn().mockResolvedValue(undefined),
-      deleteClassGroupUnchecked: jest.fn().mockResolvedValue(undefined),
+      assertSubjectRemovable: jest.fn().mockResolvedValue(undefined),
+      removeSubjectFromClassGroup: jest.fn().mockResolvedValue(undefined),
     };
     const service = new SubjectService(tenantContext as never, leadershipScope as never, deletionOrchestrator as never);
-    return { service, subjectRepo, courseRepo, classGroupRepo, leadershipScope, deletionOrchestrator };
+    return { service, subjectRepo, courseRepo, classGroupSubjectRepo, leadershipScope, deletionOrchestrator };
   }
 
   test('test_create_courseExists_savesSubjectWithTenantIdAndGivenFields', async () => {
@@ -103,40 +107,46 @@ describe('SubjectService', () => {
       const { service, deletionOrchestrator } = buildService({ authorized: false });
 
       await expect(service.delete('subject-1', 'random-person')).rejects.toThrow(/RULE-INST-09/);
-      expect(deletionOrchestrator.assertAllDeletable).not.toHaveBeenCalled();
+      expect(deletionOrchestrator.assertSubjectRemovable).not.toHaveBeenCalled();
     });
 
-    test('test_delete_noClassGroups_deletesSubjectWithoutTouchingOrchestratorDeletion', async () => {
-      const { service, subjectRepo, deletionOrchestrator } = buildService({ classGroups: [] });
+    test('test_delete_noClassGroupUsesIt_deletesSubjectWithoutTouchingAnyTurma', async () => {
+      const { service, subjectRepo, deletionOrchestrator } = buildService({ linkedClassGroupIds: [] });
 
       await service.delete('subject-1', 'coordinator-1');
 
-      expect(deletionOrchestrator.assertAllDeletable).toHaveBeenCalledWith([]);
-      expect(deletionOrchestrator.deleteClassGroupUnchecked).not.toHaveBeenCalled();
+      expect(deletionOrchestrator.assertSubjectRemovable).not.toHaveBeenCalled();
+      expect(deletionOrchestrator.removeSubjectFromClassGroup).not.toHaveBeenCalled();
       expect(subjectRepo.delete).toHaveBeenCalledWith({ id: 'subject-1' });
     });
 
-    test('test_delete_withClassGroups_validatesAllThenDeletesEachThenSubject', async () => {
-      const classGroups = [{ id: 'class-group-1' }, { id: 'class-group-2' }];
-      const { service, subjectRepo, deletionOrchestrator } = buildService({ classGroups });
+    // RULE-INST-08 addendum (2026-09-03): the turmas are NOT deleted anymore —
+    // only this matéria's own footprint is removed from each of them, and the
+    // turmas survive (empty, if this was their only matéria).
+    test('test_delete_withLinkedClassGroups_unlinksFromEachThenDeletesSubject_neverDeletingATurma', async () => {
+      const { service, subjectRepo, deletionOrchestrator } = buildService({
+        linkedClassGroupIds: ['class-group-1', 'class-group-2'],
+      });
 
       await service.delete('subject-1', 'coordinator-1');
 
-      expect(deletionOrchestrator.assertAllDeletable).toHaveBeenCalledWith(['class-group-1', 'class-group-2']);
-      expect(deletionOrchestrator.deleteClassGroupUnchecked).toHaveBeenCalledTimes(2);
+      expect(deletionOrchestrator.assertSubjectRemovable).toHaveBeenCalledWith('class-group-1', 'subject-1');
+      expect(deletionOrchestrator.assertSubjectRemovable).toHaveBeenCalledWith('class-group-2', 'subject-1');
+      expect(deletionOrchestrator.removeSubjectFromClassGroup).toHaveBeenCalledTimes(2);
       expect(subjectRepo.delete).toHaveBeenCalledWith({ id: 'subject-1' });
     });
 
-    // Tudo-ou-nada: if assertAllDeletable rejects (a blocked turma somewhere
-    // in the subject), nothing is deleted — same precedent as
-    // SessionGenerationService's conflict-abort-all.
-    test('test_delete_oneClassGroupBlocked_rejectsWithoutDeletingAnything', async () => {
-      const classGroups = [{ id: 'class-group-1' }];
-      const { service, subjectRepo, deletionOrchestrator } = buildService({ classGroups });
-      deletionOrchestrator.assertAllDeletable.mockRejectedValue(new Error('RULE-INST-13 blocked'));
+    // Tudo-ou-nada: every turma is validated before ANY of them is touched, so
+    // one blocked turma leaves the whole operation with nothing changed —
+    // same precedent as SessionGenerationService's conflict-abort-all.
+    test('test_delete_oneClassGroupBlocked_rejectsWithoutUnlinkingOrDeletingAnything', async () => {
+      const { service, subjectRepo, deletionOrchestrator } = buildService({
+        linkedClassGroupIds: ['class-group-1', 'class-group-2'],
+      });
+      deletionOrchestrator.assertSubjectRemovable.mockRejectedValue(new Error('RULE-INST-13 blocked'));
 
       await expect(service.delete('subject-1', 'coordinator-1')).rejects.toThrow(/RULE-INST-13/);
-      expect(deletionOrchestrator.deleteClassGroupUnchecked).not.toHaveBeenCalled();
+      expect(deletionOrchestrator.removeSubjectFromClassGroup).not.toHaveBeenCalled();
       expect(subjectRepo.delete).not.toHaveBeenCalled();
     });
   });

@@ -30,10 +30,12 @@ export class CourseService {
     return manager.getRepository(CourseEntity).find();
   }
 
-  // RULE-INST-08: deleting a Curso cascades to its Matérias and, through
-  // them, their Turmas — via RULE-INST-13, tudo-ou-nada blocked if ANY turma
-  // anywhere in that cascade has recorded attendance activity (same
-  // tudo-ou-nada precedent used by SubjectService.delete, one level down).
+  // RULE-INST-08: deleting a Curso cascades to its Matérias AND its Turmas.
+  // Unlike the Matéria cascade one level down (which, since RULE-INST-14,
+  // only unlinks — the turma survives), a turma cannot outlive its course:
+  // class_group.courseId is what the turma exists under, so the whole turma
+  // goes. Via RULE-INST-13, tudo-ou-nada blocked if ANY turma in that cascade
+  // has recorded attendance activity.
   // Authority: hasAuthorityOverCourse directly against this courseId — no
   // subject hop needed, this IS the course.
   async delete(courseId: string, authenticatedPersonId: string): Promise<void> {
@@ -52,9 +54,10 @@ export class CourseService {
     const subjects = await manager.getRepository(SubjectEntity).find({ where: { courseId }, select: ['id'] });
     const subjectIds = subjects.map((subject) => subject.id);
 
-    const classGroups = subjectIds.length
-      ? await manager.getRepository(ClassGroupEntity).find({ where: { subjectId: In(subjectIds) }, select: ['id'] })
-      : [];
+    // RULE-INST-14: turmas hang off the course directly now — including a
+    // turma with zero matérias, which the old subject-based lookup would have
+    // missed and left orphaned behind a deleted course.
+    const classGroups = await manager.getRepository(ClassGroupEntity).find({ where: { courseId }, select: ['id'] });
     const classGroupIds = classGroups.map((classGroup) => classGroup.id);
 
     await this.deletionOrchestrator.assertAllDeletable(classGroupIds);

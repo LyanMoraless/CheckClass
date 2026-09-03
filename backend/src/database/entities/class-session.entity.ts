@@ -11,6 +11,14 @@ export class ClassSessionEntity {
   @Column({ name: 'class_group_id', type: 'uuid' })
   classGroupId: string;
 
+  // RULE-INST-14: the Matéria this concrete occurrence is about — propagated
+  // from the slot that generated it (RULE-INST-04), or given explicitly on a
+  // manually created session. RULE-FREQ-01 (frequência por matéria) and
+  // RULE-JUST-02 (matérias do dia) read this column directly instead of
+  // joining up to the turma.
+  @Column({ name: 'subject_id', type: 'uuid' })
+  subjectId: string;
+
   // RULE-INST-07: NULL means "inherit class_group.roomId" (the common case
   // now that room is assigned once at the turma level); a non-null value is
   // a pontual (one-off) override for this specific session only

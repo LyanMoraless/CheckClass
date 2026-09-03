@@ -22,7 +22,7 @@ describe('TenantConfigService', () => {
   const classGroup: ClassGroupEntity = {
     id: 'class-group-1',
     tenantId: 'tenant-a-id',
-    subjectId: 'subject-1',
+    courseId: 'course-1',
     name: 'Turma A',
     roomId: null,
     termStartDate: null,

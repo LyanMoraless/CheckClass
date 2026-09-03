@@ -30,19 +30,42 @@ describe('TeachingClassGroupsService', () => {
     expect(query).toMatch(/cge\.role = 'teacher'/);
   });
 
-  test('test_getTeachingClassGroups_joinsSubjectAndCourseForReadableNames', async () => {
+  // RULE-INST-14: course comes straight off the turma now, and the matérias
+  // are an aggregated set instead of a single joined name — a turma with
+  // several matérias must still produce exactly one row per turma.
+  test('test_getTeachingClassGroups_joinsCourseDirectlyAndAggregatesSubjectNames', async () => {
     const { service, manager } = buildService();
 
     await service.getTeachingClassGroups('teacher-1');
 
     const [query] = manager.query.mock.calls[0] as [string, unknown[]];
-    expect(query).toMatch(/JOIN subject sub ON sub\.id = cg\.subject_id/);
-    expect(query).toMatch(/JOIN course c ON c\.id = sub\.course_id/);
+    expect(query).toMatch(/JOIN course c ON c\.id = cg\.course_id/);
+    expect(query).toMatch(/array_agg\(s\.name ORDER BY s\.name\)/);
+    expect(query).toMatch(/FROM class_group_subject cgs/);
+    expect(query).not.toMatch(/cg\.subject_id/);
+  });
+
+  // RULE-INST-08 addendum: a turma with zero matérias still belongs to its
+  // course and must still appear — the aggregate falls back to an empty
+  // array instead of dropping the row.
+  test('test_getTeachingClassGroups_keepsTurmaWithNoSubject_viaLeftLateralAndEmptyArrayFallback', async () => {
+    const { service, manager } = buildService();
+
+    await service.getTeachingClassGroups('teacher-1');
+
+    const [query] = manager.query.mock.calls[0] as [string, unknown[]];
+    expect(query).toMatch(/LEFT JOIN LATERAL/);
+    expect(query).toMatch(/COALESCE\(array_agg\(s\.name ORDER BY s\.name\), '\{\}'::text\[\]\)/);
   });
 
   test('test_getTeachingClassGroups_returnsRowsResolvedFromTheQuery', async () => {
     const rows = [
-      { classGroupId: 'class-group-1', classGroupName: 'Turma A', subjectName: 'Cálculo I', courseName: 'Engenharia' },
+      {
+        classGroupId: 'class-group-1',
+        classGroupName: 'Turma A',
+        subjectNames: ['Cálculo I', 'Física I'],
+        courseName: 'Engenharia',
+      },
     ];
     const { service } = buildService(rows);
 

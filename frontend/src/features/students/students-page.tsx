@@ -7,6 +7,7 @@ import { ErrorBanner } from '../../components/error-banner';
 import { Loading } from '../../components/loading';
 import { PageHeader } from '../../components/page-header';
 import { errorMessage } from '../../lib/api-client';
+import { formatSubjectNames } from '../../lib/subject-names';
 import { listStudents, type EnrollmentStatus, type Student, type StudentEnrollment } from './students-api';
 import styles from './students-page.module.css';
 
@@ -88,7 +89,7 @@ function EnrollmentsList({ enrollments }: { enrollments: StudentEnrollment[] }) 
     <ul className={styles.enrollmentsList}>
       {enrollments.map((enrollment) => (
         <li key={enrollment.classGroupId} className={styles.enrollmentItem}>
-          {enrollment.subjectName} — {enrollment.classGroupName} ({enrollment.courseName})
+          {formatSubjectNames(enrollment.subjectNames)} — {enrollment.classGroupName} ({enrollment.courseName})
           <Badge
             label={ENROLLMENT_STATUS_LABELS[enrollment.enrollmentStatus]}
             tone={ENROLLMENT_STATUS_TONES[enrollment.enrollmentStatus]}

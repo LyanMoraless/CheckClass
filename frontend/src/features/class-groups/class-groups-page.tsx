@@ -23,9 +23,8 @@ export function ClassGroupsPage() {
   const { data: courses } = useQuery({ queryKey: ['courses'], queryFn: () => listCourses() });
   const { data: rooms } = useQuery({ queryKey: ['rooms'], queryFn: () => listRooms() });
   // Unfiltered list of every subject, regardless of course — used to
-  // populate the "filter by subject" select and to resolve subject/course
-  // names in the table, independent of which course a given class group's
-  // subject happens to belong to.
+  // populate the "filter by subject" select and to resolve the names of the
+  // matérias each turma studies (RULE-INST-14), independent of course.
   const { data: allSubjects } = useQuery({ queryKey: ['subjects'], queryFn: () => listSubjects() });
 
   const [subjectFilter, setSubjectFilter] = useState('');
@@ -35,21 +34,23 @@ export function ClassGroupsPage() {
     error,
   } = useQuery({
     queryKey: ['class-groups', subjectFilter],
-    queryFn: () => listClassGroups(subjectFilter || undefined),
+    queryFn: () => listClassGroups({ subjectId: subjectFilter || undefined }),
   });
 
   const [name, setName] = useState('');
   const [createCourseId, setCreateCourseId] = useState('');
-  const [subjectId, setSubjectId] = useState('');
+  // RULE-INST-14: the turma studies a SET of matérias — several can be picked
+  // here at creation time, and the set stays editable afterwards on the
+  // turma's own screen (including down to zero).
+  const [subjectIds, setSubjectIds] = useState<string[]>([]);
   const [roomId, setRoomId] = useState('');
   const [termStartDate, setTermStartDate] = useState('');
   const [termEndDate, setTermEndDate] = useState('');
 
-  // Second select of the Curso -> Matéria cascade in the creation form: only
-  // the subjects belonging to the chosen course are offered, so this select
-  // stays disabled until a course is picked. There's no cascading-select
-  // precedent elsewhere in the project, so this follows the simplest viable
-  // shape: two controlled selects, the second gated on the first.
+  // Second step of the Curso -> Matérias cascade in the creation form: only
+  // the subjects belonging to the chosen course are offered (RULE-INST-14
+  // requires every matéria of a turma to belong to the turma's course), so
+  // this block stays hidden until a course is picked.
   const { data: subjectsForCourse } = useQuery({
     queryKey: ['subjects', 'by-course', createCourseId],
     queryFn: () => listSubjects(createCourseId),
@@ -61,6 +62,7 @@ export function ClassGroupsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['class-groups'] });
       setName('');
+      setSubjectIds([]);
       setRoomId('');
       setTermStartDate('');
       setTermEndDate('');
@@ -69,11 +71,23 @@ export function ClassGroupsPage() {
 
   function handleCreateCourseChange(value: string) {
     setCreateCourseId(value);
-    setSubjectId('');
+    // The previously picked matérias belong to the previous course — keeping
+    // them would build a turma the backend rejects (RULE-INST-14).
+    setSubjectIds([]);
+  }
+
+  function toggleSubject(id: string) {
+    setSubjectIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
   function subjectName(id: string): string {
     return allSubjects?.find((subject) => subject.id === id)?.name ?? id;
+  }
+
+  function subjectNames(ids: string[]): string {
+    // A turma with no matéria is a valid state (RULE-INST-08 addendum) — it
+    // shows as a dash instead of an empty cell, so it reads as deliberate.
+    return ids.length === 0 ? '—' : ids.map(subjectName).join(', ');
   }
 
   // RULE-INST-06: the room already assigned to a turma must be visible
@@ -86,21 +100,22 @@ export function ClassGroupsPage() {
     return rooms?.find((room) => room.id === id)?.name ?? id;
   }
 
-  // Curso is no longer stored on the class group itself — it's derived by
-  // looking up the class group's subject and, from there, that subject's
-  // course.
+  // RULE-INST-14: the curso is the turma's own field again — no longer
+  // derived through a single matéria, which a turma no longer has.
+  function courseName(id: string): string {
+    return courses?.find((course) => course.id === id)?.name ?? id;
+  }
+
   function courseNameForSubject(id: string): string {
     const subject = allSubjects?.find((item) => item.id === id);
-    if (!subject) {
-      return '—';
-    }
-    return courses?.find((course) => course.id === subject.courseId)?.name ?? subject.courseId;
+    return subject ? courseName(subject.courseId) : '—';
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     mutation.mutate({
-      subjectId,
+      courseId: createCourseId,
+      subjectIds: subjectIds.length > 0 ? subjectIds : undefined,
       name,
       roomId: roomId || undefined,
       termStartDate: termStartDate || undefined,
@@ -114,7 +129,7 @@ export function ClassGroupsPage() {
         icon={Users}
         area="registry"
         title="Turmas"
-        description="Cada turma reúne matrículas, grade recorrente e aulas geradas a partir dela."
+        description="Cada turma reúne matrículas, matérias, grade recorrente e aulas geradas a partir dela."
       />
 
       <label className={styles.filter}>
@@ -137,8 +152,8 @@ export function ClassGroupsPage() {
           getRowKey={(group) => group.id}
           columns={[
             { header: 'Nome', cell: (group) => group.name },
-            { header: 'Matéria', cell: (group) => subjectName(group.subjectId) },
-            { header: 'Curso', cell: (group) => courseNameForSubject(group.subjectId) },
+            { header: 'Matérias', cell: (group) => subjectNames(group.subjectIds) },
+            { header: 'Curso', cell: (group) => courseName(group.courseId) },
             { header: 'Sala', cell: (group) => roomName(group.roomId) },
             { header: 'ID', cell: (group) => <code>{group.id}</code> },
             {
@@ -167,24 +182,26 @@ export function ClassGroupsPage() {
               ))}
             </select>
           </label>
-          <label>
-            Matéria
-            <select
-              value={subjectId}
-              onChange={(event) => setSubjectId(event.target.value)}
-              required
-              disabled={!createCourseId}
-            >
-              <option value="" disabled>
-                {createCourseId ? 'Selecione uma matéria' : 'Selecione um curso primeiro'}
-              </option>
-              {subjectsForCourse?.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <fieldset className={styles.subjectPicker}>
+            <legend>Matérias da turma (opcional)</legend>
+            <p>
+              <small>
+                Marque quantas matérias a turma cursa. Pode deixar em branco agora e montar depois, na tela da turma.
+              </small>
+            </p>
+            {!createCourseId && <p>Selecione um curso primeiro.</p>}
+            {createCourseId && subjectsForCourse?.length === 0 && <p>Este curso ainda não tem matérias cadastradas.</p>}
+            {subjectsForCourse?.map((subject) => (
+              <label key={subject.id} className={styles.subjectOption}>
+                <input
+                  type="checkbox"
+                  checked={subjectIds.includes(subject.id)}
+                  onChange={() => toggleSubject(subject.id)}
+                />
+                {subject.name}
+              </label>
+            ))}
+          </fieldset>
           <label>
             Nome
             <input type="text" value={name} onChange={(event) => setName(event.target.value)} required maxLength={255} />
@@ -208,7 +225,7 @@ export function ClassGroupsPage() {
             Fim do período letivo (opcional)
             <input type="date" value={termEndDate} onChange={(event) => setTermEndDate(event.target.value)} />
           </label>
-          <button type="submit" disabled={mutation.isPending || !subjectId} className={styles.iconButton}>
+          <button type="submit" disabled={mutation.isPending || !createCourseId} className={styles.iconButton}>
             <Plus size={16} />
             {mutation.isPending ? 'Criando…' : 'Criar turma'}
           </button>

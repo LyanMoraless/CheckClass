@@ -8,12 +8,17 @@ export class ClassGroupEntity {
   @Column({ name: 'tenant_id', type: 'uuid' })
   tenantId: string;
 
-  // RULE-INST-03: class_group is now an offering of a Subject (Matéria), not
-  // a direct link to Course — course is derived via subject.courseId, never
-  // duplicated here. See MigrateClassGroupToSubject migration for the
-  // course_id -> subject_id backfill of pre-existing rows.
-  @Column({ name: 'subject_id', type: 'uuid' })
-  subjectId: string;
+  // RULE-INST-14: the Turma is a cohort that studies N Matérias — the set
+  // lives in class_group_subject, never as a column here. The course is
+  // first-class data again (it was derived through subject.courseId between
+  // MigrateClassGroupToSubject and AddClassGroupSubjects): a turma with zero
+  // matérias is a valid state (RULE-INST-08 addendum), so course can no
+  // longer be derived from the subject set, and RULE-INST-09's whole
+  // authorization model needs a course for every turma, empty ones included.
+  // Every subject linked to this turma must belong to this same course —
+  // enforced by ClassGroupService, not by a DB constraint.
+  @Column({ name: 'course_id', type: 'uuid' })
+  courseId: string;
 
   @Column({ type: 'varchar', length: 255 })
   name: string;

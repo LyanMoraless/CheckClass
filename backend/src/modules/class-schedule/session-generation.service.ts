@@ -113,6 +113,10 @@ export class SessionGenerationService {
       await this.classSessionService.createSession(
         {
           classGroupId: input.classGroup.id,
+          // RULE-INST-14: the generated session inherits the matéria of the
+          // slot that produced it — this is what makes frequência por matéria
+          // (RULE-FREQ-01) computable without guessing.
+          subjectId: candidate.subjectId,
           scheduledStart: candidate.scheduledStart,
           scheduledEnd: candidate.scheduledEnd,
         },

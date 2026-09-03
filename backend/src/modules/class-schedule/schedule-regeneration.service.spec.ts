@@ -22,12 +22,19 @@ import { ScheduleRegenerationService } from './schedule-regeneration.service';
 describe('ScheduleRegenerationService', () => {
   const classGroupWithTermAndRoom = {
     id: 'class-group-1',
-    subjectId: 'subject-1',
+    courseId: 'course-1',
     roomId: 'room-1',
     termStartDate: new Date(Date.UTC(2026, 8, 1)),
     termEndDate: new Date(Date.UTC(2026, 8, 30)),
   };
-  const mondaySlot = { id: 'slot-1', classGroupId: 'class-group-1', dayOfWeek: 1, startTime: '13:00:00', endTime: '15:00:00' };
+  const mondaySlot = {
+    id: 'slot-1',
+    classGroupId: 'class-group-1',
+    subjectId: 'subject-1',
+    dayOfWeek: 1,
+    startTime: '13:00:00',
+    endTime: '15:00:00',
+  };
 
   function buildService(options: {
     classGroupRepo?: MockRepository;

@@ -9,6 +9,7 @@ export * from './room.entity';
 export * from './course.entity';
 export * from './subject.entity';
 export * from './class-group.entity';
+export * from './class-group-subject.entity';
 export * from './class-group-schedule-slot.entity';
 export * from './holiday.entity';
 export * from './class-group-enrollment.entity';

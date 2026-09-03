@@ -19,6 +19,14 @@ export class ClassGroupScheduleSlotEntity {
   @Column({ name: 'class_group_id', type: 'uuid' })
   classGroupId: string;
 
+  // RULE-INST-14: which Matéria this weekly slot teaches — a Mon/Wed turma
+  // can hold Matemática on Monday and Física on Wednesday. Must be one of the
+  // turma's currently linked subjects (class_group_subject) at write time,
+  // validated by ClassScheduleService; the FK itself points straight at
+  // subject so the value stays readable if that link is later removed.
+  @Column({ name: 'subject_id', type: 'uuid' })
+  subjectId: string;
+
   @Column({ name: 'day_of_week', type: 'smallint' })
   dayOfWeek: number;
 

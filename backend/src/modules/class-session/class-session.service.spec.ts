@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import {
   ClassGroupEntity,
   ClassGroupEnrollmentEntity,
+  ClassGroupSubjectEntity,
   ClassSessionEntity,
   ClassSessionRequiredFactorEntity,
   RoomEntity,
@@ -22,6 +23,7 @@ import { ClassSessionService, CreateClassSessionInput, EditClassSessionInput } f
 describe('ClassSessionService', () => {
   const baseInput: CreateClassSessionInput = {
     classGroupId: 'class-group-1',
+    subjectId: 'subject-1',
     roomId: 'room-1',
     scheduledStart: new Date('2026-08-24T13:00:00Z'),
     scheduledEnd: new Date('2026-08-24T15:00:00Z'),
@@ -44,13 +46,14 @@ describe('ClassSessionService', () => {
     scheduledStart: new Date('2026-09-07T13:00:00Z'),
     scheduledEnd: new Date('2026-09-07T15:00:00Z'),
   };
-  const classGroupWithRoom = { id: 'class-group-1', subjectId: 'subject-1', roomId: 'room-1' };
+  const classGroupWithRoom = { id: 'class-group-1', courseId: 'course-1', roomId: 'room-1' };
 
   function buildService(options: {
     sessionRepo?: MockRepository;
     requiredFactorRepo?: MockRepository;
     classGroupRepo?: MockRepository;
     subjectRepo?: MockRepository;
+    classGroupSubjectRepo?: MockRepository;
     enrollmentRepo?: MockRepository;
     roomRepo?: MockRepository;
     effectiveConfig?: ResolvedAttendanceConfig;
@@ -73,6 +76,9 @@ describe('ClassSessionService', () => {
       });
     const subjectRepo =
       options.subjectRepo ?? createMockRepository({ findOneByOrFail: jest.fn().mockResolvedValue(subject) });
+    const classGroupSubjectRepo =
+      options.classGroupSubjectRepo ??
+      createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'link-1', subjectId: 'subject-1' }) });
     const enrollmentRepo =
       options.enrollmentRepo ?? createMockRepository({ find: jest.fn().mockResolvedValue([{ personId: 'teacher-1' }]) });
     const roomRepo = options.roomRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'room-1' }) });
@@ -82,6 +88,7 @@ describe('ClassSessionService', () => {
       [ClassSessionRequiredFactorEntity, requiredFactorRepo],
       [ClassGroupEntity, classGroupRepo],
       [SubjectEntity, subjectRepo],
+      [ClassGroupSubjectEntity, classGroupSubjectRepo],
       [ClassGroupEnrollmentEntity, enrollmentRepo],
       [RoomEntity, roomRepo],
     ]);
@@ -105,6 +112,7 @@ describe('ClassSessionService', () => {
       requiredFactorRepo,
       classGroupRepo,
       subjectRepo,
+      classGroupSubjectRepo,
       enrollmentRepo,
       roomRepo,
       configService,
@@ -127,6 +135,26 @@ describe('ClassSessionService', () => {
         postToleranceBehaviorSnapshot: 'block_checkin',
       }),
     );
+  });
+
+  // RULE-INST-14: the session carries the matéria it is about — without it,
+  // frequência por matéria (RULE-FREQ-01) has nothing to attribute to.
+  test('test_createSession_persistsTheSubjectTheSessionIsAbout', async () => {
+    const { service, sessionRepo } = buildService();
+
+    await service.createSession(baseInput, 'teacher-1');
+
+    expect(sessionRepo.save).toHaveBeenCalledWith(expect.objectContaining({ subjectId: 'subject-1' }));
+  });
+
+  test('test_createSession_subjectNotLinkedToTheTurma_throwsBadRequestWithoutSaving', async () => {
+    const classGroupSubjectRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
+    const { service, sessionRepo } = buildService({ classGroupSubjectRepo });
+
+    await expect(service.createSession({ ...baseInput, subjectId: 'subject-9' }, 'teacher-1')).rejects.toThrow(
+      /RULE-INST-14/,
+    );
+    expect(sessionRepo.save).not.toHaveBeenCalled();
   });
 
   test('test_createSession_noRequiredFactors_doesNotTouchRequiredFactorRepo', async () => {
@@ -289,7 +317,7 @@ describe('ClassSessionService', () => {
     const result = await service.list();
 
     expect(result).toBe(sessions);
-    expect(sessionRepo.find).toHaveBeenCalledWith({ order: { scheduledStart: 'DESC' } });
+    expect(sessionRepo.find).toHaveBeenCalledWith({ where: {}, order: { scheduledStart: 'DESC' } });
   });
 
   test('test_list_withClassGroupFilter_findsOnlyThatClassGroupsSessions', async () => {
@@ -297,7 +325,7 @@ describe('ClassSessionService', () => {
     const sessionRepo = createMockRepository({ find: jest.fn().mockResolvedValue(sessions) });
     const { service } = buildService({ sessionRepo });
 
-    const result = await service.list('class-group-1');
+    const result = await service.list({ classGroupId: 'class-group-1' });
 
     expect(result).toBe(sessions);
     expect(sessionRepo.find).toHaveBeenCalledWith({

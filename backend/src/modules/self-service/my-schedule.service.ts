@@ -5,6 +5,9 @@ export interface MyScheduleEntry {
   classSessionId: string;
   classGroupId: string;
   classGroupName: string;
+  // RULE-INST-14: the matéria of THIS occurrence (class_session.subject_id),
+  // not "the turma's matéria" — with several matérias per turma, the session
+  // is the only level where this question has one answer.
   subjectName: string;
   roomId: string | null;
   roomName: string | null;
@@ -55,7 +58,7 @@ export class MyScheduleService {
       FROM class_group_enrollment cge
       JOIN class_session cs ON cs.class_group_id = cge.class_group_id
       JOIN class_group cg ON cg.id = cs.class_group_id
-      JOIN subject sub ON sub.id = cg.subject_id
+      JOIN subject sub ON sub.id = cs.subject_id
       LEFT JOIN room r ON r.id = COALESCE(cs.room_id, cg.room_id)
       WHERE cge.tenant_id = $1 AND cge.person_id = $2
       ORDER BY cs.scheduled_start ASC
