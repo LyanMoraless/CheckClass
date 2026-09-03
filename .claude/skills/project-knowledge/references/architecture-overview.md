@@ -1931,6 +1931,22 @@ Frente 05.
 de 2026-09-03; decisão de produto do caso "turma sem matéria" confirmada
 pelo usuário na mesma sessão.
 
+## Decisão de arquitetura — Turma com várias matérias, campo `class_group.course_id` restaurado (2026-09-03)
+
+Registra a resolução de um gap arquitetural não coberto pela decisão anterior.
+
+**Problema identificado:** A "Decisão de arquitetura — Turma com várias matérias, Frente 05 (2026-09-03)" acima define o novo modelo de dados (`class_group_subject` N:N), mas deixa implícito um problema crítico: com a turma podendo ter **zero matérias vinculadas** (estado válido confirmado pelo usuário), o curso deixa de ser derivável (`class_group → subject → course`). Sete pontos de chamada na aplicação derivavam curso via matéria, e uma turma sem matéria não teria curso derivável. Como toda autorização de RULE-INST-09 é escopada por `leadership_assignment.course_id`, uma turma vazia ficaria sem curso — nenhum coordenador conseguiria nem recadastrar uma matéria nela.
+
+**Solução implementada:** restaurar `class_group.course_id` como coluna NOT NULL própria (em vez de derivada), com a invariante de aplicação: "toda matéria vinculada à turma deve pertencer ao curso da turma" (`subject.courseId == class_group.courseId`), validada em `ClassGroupService.linkSubject()`. A turma continua sendo parte de um Curso, é responsabilidade do usuário entrar com a matéria certa (todos os checks de validação já existem — ver migration `1755862000000-AddClassGroupSubjects.ts`).
+
+**Impacto no schema:**
+- Migration `1755862000000-AddClassGroupSubjects.ts`: (1) adiciona `class_group.course_id` NOT NULL com FK e índice; (2) backfilla a partir de `subject.courseId` de cada turma (unívoco porque hoje cada turma tem exatamente uma matéria); (3) passa a validar a invariante.
+- Consequência: os 7 call sites que derivavam curso via matéria agora leem `classGroup.courseId` diretamente — consulta mais direta, zero mudança de autorização.
+
+**Vigência:** regra **já implementada e testada** na sessão de 2026-09-03 (não é decisão futura — a migration foi escrita, o backend foi adaptado, os testes passam).
+
+**Source of confirmation:** Necessidade reconhecida durante análise de impact de RULE-INST-14; decisão tomada pelo Backend Agent (observação do problema) + Solution Architect (confirmação de que é a abordagem correta), sem retorno ao usuário porque a alternativa (permitir turma vazia sem curso) quebraria RULE-INST-09 silenciosamente — um risco de estado inválido mais grave que uma decisão de implementação.
+
 ## Restrições/premissas confirmadas
 
 - Multi-tenancy é requisito de arquitetura desde o início (ver

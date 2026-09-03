@@ -399,10 +399,10 @@
     </div>
 
     <div class="front">
-      <div class="rail"><div class="num">05</div><span class="st ready">Arquitetura fechada</span></div>
+      <div class="rail"><div class="num">05</div><span class="st done">Concluída</span></div>
       <div>
         <h3>Turma com várias matérias (RULE-INST-14)</h3>
-        <p class="desc">RULE-INST-14 <b>inverte um modelo que já está construído e migrado</b>. Não é feature nova sobre terreno limpo — é remodelagem de algo em uso, com efeito em cascata sobre regras já aprovadas. Planejamento fechado em 2026-09-03; pronta para implementação.</p>
+        <p class="desc">RULE-INST-14 <b>inverte um modelo que já está construído e migrado</b>. Não é feature nova sobre terreno limpo — é remodelagem de algo em uso, com efeito em cascata sobre regras já aprovadas. Implementação concluída em 2026-09-03: banco, backend (658 testes passando) e frontend.</p>
         <ul class="scope">
           <li>Nova tabela <code>class_group_subject</code> (N:N) substitui <code>class_group.subject_id</code>; slot de horário e sessão ganham <code>subject_id</code> próprio (FK direta)</li>
           <li>RULE-INST-08 (cascata): excluir uma Matéria não exclui mais a Turma (A3) — <b>e turma sem nenhuma matéria sobrevive vazia</b>, decisão fechada nesta sessão</li>

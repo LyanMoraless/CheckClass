@@ -563,3 +563,20 @@ cenário do aluno que faz por grade").
 > matérias por dia da justificativa de falta (RULE-JUST-02,
 > `business-rules/references/absence-justification-rules.md`) e a migração
 > do dado já existente sob o modelo de matéria única.
+
+> **Implementação concluída (2026-09-03):** a implicação acima foi
+> resolvida. Migration `1755862000000-AddClassGroupSubjects.ts` cria:
+> `class_group_subject` (N:N), restaura `class_group.course_id` (NOT NULL,
+> com invariante de aplicação), e adiciona `subject_id` a
+> `class_group_schedule_slot` e `class_session`. Backend implementa a
+> validação e os serviços de vínculo/desvinculação com cascata granular.
+> Frontend mostra o conjunto de matérias por turma. Uma descoberta crítica
+> durante a implementação: turma sem nenhuma matéria ficaria **sem curso
+> derivável**, quebrando RULE-INST-09 — resolvido restaurando
+> `class_group.course_id`. Ver "Decisão de arquitetura — Turma com várias
+> matérias, campo `class_group.course_id` restaurado (2026-09-03)" em
+> `project-knowledge/references/architecture-overview.md` para detalhes.
+> **658 testes de backend passando, typecheck frontend limpo, vite build
+> bem-sucedido.**
+> **Source of confirmation:** Implementação concluída na sessão de 2026-09-03
+> (verificável no repositório).
