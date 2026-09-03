@@ -494,6 +494,16 @@ do Business Analyst:
 > `business-rules/references/institution-management-rules.md`) — não mais
 > restrito apenas à resolução de pendências.
 
+> **Superado (2026-09-02) — a distinção por tipo de instituição deixa de
+> existir neste ponto:** a restrição "só para faculdade" registrada acima
+> está superada. Na segunda rodada de gaps do Portal de autoatendimento
+> web, o usuário confirmou que "professor vê presença das turmas que
+> leciona" vale **igualmente para faculdade e escola** — não há mais
+> distinção por tipo de instituição nesta capacidade. Ver "Gaps resolvidos
+> — segunda rodada (2026-09-02)", item 3, na seção "Pivot — Portal de
+> autoatendimento (self-service)..." mais abaixo nesta mesma skill.
+> **Source of confirmation:** Usuário, 2026-09-02.
+
 ## Decisão de arquitetura — Segurança de Intrusão, primeira rodada (aprovada em 2026-08-23)
 
 Proposta do Solution Architect, aprovada pelo usuário sem alterações.
@@ -1523,6 +1533,267 @@ reimplementação nativa vs. outra abordagem) — segue não decidido, mas não
 bloqueia o restante do pivot.
 
 **Source of confirmation:** Usuário, 2026-09-02.
+
+**Gaps resolvidos — segunda rodada (2026-09-02)** — o Business Analyst
+decompôs os requisitos deste pivot e levantou 12 perguntas de escopo/UX que
+bloqueavam o Solution Architect (ver Frente 03 no bloco HANDOFF de
+`pending-decisions.md`). O usuário respondeu todas nesta mesma data. Ver
+também "Resolvido — Segunda rodada de gaps do pivot Portal de
+autoatendimento web (2026-09-02)" em `pending-decisions.md`.
+
+1. **Diferenciação de navegação por papel (decisão de produto; mecanismo
+   técnico em aberto).** Ao contrário do App Mobile (que mostra todas as
+   abas para qualquer pessoa autenticada, com o backend filtrando por
+   endpoint), o Portal Web **precisa** de navegação condicionada ao papel
+   real da pessoa (Aluno/Professor/Coordenador/Direção). Isto é uma decisão
+   de produto fechada — a navegação deve refletir o papel.
+   **Implicação técnica identificada, deliberadamente não decidida aqui:**
+   isto exige mudança no contrato de autenticação — hoje o JWT emitido por
+   `POST /v1/auth/login` carrega apenas `{ personId, tenantId }` (ver
+   "Decisão de tecnologia — Frontend Web", item 5, e "Decisão de
+   segurança — Autenticação Mobile", item 1, ambas acima nesta skill), sem
+   nenhum papel. O mecanismo exato de como o papel é derivado e exposto
+   (novo claim no JWT, endpoint separado de "meu(s) papel(is)", ou outra
+   abordagem) **não foi decidido** — fica como decisão técnica do Solution
+   Architect/Backend Agent a seguir.
+
+   > **Resolvido (2026-09-02, mesma sessão):** o mecanismo técnico acima foi
+   > decidido pelo Solution Architect e aprovado pelo usuário —
+   > `GET /v1/me/context` (endpoint dedicado, não claim no JWT). Ver
+   > "Decisão de arquitetura — Portal de Autoatendimento Web, estrutura
+   > (2026-09-02)", mais abaixo nesta mesma skill.
+
+2. **Escopo da área do Coordenador de Curso, detalhado.** O Coordenador vê
+   presença aluno a aluno (não apenas resumo agregado) das turmas dos
+   cursos que coordena (`leadership_assignment.courseId`), e também
+   **resolve pendências de chamada** nessas turmas — usando a mesma
+   autoridade que RULE-ATT-12
+   (`business-rules/references/attendance-rules.md`) já concede a toda a
+   cadeia de liderança (Professor → Coordenador → Direção). Fecha as
+   perguntas 6 e 12 do levantamento do Business Analyst.
+
+3. **Professor vê presença de turma para os dois tipos de instituição.** A
+   capacidade "professor vê presença das turmas que leciona" vale
+   igualmente para faculdade e escola nesta rodada do Portal — sem
+   distinção por tipo de instituição. Isto supera a restrição "só
+   faculdade" registrada em 2026-09-01 (ver nota "Superado (2026-09-02)"
+   na seção "Escopo confirmado — App Mobile, primeira rodada" acima).
+
+4. **Direção/Reitoria entra como 4ª área nesta rodada.** Além de
+   Aluno/Professor/Coordenador, Direção/Reitoria tem presença própria no
+   Portal já nesta rodada, herdando automaticamente o escopo do
+   Coordenador sobre **todos** os cursos (mesmo padrão de
+   `LeadershipScopeService`/RULE-INST-09) — inclusive resolução de
+   pendência, pelo mesmo raciocínio do item 2.
+
+   > **Observação/gap técnico para o Solution Architect (não é decisão de
+   > produto):** a hierarquia Aluno → Professor → Coordenador de Curso →
+   > Direção/Reitoria hoje só está formalmente confirmada para o tipo de
+   > instituição **faculdade** — para **escola**, os papéis
+   > administrativos internos continuam um gap em aberto (ver "Resolvido
+   > (parcial, apenas Faculdade) — Papéis administrativos internos da
+   > instituição", `pending-decisions.md`). As áreas de Coordenador e
+   > Direção do Portal (itens 2 e 4 acima), portanto, só têm papel
+   > correspondente para acionar hoje em tenants faculdade — não presumir
+   > que elas já existem para escola até esse gap fechar.
+
+5. **Posicionamento de navegação — nova seção na mesma navegação
+   existente.** O Portal do Aluno/Professor/Coordenador/Direção entra como
+   mais uma área dentro da mesma casca do Frontend Web (`app-shell.tsx`),
+   ao lado de Onboarding/Sistema principal/Cadastro/Configurações/
+   Segurança de Intrusão — **não** é uma experiência separada com layout
+   próprio. O menu dessa área é filtrado pelo papel (ver item 1).
+
+6. **Papéis duplos — mostra as duas áreas.** Uma pessoa que acumula, por
+   exemplo, Coordenador de Curso e Professor vê ambas as áreas na
+   navegação (Coordenador e Professor), sem esconder nenhuma das duas.
+
+7. **Check-in fica fora desta rodada.** O check-in (aluno bate presença via
+   QR/pulseira, já implementado no App Mobile —
+   `mobile/src/app/(app)/checkin.tsx`) **não** entra no Portal Web nesta
+   rodada — fica junto com o restante do trabalho do App Mobile, para um
+   segundo momento. Complementa (não contradiz) a pausa de desenvolvimento
+   do App Mobile já confirmada: replicar check-in no portal também não é
+   desta rodada.
+
+8. **Professor não tem "meu cronograma" próprio nesta rodada.** Ele vê
+   lista de turmas + presença dos alunos dessas turmas, sem uma visão de
+   agenda/cronograma pessoal. Diferente do cronograma do Aluno, que
+   continua no escopo via `GET /v1/me/schedule`.
+
+9. **Login: reuso da tela existente, sem tela separada.**
+   Aluno/Professor/Coordenador/Direção usam a mesma tela de login já
+   existente no Frontend Web
+   (`frontend/src/features/auth/login-page.tsx`), a mesma já usada pelo
+   staff administrativo — mesmo mecanismo de credencial (cpf+senha) já
+   confirmado para aluno desde 2026-08-22. Nenhuma tela de login nova.
+
+10. **Extensão de `GET /v1/me/schedule` para nomes legíveis, confirmada
+    necessária.** O endpoint hoje devolve só IDs (`classGroupId`,
+    `roomId`) — precisa devolver nomes de matéria/turma/sala para o Portal
+    ser utilizável. Já estava cogitada para o App Mobile (ver "Decisão de
+    arquitetura — App Mobile para Faculdade" acima); fica confirmada
+    também para o Portal.
+
+11. **Fora de escopo explícito desta rodada (reafirmação, não é
+    novidade):** a Área de Provas (Frente 04) permanece separada e
+    formalmente dependente da entrega deste Portal (ambiguidade A1 do
+    bloco HANDOFF, `pending-decisions.md`, já resolvida).
+
+**Source of confirmation:** Usuário, 2026-09-02.
+
+## Decisão de arquitetura — Portal de Autoatendimento Web, estrutura (2026-09-02)
+
+Proposta do Solution Architect, aprovada pelo usuário. Fecha o mecanismo
+técnico deixado deliberadamente em aberto no item 1 de "Gaps resolvidos —
+segunda rodada (2026-09-02)", dentro da seção "Pivot — Portal de
+autoatendimento (self-service)..." acima, e detalha a estrutura de
+componentes de backend e a navegação de frontend necessárias para
+implementar o escopo já confirmado nesse mesmo pivot. Não é uma decisão de
+tecnologia/stack nova — reaproveita o padrão síncrono já aprovado em
+"Decisão de arquitetura — Gerenciamento da Instituição, Backend/Dashboard
+Web" acima (módulos NestJS síncronos, sem pipeline de eventos, porque a
+borda aqui é um navegador autenticado, não um dispositivo IoT) e a stack de
+Frontend Web já aprovada (React/TypeScript/Vite/TanStack Query).
+
+**1. Mecanismo de papel/contexto — `GET /v1/me/context`, não claim no
+JWT.** Novo endpoint no módulo `self-service`, sob a mesma guarda já usada
+por `me.controller.ts` (`JwtAuthGuard` + `TenantContextInterceptor`, sem
+`PermissionCheckInterceptor` — é leitura sobre a própria pessoa
+autenticada, não checagem de permissão sobre terceiro), consultado no
+carregamento do app junto com o já existente `GET /v1/auth/me`. Formato de
+retorno (ilustrativo, não contrato final de API):
+
+```json
+{
+  "isStudent": true,
+  "teaching": [
+    { "classGroupId": "...", "classGroupName": "...", "subjectName": "...", "courseName": "..." }
+  ],
+  "coordinating": [
+    { "courseId": "...", "courseName": "..." }
+  ],
+  "isDirection": false
+}
+```
+
+Alternativa rejeitada: novo claim de papel dentro do próprio JWT.
+Justificativa aprovada: (a) um claim de token só se atualiza no próximo
+login — ficaria desatualizado quando alguém ganha ou perde uma atribuição
+no meio da sessão, já que RULE-INST-05
+(`business-rules/references/institution-management-rules.md`) concede/
+revoga liderança automaticamente, sem exigir novo login; (b) segue o mesmo
+padrão já usado por `GET /v1/auth/me` para permissões, em vez de introduzir
+um segundo mecanismo paralelo para o mesmo tipo de informação; (c) mantém o
+sistema de `permission-group` e o de `leadership_assignment`
+conceitualmente separados, coerente com RULE-INST-12 ("cumulativas, não
+alternativas") — comprimir os dois num único claim de token tenderia a
+borrar essa separação.
+
+**2. Estrutura de componentes backend — reuso extensivo, poucos endpoints
+novos.**
+
+- **Aluno:** `GET /v1/me/schedule` (estendido para nomes legíveis — já
+  antecipado em "Decisão de arquitetura — App Mobile para Faculdade" acima)
+  e `GET /v1/me/attendance` (sem mudança) — módulo `self-service`.
+- **Professor:** `GET /v1/me/teaching-class-groups` (novo) — lista as
+  turmas onde a pessoa tem `class_group_enrollment.role = 'teacher'`,
+  cobrindo co-docência (RULE-INST-05) por construção, sem lógica adicional.
+- **Professor/Coordenador de Curso/Direção:** novas rotas de leitura de
+  presença por turma (ex.: `GET
+  /v1/me/class-groups/:classGroupId/attendance`), delegando para o
+  `AttendanceRegisterService` já existente (inalterado), mas gated por
+  `LeadershipScopeService.hasAuthorityOverClassGroup()` em vez de permissão
+  de administrador. **Novo idioma de autorização:** leitura escopada por
+  cadeia de liderança — até aqui o único precedente desse padrão era
+  escrita (resolução de pendência, RULE-ATT-12).
+- **Professor/Coordenador de Curso/Direção:** `GET /v1/pending-reviews/mine`
+  + `POST /v1/pending-reviews/:id/resolve` — módulo `pending-review`, zero
+  mudança, já cobre o caso.
+- **Coordenador de Curso/Direção:** `GET /v1/me/coordinated-class-groups`
+  (novo) — lista as turmas de todos os cursos que a pessoa coordena (ou de
+  todos os cursos, se Direção).
+- **Nova capacidade em `LeadershipScopeService`:** hoje o serviço só expõe
+  checagem pontual ("esta pessoa tem autoridade sobre X?"). Ganha um método
+  de **listagem** de escopo (ex.: `getCourseScope(personId): { allCourses:
+  boolean; courseIds: string[] }`), reusado tanto por `/v1/me/context`
+  quanto por `coordinated-class-groups` — mesma semântica de
+  `courseId`/`classGroupId` nulos já usada em RULE-INST-09/RULE-ATT-12, não
+  um conceito novo.
+- **Módulos explicitamente inalterados:** `AttendanceRegisterController`
+  (caminho admin), `pending-review` (controller + service),
+  `class-group`/`class-session`, os dois métodos booleanos já existentes de
+  `LeadershipScopeService`, `auth.controller.ts`.
+
+**3. Estrutura de navegação frontend.** `app-shell.tsx` ganha 4 novos
+grupos de navegação (Aluno/Professor/Coordenador/Direção), cada um
+**oculto por padrão e visível apenas conforme o papel** — política
+diferente dos grupos administrativos existentes, que são sempre visíveis
+por design. Uma pessoa com papel duplo vê os dois grupos simultaneamente,
+já que cada flag de `/v1/me/context` é independente. As rotas do Portal
+montam dentro da mesma `AppShell`/`<Outlet/>` já existente — não é uma
+experiência separada (já decidido em "Gaps resolvidos — segunda rodada
+(2026-09-02)", item 5, na seção do pivot acima). Coordenador de Curso e
+Direção podem compartilhar o mesmo componente de apresentação,
+parametrizado por escopo, já que o backend os trata uniformemente (item 2
+acima). Login reaproveita a tela já existente, sem mudança.
+
+**4. Gap faculdade/escola — tratamento agnóstico de tipo de instituição.**
+Nenhum branching por `institutionType` em nenhum ponto do Portal.
+`/v1/me/context` e `coordinated-class-groups` são queries puras sobre
+`leadership_assignment` — para um tenant escola (que hoje tem zero linhas
+nessa tabela, confirmado em `tenant-bootstrap.service.ts`), os campos
+`coordinating`/`isDirection` naturalmente vêm vazios/falsos, e os grupos de
+navegação correspondentes simplesmente não aparecem, sem nenhum código
+condicional. Fica pronto para quando (e se) a hierarquia de escola for
+modelada no futuro (ver "Gap — Papéis administrativos internos da
+instituição" em `pending-decisions.md`), sem trabalho extra agora.
+
+**5. Novo escopo aprovado nesta sessão — CRUD administrativo mínimo para
+atribuir Coordenador de Curso.** O Solution Architect identificou, durante
+o desenho desta arquitetura, que **hoje não existe nenhuma forma de
+promover alguém a Coordenador de Curso** — só Direção (automática no
+onboarding) e Professor (automática por matrícula em turma) têm atribuição
+de `leadership_assignment` hoje. O usuário confirmou explicitamente incluir
+nesta rodada um fluxo administrativo mínimo (tela + endpoint) para
+criar/listar/revogar uma atribuição de `leadership_assignment` escopada a
+curso (role Coordenador de Curso) para uma pessoa. Isto **reutiliza a
+tabela/semântica já existente** (`leadership_role`, `leadership_assignment`,
+mesmo padrão de RULE-INST-09) — não é uma regra de negócio nova, é uma
+capacidade administrativa que faltava. **Quem pode fazer essa atribuição**
+fica como detalhe técnico para o Backend Agent decidir, seguindo o padrão
+de permissão já usado para gerenciar estrutura institucional
+(`business-rules/references/access-control-rules.md` e
+`institution-management-rules.md`) — não antecipado aqui.
+
+**6. Revisão de segurança — Security Agent entra depois, no fluxo normal.**
+O usuário decidiu que o novo idioma de autorização do item 2 (leitura
+escopada por cadeia de liderança) **não** precisa de gate prévio do
+Security Agent antes do Backend implementar — Security revisa junto do
+código já pronto, como de costume em todo o resto do projeto. Registrado
+aqui para não haver dúvida na próxima etapa.
+
+**Notas técnicas para Backend/Frontend (observações do Architect, não
+decisões de produto):**
+- `GET /v1/me/schedule` hoje não filtra por `class_group_enrollment.role`
+  (retorna qualquer papel). Como Professor não tem "meu cronograma" nesta
+  rodada (item 8 de "Gaps resolvidos — segunda rodada" no pivot acima), o
+  frontend simplesmente não vai chamar esse endpoint para professor — mas o
+  endpoint em si não impõe esse limite no servidor. O Backend Agent precisa
+  decidir deliberadamente se aperta para `role = 'student'` ao estender
+  para nomes legíveis, ou se deixa agnóstico de papel.
+- Naming de endpoints (`/v1/me/context`, `/v1/me/teaching-class-groups`,
+  etc.) é ilustrativo, não vinculante — latitude normal do Backend Agent.
+
+**Fora desta decisão (não decidido aqui):** nomes/paths finais de
+endpoints; formato exato de migration; quem exatamente pode atribuir
+Coordenador de Curso (item 5); mecanismo técnico de "refletir" o App Mobile
+a partir deste portal (segue não decidido, ver pivot acima). Todos ficam
+para Backend/Database Agent quando a implementação real começar.
+
+**Source of confirmation:** Usuário, 2026-09-02 (aprovação das 3 decisões
+principais desta arquitetura, mais o novo escopo de CRUD de Coordenador de
+Curso, nesta mesma sessão).
 
 ## Restrições/premissas confirmadas
 

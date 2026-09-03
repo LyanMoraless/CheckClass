@@ -49,14 +49,59 @@ describe('MyScheduleService', () => {
     expect(query).toMatch(/JOIN class_group cg ON cg\.id = cs\.class_group_id/);
   });
 
+  // Portal de Autoatendimento web extension: the endpoint used to return
+  // only bare ids — needs readable subject/turma/room names to be usable by
+  // the frontend (architecture-overview.md, "Gaps resolvidos — segunda
+  // rodada", item 10).
+  test('test_getMySchedule_joinsSubjectAndRoomForReadableNames', async () => {
+    const { service, manager } = buildService();
+
+    await service.getMySchedule('student-1');
+
+    const [query] = manager.query.mock.calls[0] as [string, unknown[]];
+    expect(query).toMatch(/JOIN subject sub ON sub\.id = cg\.subject_id/);
+    expect(query).toMatch(/LEFT JOIN room r ON r\.id = COALESCE\(cs\.room_id, cg\.room_id\)/);
+    expect(query).toMatch(/cg\.name AS "classGroupName"/);
+    expect(query).toMatch(/sub\.name AS "subjectName"/);
+    expect(query).toMatch(/r\.name AS "roomName"/);
+  });
+
+  // AC-2 (Frente 03 QA finding): a cancelled/holiday session must never be
+  // silently indistinguishable from a normal one — the frontend needs
+  // cs.status to render it as cancelled instead of omitting or
+  // misrepresenting it.
+  test('test_getMySchedule_selectsSessionStatus_soCancelledSessionsCanBeMarkedInTheUi', async () => {
+    const { service, manager } = buildService();
+
+    await service.getMySchedule('student-1');
+
+    const [query] = manager.query.mock.calls[0] as [string, unknown[]];
+    expect(query).toMatch(/cs\.status AS "status"/);
+  });
+
+  // Deliberately role-agnostic (see service-level comment) — no filter on
+  // class_group_enrollment.role anywhere in the query.
+  test('test_getMySchedule_doesNotFilterByEnrollmentRole', async () => {
+    const { service, manager } = buildService();
+
+    await service.getMySchedule('teacher-1');
+
+    const [query] = manager.query.mock.calls[0] as [string, unknown[]];
+    expect(query).not.toMatch(/cge\.role/);
+  });
+
   test('test_getMySchedule_returnsRowsResolvedFromTheQuery', async () => {
     const rows = [
       {
         classSessionId: 'session-1',
         classGroupId: 'class-group-1',
+        classGroupName: 'Turma A',
+        subjectName: 'Cálculo I',
         roomId: 'room-1',
+        roomName: 'Sala 101',
         scheduledStart: new Date('2026-08-24T13:00:00Z'),
         scheduledEnd: new Date('2026-08-24T15:00:00Z'),
+        status: 'scheduled',
       },
     ];
     const { service } = buildService(rows);

@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { IsNull } from 'typeorm';
+import { IsNull, Not } from 'typeorm';
 import { LeadershipAssignmentEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
+
+export interface CourseScope {
+  allCourses: boolean;
+  courseIds: string[];
+}
 
 // Shared authority-scope check, extracted from what used to be
 // PendingReviewService.isAuthorizedToResolve() (RULE-ATT-12) — reused as-is
@@ -44,5 +49,39 @@ export class LeadershipScopeService {
       ],
     });
     return count > 0;
+  }
+
+  // Portal de Autoatendimento web (architecture-overview.md, "Decisão de
+  // arquitetura — Portal de Autoatendimento Web, estrutura"): the listing
+  // counterpart to hasAuthorityOverCourse's boolean check, reused both by
+  // GET /v1/me/context (coordinating/isDirection) and by
+  // GET /v1/me/coordinated-class-groups. Same course-wide branch semantics
+  // as hasAuthorityOverCourse (courseId set AND classGroupId NULL) — a
+  // class_group-scoped assignment (a plain teacher of one turma) is
+  // deliberately excluded here too, same reasoning as that method: it
+  // doesn't make someone a course coordinator. allCourses mirrors the
+  // institution-wide branch (courseId NULL) — RULE-INST-09's confirmed
+  // Direção/Reitoria auto-inheritance over every course.
+  async getCourseScope(personId: string): Promise<CourseScope> {
+    const manager = this.tenantContext.getManager();
+    // No `select` here on purpose: a `select` array that omits the primary
+    // key (`id`) silently breaks TypeORM's `find()` against this multi-OR
+    // `where` shape — it was returning an empty result set even though the
+    // matching row existed (found by running this against real Postgres,
+    // not the mocked-repository unit test, which doesn't reproduce the
+    // issue). Fetching full entities avoids it; the row count per person is
+    // always tiny (their own leadership assignments), so there's no
+    // meaningful cost to not narrowing the columns.
+    const assignments = await manager.getRepository(LeadershipAssignmentEntity).find({
+      where: [
+        { personId, courseId: IsNull() },
+        { personId, courseId: Not(IsNull()), classGroupId: IsNull() },
+      ],
+    });
+
+    const allCourses = assignments.some((assignment) => assignment.courseId === null);
+    const courseIds = [...new Set(assignments.filter((assignment) => assignment.courseId !== null).map((assignment) => assignment.courseId as string))];
+
+    return { allCourses, courseIds };
   }
 }

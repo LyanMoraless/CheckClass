@@ -1116,6 +1116,61 @@ escopo/regra de negócio): mecanismo técnico exato de "refletir" o mobile
 
 </details>
 
+## Resolvido — Segunda rodada de gaps do pivot Portal de autoatendimento web (2026-09-02)
+
+O Business Analyst decompôs os requisitos do pivot "Portal de
+autoatendimento (self-service)..." (`architecture-overview.md`) e levantou
+12 perguntas de escopo/UX que bloqueavam o Solution Architect (ver Frente
+03 no bloco HANDOFF, mais abaixo nesta mesma skill). O usuário respondeu
+todas em 2026-09-02, nesta mesma sessão. Registro completo, com citações e
+referências a regra/entidade, em "Gaps resolvidos — segunda rodada
+(2026-09-02)" dentro da seção "Pivot — Portal de autoatendimento
+(self-service)..." (`architecture-overview.md`) — resumo objetivo abaixo:
+
+1. Navegação do Portal precisa refletir o papel real da pessoa (decisão de
+   produto fechada). ~~**Deixa aberto**, para o Solution Architect/Backend: o
+   mecanismo técnico de como o papel é derivado/exposto — hoje o JWT só
+   carrega `{ personId, tenantId }`, sem papel algum.~~
+
+   > **Resolvido (2026-09-02, mesma sessão):** `GET /v1/me/context`
+   > (endpoint dedicado, não claim no JWT) — ver "Decisão de arquitetura —
+   > Portal de Autoatendimento Web, estrutura (2026-09-02)" em
+   > `architecture-overview.md`.
+2. Escopo do Coordenador de Curso: presença aluno a aluno das turmas dos
+   cursos que coordena, **mais** resolução de pendência (mesma autoridade
+   de RULE-ATT-12). Fecha as perguntas 6 e 12 do levantamento.
+3. Professor vê presença de turma para faculdade **e** escola — supera a
+   restrição "só faculdade" de 2026-09-01.
+4. Direção/Reitoria entra como 4ª área do Portal já nesta rodada, com
+   herança automática de escopo sobre todos os cursos (mesmo padrão de
+   RULE-INST-09), incluindo resolução de pendência.
+5. Portal é nova área dentro da mesma navegação existente do
+   `app-shell.tsx` (não experiência/layout separado), com menu filtrado por
+   papel.
+6. Papéis duplos mostram as duas áreas correspondentes, sem esconder
+   nenhuma.
+7. Check-in fica fora desta rodada do Portal — permanece só no App Mobile,
+   para um segundo momento.
+8. Professor não tem "meu cronograma" próprio nesta rodada — só lista de
+   turmas + presença dos alunos. Diferente do cronograma do Aluno
+   (`GET /v1/me/schedule`, que continua no escopo).
+9. Login reaproveita a tela já existente (`login-page.tsx`), mesmo
+   mecanismo cpf+senha já confirmado — nenhuma tela nova.
+10. Extensão de `GET /v1/me/schedule` para nomes legíveis (matéria/turma/
+    sala) confirmada como necessária para o Portal, além de já cogitada
+    para o App Mobile.
+11. Área de Provas (Frente 04) reafirmada como fora de escopo desta
+    entrega, formalmente dependente dela (ambiguidade A1 já resolvida).
+
+**Observação/gap técnico registrado, não uma decisão de produto:** as áreas
+de Coordenador e Direção do Portal (itens 2 e 4) só têm papel
+correspondente para acionar hoje em tenants **faculdade** — para
+**escola**, os papéis administrativos internos continuam um gap em aberto
+(ver "Resolvido (parcial, apenas Faculdade) — Papéis administrativos
+internos da instituição" acima nesta skill).
+
+**Source of confirmation:** Usuário, 2026-09-02.
+
 ## Confirmado — Escopo fora desta rodada da Área de Provas (não rejeitado)
 
 Consolidação dos itens já sinalizados como fora de escopo durante o
@@ -1782,9 +1837,27 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
    arquivos já listados na seção "Decisão — Remoção da permissão
    `follow_camera_events`" acima). Agentes: Backend + Frontend → Testing →
    Code Reviewer.
-3. **Portal de autoatendimento web** — definir escopo. Hoje só 2 endpoints
-   backend existem, nenhuma tela. Agentes: Business Analyst → Solution
-   Architect → Frontend + Backend → Testing → QA → Project Guardian.
+3. **Portal de autoatendimento web** — ~~definir escopo~~ **escopo/UX
+   fechado (2026-09-02):** o Business Analyst decompôs os requisitos e
+   levantou 12 perguntas de escopo/UX, todas respondidas pelo usuário na
+   mesma sessão — ver "Resolvido — Segunda rodada de gaps do pivot Portal
+   de autoatendimento web (2026-09-02)" acima nesta skill. ~~Uma delas
+   (navegação por papel) abre uma pendência técnica nova para a próxima
+   etapa: o JWT hoje não carrega papel (`{ personId, tenantId }` apenas) —
+   o Solution Architect precisa decidir o mecanismo (novo claim, endpoint
+   de "meu(s) papel(is)", ou outro).~~ **Arquitetura fechada (2026-09-02,
+   mesma sessão):** o Solution Architect propôs e o usuário aprovou
+   `GET /v1/me/context` (endpoint dedicado, não claim no JWT), a estrutura
+   completa de endpoints/módulos backend (reuso extensivo, poucos endpoints
+   novos) e a navegação frontend (4 novos grupos ocultos por padrão em
+   `app-shell.tsx`) — ver "Decisão de arquitetura — Portal de
+   Autoatendimento Web, estrutura (2026-09-02)" em `architecture-overview.md`.
+   **Escopo novo identificado e aprovado na mesma etapa:** CRUD
+   administrativo mínimo para atribuir Coordenador de Curso (não existia
+   forma de fazer essa atribuição antes) — ver item 5 da mesma seção. Hoje
+   só 2 endpoints backend existem, nenhuma tela — nada foi implementado
+   ainda. Agentes: ~~Business Analyst~~ → ~~Solution Architect~~ →
+   **Backend + Frontend (próximo)** → Testing → QA → Project Guardian.
 4. **Área de Provas** — depende da 03 (ver resolução da ambiguidade A1
    abaixo). Tudo aprovado (regras, arquitetura, tecnologia, dados,
    segurança), zero código.

@@ -30,6 +30,8 @@
   --color-area-settings-soft: #fffbeb;
   --color-area-security: #dc2626; /* Segurança de Intrusão */
   --color-area-security-soft: #fef2f2;
+  --color-area-portal: #db2777; /* Portal do Aluno/Professor/Coordenador/Direção */
+  --color-area-portal-soft: #fdf2f8;
 
   /* Semantic status */
   --color-success: #16a34a;

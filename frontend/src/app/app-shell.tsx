@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Backpack,
   BookOpen,
   CalendarClock,
   CalendarOff,
@@ -9,21 +10,25 @@ import {
   Cpu,
   DoorOpen,
   GraduationCap,
+  Landmark,
   Layers,
   LogOut,
+  Presentation,
   ShieldCheck,
   SlidersHorizontal,
   UserCog,
   Users,
+  UsersRound,
   Video,
   Watch,
   type LucideIcon,
 } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
+import type { RoleContext } from '../features/auth/auth-api';
 import { useAuth } from '../features/auth/auth-context';
 import styles from './app-shell.module.css';
 
-type NavArea = 'core' | 'registry' | 'settings' | 'security';
+type NavArea = 'core' | 'registry' | 'settings' | 'security' | 'portal';
 
 interface NavItem {
   to: string;
@@ -78,6 +83,13 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/subjects', label: 'Matérias', icon: Layers },
       { to: '/class-groups', label: 'Turmas', icon: Users },
       { to: '/students', label: 'Alunos', icon: GraduationCap },
+      // Not a self-service role screen: administers WHO holds the
+      // Coordenador de Curso role (RULE-INST-09 scope), gated on
+      // manage_institution_structure like the rest of this group — same
+      // granularity precedent as Turmas/Matérias. Distinct from the
+      // "Coordenador" portal nav group below, which is what a coordinator
+      // sees about their OWN scope, not who gets assigned that role.
+      { to: '/course-coordinator-assignments', label: 'Coordenadores de curso', icon: UserCog },
     ],
   },
   {
@@ -103,8 +115,67 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+// Portal do Aluno/Professor/Coordenador/Direção (Pivot de 2026-09-02,
+// "Decisão de arquitetura — Portal de Autoatendimento Web, estrutura"):
+// unlike every group above (always visible by design — a missing permission
+// still shows the link with a 403 explanation inside the page), these four
+// groups are hidden by default and only appear once GET /v1/me/context says
+// the person actually holds that role. Each flag is independent, so a
+// person with a dual role (e.g. Coordenador de Curso who is also Professor
+// of a turma) sees both groups at once — never an either/or toggle.
+function buildRoleNavGroups(roleContext: RoleContext): NavGroup[] {
+  const groups: NavGroup[] = [];
+
+  if (roleContext.isStudent) {
+    groups.push({
+      title: 'Aluno',
+      area: 'portal',
+      items: [
+        { to: '/student/schedule', label: 'Meu cronograma', icon: CalendarClock },
+        { to: '/student/attendance', label: 'Minhas faltas', icon: Backpack },
+      ],
+    });
+  }
+
+  if (roleContext.teaching.length > 0) {
+    groups.push({
+      title: 'Professor',
+      area: 'portal',
+      items: [
+        { to: '/teacher/class-groups', label: 'Minhas turmas', icon: Presentation },
+        { to: '/portal/pending-reviews', label: 'Revisões pendentes', icon: ClipboardList },
+      ],
+    });
+  }
+
+  if (roleContext.coordinating.length > 0) {
+    groups.push({
+      title: 'Coordenador',
+      area: 'portal',
+      items: [
+        { to: '/coordinator/class-groups', label: 'Turmas do curso', icon: UsersRound },
+        { to: '/portal/pending-reviews', label: 'Revisões pendentes', icon: ClipboardList },
+      ],
+    });
+  }
+
+  if (roleContext.isDirection) {
+    groups.push({
+      title: 'Direção',
+      area: 'portal',
+      items: [
+        { to: '/direction/class-groups', label: 'Turmas da instituição', icon: Landmark },
+        { to: '/portal/pending-reviews', label: 'Revisões pendentes', icon: ClipboardList },
+      ],
+    });
+  }
+
+  return groups;
+}
+
 export function AppShell() {
-  const { logout } = useAuth();
+  const { logout, roleContext } = useAuth();
+  const navGroups = [...NAV_GROUPS, ...buildRoleNavGroups(roleContext)];
 
   return (
     <div className={styles.layout}>
@@ -114,7 +185,7 @@ export function AppShell() {
           <span>CheckClass</span>
         </div>
         <div className={styles.navGroups}>
-          {NAV_GROUPS.map((group) => (
+          {navGroups.map((group) => (
             <div key={group.title} className={styles.navGroup}>
               <p className={styles.navGroupTitle}>{group.title}</p>
               <ul>

@@ -110,6 +110,14 @@
   opacity: 1;
 }
 
+.portal.active {
+  border-left-color: #f472b6;
+}
+.portal.active .navIcon {
+  color: #f472b6;
+  opacity: 1;
+}
+
 .brand {
   display: flex;
   align-items: center;

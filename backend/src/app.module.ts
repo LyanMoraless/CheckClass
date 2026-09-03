@@ -24,6 +24,7 @@ import { IdentificationModule } from './modules/identification/identification.mo
 import { IngestionModule } from './modules/ingestion/ingestion.module';
 import { InstitutionOnboardingModule } from './modules/institution-onboarding/institution-onboarding.module';
 import { IntrusionDetectionModule } from './modules/intrusion-detection/intrusion-detection.module';
+import { LeadershipAssignmentModule } from './modules/leadership-assignment/leadership-assignment.module';
 import { PendingReviewModule } from './modules/pending-review/pending-review.module';
 import { PersonManagementModule } from './modules/person-management/person-management.module';
 import { RoomModule } from './modules/room/room.module';
@@ -69,6 +70,7 @@ import { QueueModule } from './queue/queue.module';
     RoomModule,
     AreaModule,
     ClassGroupModule,
+    LeadershipAssignmentModule,
     HolidayModule,
     ScheduleConflictDetectionModule,
     ClassScheduleModule,

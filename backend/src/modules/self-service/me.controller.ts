@@ -1,8 +1,12 @@
-import { Controller, Get, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { TenantContextInterceptor } from '../../database/tenant-context.interceptor';
 import { AttendanceRegisterService } from '../attendance-register/attendance-register.service';
 import { AuthenticatedRequest, JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CoordinatedClassGroupsService } from './coordinated-class-groups.service';
+import { MeClassGroupAttendanceService } from './me-class-group-attendance.service';
+import { MeContextService } from './me-context.service';
 import { MyScheduleService } from './my-schedule.service';
+import { TeachingClassGroupsService } from './teaching-class-groups.service';
 
 // RULE-ATT-15: any authenticated person can always read their OWN
 // consolidated attendance/schedule, independent of permission-group
@@ -23,6 +27,15 @@ import { MyScheduleService } from './my-schedule.service';
 // exclusively from request.personId, set by JwtAuthGuard from the verified
 // JWT, so it can never be spoofed to read someone else's data (same idiom
 // PendingReviewController.resolve() already uses for resolvingPersonId).
+//
+// Portal de Autoatendimento web (architecture-overview.md, "Decisão de
+// arquitetura — Portal de Autoatendimento Web, estrutura"): context() below
+// adds a second authorization idiom to this same controller — a read scoped
+// not to "my own data" but to "data of turmas within my leadership chain"
+// (classGroupAttendance()). Still deliberately outside the permission-group
+// system, for the same reason RULE-ATT-12 already put pending-review
+// resolution there: leadership scope isn't a grant over "anyone's" data,
+// it's bounded to the turmas/courses this specific person leads.
 @Controller('v1/me')
 @UseGuards(JwtAuthGuard)
 @UseInterceptors(TenantContextInterceptor)
@@ -30,6 +43,10 @@ export class MeController {
   constructor(
     private readonly registerService: AttendanceRegisterService,
     private readonly scheduleService: MyScheduleService,
+    private readonly contextService: MeContextService,
+    private readonly teachingClassGroupsService: TeachingClassGroupsService,
+    private readonly coordinatedClassGroupsService: CoordinatedClassGroupsService,
+    private readonly classGroupAttendanceService: MeClassGroupAttendanceService,
   ) {}
 
   @Get('attendance')
@@ -40,5 +57,31 @@ export class MeController {
   @Get('schedule')
   getMySchedule(@Req() request: AuthenticatedRequest) {
     return this.scheduleService.getMySchedule(request.personId);
+  }
+
+  @Get('context')
+  getMyContext(@Req() request: AuthenticatedRequest) {
+    return this.contextService.getContext(request.personId);
+  }
+
+  @Get('teaching-class-groups')
+  getMyTeachingClassGroups(@Req() request: AuthenticatedRequest) {
+    return this.teachingClassGroupsService.getTeachingClassGroups(request.personId);
+  }
+
+  @Get('coordinated-class-groups')
+  getMyCoordinatedClassGroups(@Req() request: AuthenticatedRequest) {
+    return this.coordinatedClassGroupsService.getCoordinatedClassGroups(request.personId);
+  }
+
+  // Leadership-chain-scoped presence read (RULE-ATT-12/RULE-INST-09), not a
+  // "my own data" read — see MeClassGroupAttendanceService for the
+  // authorization check this delegates to before touching any presence data.
+  @Get('class-groups/:classGroupId/attendance')
+  getClassGroupAttendance(
+    @Param('classGroupId', ParseUUIDPipe) classGroupId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.classGroupAttendanceService.getAttendanceForAuthorizedClassGroup(request.personId, classGroupId);
   }
 }

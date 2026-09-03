@@ -35,6 +35,11 @@
   color: var(--color-area-security);
 }
 
+.portal {
+  background: var(--color-area-portal-soft);
+  color: var(--color-area-portal);
+}
+
 .text {
   flex: 1;
   min-width: 0;

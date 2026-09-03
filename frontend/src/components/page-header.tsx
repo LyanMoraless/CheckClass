@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from 'react';
 import type { LucideProps } from 'lucide-react';
 import styles from './page-header.module.css';
 
-export type PageArea = 'core' | 'registry' | 'settings' | 'security';
+export type PageArea = 'core' | 'registry' | 'settings' | 'security' | 'portal';
 
 interface PageHeaderProps {
   icon: ComponentType<LucideProps>;
