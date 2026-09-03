@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Cpu,
   DoorOpen,
+  FileText,
   GraduationCap,
   Landmark,
   Layers,
@@ -133,6 +134,7 @@ function buildRoleNavGroups(roleContext: RoleContext): NavGroup[] {
       items: [
         { to: '/student/schedule', label: 'Meu cronograma', icon: CalendarClock },
         { to: '/student/attendance', label: 'Minhas faltas', icon: Backpack },
+        { to: '/student/exams', label: 'Minhas provas', icon: FileText },
       ],
     });
   }

@@ -43,7 +43,7 @@ async function extractErrorMessage(response: Response): Promise<string> {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
 }
 
@@ -81,6 +81,11 @@ export const api = {
   get: <T>(path: string): Promise<T> => request<T>(path),
   post: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, { method: 'PATCH', body }),
+  // Used where the server replaces a whole resource rather than merging a
+  // patch — the exam's monitoring-config (the checkbox screen submits the
+  // complete set of enabled event types) and the student's per-question
+  // answer autosave (idempotent by session+question).
+  put: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, { method: 'PUT', body }),
   delete: <T>(path: string): Promise<T> => request<T>(path, { method: 'DELETE' }),
 };
 

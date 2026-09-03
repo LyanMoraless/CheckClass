@@ -18,6 +18,7 @@ import { TenantConfigModule } from './modules/config/tenant-config.module';
 import { CourseModule } from './modules/course/course.module';
 import { DeduplicationModule } from './modules/deduplication/deduplication.module';
 import { DeviceModule } from './modules/device/device.module';
+import { ExamModule } from './modules/exam/exam.module';
 import { HealthModule } from './modules/health/health.module';
 import { HolidayModule } from './modules/holiday/holiday.module';
 import { IdentificationModule } from './modules/identification/identification.module';
@@ -87,6 +88,9 @@ import { QueueModule } from './queue/queue.module';
     IntrusionDetectionModule,
     SecurityIncidentModule,
     CameraModule,
+    // Área de Provas (Frente 04) — synchronous bounded context, no queue
+    // involvement at all (approved architecture, 2026-09-02).
+    ExamModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -1257,10 +1257,37 @@ navegador autenticado", coerente com o resto do projeto — não uma
 pendência a corrigir.
 
 **Pontos em aberto (não decididos aqui, não bloqueiam implementação):**
-gatilho exato do estado `ABANDONED`; tentativas permitidas por prova;
-obrigatoriedade de pergunta; suporte a múltiplas seções/páginas; ~~acesso de
+~~gatilho exato do estado `ABANDONED`~~; ~~tentativas permitidas por prova~~;
+~~obrigatoriedade de pergunta~~; suporte a múltiplas seções/páginas; ~~acesso de
 Coordenador de Curso/Direção à auditoria (default: negado)~~. Ver detalhamento
 em `pending-decisions.md`.
+
+> **Correção (2026-09-03) — três dos itens riscados acima foram FECHADOS
+> por confirmação do usuário, antes do início da implementação da Frente
+> 04:** desta lista, resta em aberto apenas "suporte a múltiplas seções/
+> páginas". Os demais deixaram de ser pontos em aberto:
+> - **Gatilho do estado `ABANDONED`** — definido: aluno **iniciou** a prova,
+>   nunca finalizou, e a janela de disponibilidade (RULE-EXAM-06) fechou com
+>   a sessão ainda em `IN_PROGRESS`. Complemento de `EXPIRED` (que trata a
+>   duração individual, RULE-EXAM-08). Ver addendum em RULE-EXAM-12
+>   (`business-rules/references/exam-rules.md`).
+> - **Tentativas permitidas por prova** — definido: **uma única sessão por
+>   aluno por prova**, com constraint de unicidade no banco; sem tentativas
+>   múltiplas nem configuração pelo professor nesta rodada (não rejeitado
+>   para sempre, apenas não incluído nesta rodada). Ver nota anexada a
+>   RULE-EXAM-12.
+> - **Obrigatoriedade de pergunta** — definido: **todas as perguntas são
+>   opcionais**; nenhuma pergunta bloqueia a entrega, em branco vale zero.
+>   Não existe coluna/conceito de "pergunta obrigatória" nesta rodada —
+>   entre outros motivos, obrigatoriedade conflitaria com a finalização
+>   automática por expiração de tempo (RULE-EXAM-08). Ver addendum em
+>   RULE-EXAM-03.
+>
+> Ver as seções "~~Gap novo~~ Resolvido — Gatilho exato do estado
+> `ABANDONED`", "Resolvido — Tentativa única por aluno por prova
+> (2026-09-03)" e "Resolvido — Todas as perguntas são opcionais
+> (2026-09-03)" em `project-knowledge/references/pending-decisions.md`.
+> **Source of confirmation:** Usuário, 2026-09-03.
 
 > **Correção (2026-09-02) — item riscado está SUPERADO, e contradizia este
 > mesmo arquivo:** "acesso de Coordenador de Curso/Direção à auditoria
@@ -1794,6 +1821,115 @@ para Backend/Database Agent quando a implementação real começar.
 **Source of confirmation:** Usuário, 2026-09-02 (aprovação das 3 decisões
 principais desta arquitetura, mais o novo escopo de CRUD de Coordenador de
 Curso, nesta mesma sessão).
+
+## Decisão de arquitetura — Turma com várias matérias, Frente 05 (2026-09-03)
+
+Proposta do Solution Architect para RULE-INST-14
+(`business-rules/references/institution-management-rules.md`) — cenário 1
+("turma fechada") apenas, cenário 2 ("aluno de grade") continua fora de
+escopo. Fecha o desenho técnico que faltava para esta feature sair do
+estado "regra confirmada, arquitetura pendente" registrado na Frente 05 do
+bloco HANDOFF (`project-knowledge/references/pending-decisions.md`). Não é
+decisão de tecnologia nova — reaproveita o stack já aprovado
+(NestJS/TypeORM/PostgreSQL).
+
+**1. Modelo de dados — nova tabela associativa `class_group_subject`
+(many-to-many puro), FK direta de matéria em `class_group_schedule_slot`
+e `class_session`.**
+
+```
+class_group_subject
+  id             uuid PK
+  tenant_id      uuid
+  class_group_id uuid FK -> class_group
+  subject_id     uuid FK -> subject
+  created_at, updated_at
+  UNIQUE (class_group_id, subject_id)
+
+class_group_schedule_slot.subject_id  -> subject   (FK direta, NOT NULL)
+class_session.subject_id              -> subject   (FK direta, NOT NULL)
+```
+
+`class_group.subject_id` é removido — a Turma deixa de ter "uma matéria
+própria"; o conjunto vive inteiramente em `class_group_subject`, que
+suporta **zero linhas** (Turma sem nenhuma matéria vinculada é estado
+válido — ver decisão de produto abaixo). O vínculo de matéria em slot/sessão
+é FK direta a `subject`, não à tabela associativa: a pergunta "de qual
+matéria é este slot/esta sessão" é propriedade direta do dado, e uma FK
+direta evita que sessões passadas de uma matéria já desvinculada da turma
+percam a referência (histórico/auditoria precisa sobreviver à
+desvinculação). A validação "o `subject_id` do slot pertence às matérias
+hoje vinculadas a esta turma" fica em nível de aplicação (Backend), não de
+constraint de banco — escolha deliberada para evitar uma FK composta sem
+benefício real.
+
+Padrão consistente com o resto do schema (mesma forma relacional de
+`class_group_enrollment`, `wristband_category_area_permission`) — associação
+explícita com tabela de junção em vez de array/jsonb de ids.
+
+**2. Decisões de produto que o modelo precisa suportar (já confirmadas):**
+- Excluir uma Matéria não cascateia para excluir a Turma quando ela tem
+  outras matérias — remove só o vínculo (linha de `class_group_subject`) e
+  as sessões/frequência daquela matéria especificamente (RULE-INST-08
+  addendum).
+- Caso extremo — matéria excluída era a única da turma: a **Turma sobrevive
+  vazia** (zero linhas em `class_group_subject`), não é excluída em
+  cascata, a exclusão não é bloqueada. Fica à espera de nova matéria ser
+  cadastrada. **Source of confirmation:** Usuário, 2026-09-03.
+- RULE-INST-13 (exclusão da própria Turma bloqueada por presença
+  consolidada) não é afetada — trata de outro gatilho.
+
+**3. Migração do dado existente — decidida como detalhe mecânico do
+Database Agent, não levada de volta ao usuário.** Cada `class_group`
+existente ganha exatamente uma linha em `class_group_subject` apontando
+para seu `subject_id` atual; `class_group_schedule_slot`/`class_session`
+existentes herdam o mesmo `subject_id` nas novas colunas; depois
+`class_group.subject_id` é removida. Justificativa (mesmo padrão já usado
+para a migração original `1755854000000-MigrateClassGroupToSubject.ts`):
+schema em estágio pré-produção sem tenant real operando, e a transformação
+é logicamente unívoca (matéria única vira o único membro do novo
+conjunto) — não há ambiguidade de negócio envolvida que exija decisão do
+usuário.
+
+**4. Impacto em módulos existentes:**
+- **RULE-INST-04** (geração automática de sessão a partir do cronograma):
+  a sessão gerada propaga `subject_id` do slot que a originou.
+- **RULE-JUST-02** (`business-rules/references/absence-justification-rules.md`,
+  filtro de matérias por dia) e **RULE-FREQ-01**
+  (`business-rules/references/attendance-frequency-rules.md`, frequência
+  por matéria) — ambas passam a consultar `class_session.subject_id`
+  diretamente, sem precisar de join até `class_group` — consulta mais
+  direta que hoje, não mais cara.
+- **`ClassGroupDeletionOrchestrator`** ganha uma segunda operação, mais
+  estreita que a cascata completa de turma: remover uma matéria de uma
+  turma (slots/sessões/frequência daquela matéria, preservando a turma e as
+  demais matérias) — assinatura exata é detalhe de implementação do Backend
+  Agent.
+- **RULE-INST-05** (professor vinculado à turma inteira, não por matéria) —
+  sem mudança.
+- **RULE-INST-09** (autoridade de montar/editar turma via
+  `leadership_assignment.courseId`) — sem mudança.
+
+**5. RULE-INST-10 (conflito de agenda) — confirmado que NÃO muda
+estruturalmente.** Verificação em código
+(`schedule-conflict-detection.service.ts`): a detecção de conflito já
+opera exclusivamente sobre sala efetiva + professor + sobreposição de
+tempo — a matéria nunca foi critério, nem precisa passar a ser. Duas
+sessões de turmas diferentes competindo pela mesma sala/professor
+conflitam do mesmo jeito, independente de quantas matérias cada turma tem.
+Ajuste necessário: o candidato de conflito passa a carregar `subject_id`
+(porque o dado agora existe), mas esse campo é ignorado pelo cálculo de
+conflito em si.
+
+**Consequência de registro:** RULE-INST-14
+(`business-rules/references/institution-management-rules.md`) deixa de
+carregar a marca "feature futura, NÃO aprovada para implementação agora" —
+esta arquitetura foi encomendada como base de implementação real da
+Frente 05.
+
+**Source of confirmation:** Solution Architect (proposta técnica), sessão
+de 2026-09-03; decisão de produto do caso "turma sem matéria" confirmada
+pelo usuário na mesma sessão.
 
 ## Restrições/premissas confirmadas
 

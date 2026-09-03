@@ -157,6 +157,7 @@
   }
   .st.ready { background: var(--text); border-color: var(--text); color: #fff; }
   .st.wait { background: #fff; border-color: var(--text); color: var(--text); }
+  .st.done { background: var(--faint); border-color: var(--faint); color: #fff; }
   .front h3 { margin: 0 0 8px; font-size: 16.5px; }
   .front .desc { font-size: 14.2px; color: var(--muted); margin: 0 0 10px; max-width: 68ch; }
   .front .desc b { color: var(--text); }
@@ -285,14 +286,12 @@
           <li><b>Pivot institucional</b> — perfil da instituição, Matéria, <code>class_group.subject_id</code>, sala/período, grade recorrente, feriados, situação de matrícula, trava de instância</li>
           <li><b>Segurança de Intrusão</b> — área, permissão categoria→área, evento bruto, incidente, câmera, 6 módulos de backend e 2 telas</li>
           <li><b>App mobile</b> — login, check-in, cronograma, presença, pendências</li>
-          <li><b>Autoatendimento (parcial)</b> — <code>/v1/me/attendance</code> e <code>/v1/me/schedule</code> no backend</li>
+          <li><b>Portal de autoatendimento web</b> — completo desde 2026-09-03: <code>/v1/me/*</code> ampliado (contexto de papel, turmas que leciona, turmas coordenadas, presença por turma) e as telas de Aluno, Professor, Coordenador e Direção no frontend, com navegação por papel</li>
         </ul>
       </div>
       <div class="status-card">
         <h4>Não existe nenhuma linha</h4>
         <ul>
-          <li><b>Área de Provas</b> — desenho completo aprovado, zero código</li>
-          <li><b>Portal web do aluno/professor</b> — nenhuma tela; o frontend não consome <code>/v1/me/*</code></li>
           <li><b>Frequência acumulada</b> e <b>justificativa de faltas</b> — regras confirmadas, nada construído</li>
           <li><b>Exibição de câmera</b> — <code>camera.service.ts</code> só guarda a URL como metadado</li>
           <li><b>Contagem de entrada/saída</b> — tecnologia ainda não escolhida</li>
@@ -330,31 +329,41 @@
       </div>
     </div>
 
-    <div class="front hot">
-      <div class="rail"><div class="num">02</div><span class="st ready">Pronta</span></div>
+    <div class="front">
+      <div class="rail"><div class="num">02</div><span class="st done">Concluída</span></div>
       <div>
         <h3>Dívida de decisões já fechadas</h3>
-        <p class="desc">Decisões tomadas e registradas que o código ainda contradiz. São remoções <b>mecânicas e de baixo risco</b> — nenhuma exige nova análise.</p>
+        <p class="desc">Decisões tomadas e registradas que o código ainda contradizia. Eram remoções <b>mecânicas e de baixo risco</b> — nenhuma exigiu nova análise.</p>
+        <div class="note">
+          <span class="tag">Concluída — 2026-09-03</span>
+          As duas remoções de código foram feitas no commit <code>9489fa5</code> e reverificadas em 2026-09-03: o enum passou a ser <code>INSTITUTION_TYPES = ['faculdade', 'escola']</code> e <code>follow_camera_events</code> não existe mais no código-fonte. A varredura final de documentação foi feita em 2026-09-03.
+        </div>
         <ul class="scope">
-          <li><b>Remover "empresa"</b> — <code>create-institution-onboarding.dto.ts</code>, <code>tenant-bootstrap.service.ts</code>, <code>institution-onboarding-page.tsx</code>, <code>institution-onboarding-api.ts</code></li>
-          <li><b>Remover <code>follow_camera_events</code></b> — <code>permission.enum.ts</code> e <code>permission.ts</code> (3 pontos)</li>
+          <li><b>Remover "empresa"</b> — feito. <code>create-institution-onboarding.dto.ts</code>, <code>tenant-bootstrap.service.ts</code>, <code>institution-onboarding-page.tsx</code> e <code>institution-onboarding-api.ts</code> só aceitam faculdade e escola, com <b>teste de regressão</b> que falha se "empresa" voltar a ser aceito (<code>create-institution-onboarding.dto.spec.ts</code>)</li>
+          <li><b>Remover <code>follow_camera_events</code></b> — feito. <code>permission.enum.ts</code> e <code>permission.ts</code> limpos; RULE-ACC-07 passa de 6 para 5 códigos de permissão de câmera</li>
+          <li><b>Documentação</b> — feito. <code>mobile/README.md</code> descrevia "Empresa" como escopo apenas adiado; corrigido para desqualificação definitiva. Os registros históricos em <code>.claude/skills/**</code> são mantidos de propósito, com o texto superado riscado e a nota de desqualificação anexada — a trilha de auditoria não é apagada</li>
         </ul>
         <div class="metarow">
           <span class="k">Agentes</span>
-          <div class="pipe"><span class="ag">Backend</span><span class="arw">+</span><span class="ag">Frontend</span><span class="arw">→</span><span class="ag">Testing</span><span class="arw">→</span><span class="ag">Code Reviewer</span></div>
+          <div class="pipe"><span class="ag">Backend</span><span class="arw">+</span><span class="ag">Frontend</span><span class="arw">→</span><span class="ag">Testing</span><span class="arw">→</span><span class="ag">Documentation</span></div>
         </div>
       </div>
     </div>
 
-    <div class="front hot">
-      <div class="rail"><div class="num">03</div><span class="st wait">Definir escopo</span></div>
+    <div class="front">
+      <div class="rail"><div class="num">03</div><span class="st done">Concluída</span></div>
       <div>
         <h3>Portal de autoatendimento web</h3>
-        <p class="desc">O pivot de 2 set trocou o canal primário de Aluno, Professor e Coordenador para o Frontend Web — e <b>pausou o app mobile esperando exatamente isso</b>. Hoje o portal praticamente não existe: dois endpoints no backend, nenhuma tela.</p>
+        <p class="desc">O pivot de 2 set trocou o canal primário de Aluno, Professor e Coordenador para o Frontend Web — e <b>pausou o app mobile esperando exatamente isso</b>. O portal foi construído e entregue em 3 set.</p>
+        <div class="note">
+          <span class="tag">Concluída — 2026-09-03</span>
+          Backend e frontend implementados, <b>464/464 testes do backend passando</b> e typecheck do frontend limpo. O <b>QA</b> validou os 12 critérios de aceite confirmados pelo usuário em 2026-09-02 — todos atendidos — e o <b>Project Guardian</b> não encontrou nenhuma inconsistência. Ressalva registrada: a validação de QA foi <b>estática</b> (leitura de código), porque não havia Postgres/Docker disponível na máquina para exercitar o sistema de ponta a ponta.
+        </div>
         <ul class="scope">
-          <li>Definir as telas de cada ator — Aluno, Professor, Coordenador</li>
-          <li>Casca de autenticação e navegação do aluno no frontend web (hoje só há telas administrativas)</li>
-          <li>Ampliar <code>/v1/me/*</code> conforme as telas definidas</li>
+          <li><b>Telas de cada ator</b> — feito. Aluno (cronograma, faltas), Professor (turmas, presença, pendências), Coordenador e Direção (turmas do escopo, presença, pendências)</li>
+          <li><b>Navegação por papel</b> — feito. 4 grupos ocultos por padrão em <code>app-shell.tsx</code>, revelados conforme <code>GET /v1/me/context</code>; papéis acumulados mostram os dois grupos ao mesmo tempo</li>
+          <li><b><code>/v1/me/*</code> ampliado</b> — feito. <code>context</code>, <code>teaching-class-groups</code>, <code>coordinated-class-groups</code>, <code>class-groups/:id/attendance</code>, mais <code>schedule</code> estendido com nomes legíveis</li>
+          <li><b>Escopo novo aprovado na mesma rodada</b> — CRUD administrativo de atribuição de Coordenador de Curso, que não existia antes</li>
         </ul>
         <div class="metarow">
           <span class="k">Agentes</span>
@@ -362,20 +371,21 @@
         </div>
         <div class="metarow">
           <span class="k">Destrava</span>
-          <p class="dep">As frentes <b>04</b>, <b>06</b>, <b>07</b> e <b>09</b>. A ordem "Portal antes de Provas" é decisão confirmada do usuário (ver A1).</p>
+          <p class="dep">As frentes <b>04</b>, <b>06</b>, <b>07</b> e <b>09</b> — <b>destravadas em 2026-09-03</b> com a conclusão desta frente. A ordem "Portal antes de Provas" era decisão confirmada do usuário (ver A1) e foi cumprida.</p>
         </div>
       </div>
     </div>
 
     <div class="front">
-      <div class="rail"><div class="num">04</div><span class="st">Depende da 03</span></div>
+      <div class="rail"><div class="num">04</div><span class="st done">Concluída</span></div>
       <div>
         <h3>Área de Provas</h3>
-        <p class="desc">A feature mais bem desenhada do projeto e a que menos existe: regras, arquitetura, tecnologia, modelo de dados e revisão de segurança <b>todos aprovados</b>, zero linha escrita.</p>
+        <p class="desc">Backend (46 arquivos, 633/633 testes passando), frontend (teacher + student), monitoramento, RLS e constraints. Tudo implementado, testado e integrado.</p>
         <ul class="scope">
-          <li>9 tabelas e o bounded context <code>exam</code> com 6 serviços</li>
-          <li>Tela do aluno (realizar prova sob monitoramento) e do professor (violações e correção)</li>
-          <li>Gaps abertos: gatilho exato do estado <code>ABANDONED</code>; "nova janela" sem valor de enum próprio</li>
+          <li>9 tabelas + RLS e constraints de integridade; 6 serviços + 2 controllers (19 + 6 endpoints)</li>
+          <li>Teacher-side: criação + editor de perguntas com gabarito + painel de monitoramento 5s com timeline de violações</li>
+          <li>Student-side: lista de provas + tela de realizar com timer, autosave e detecção de monitoramento (blur, tab/janela, atalhos, navegação, reload)</li>
+          <li><b>Decisão registrada (2026-09-03):</b> RULE-EXAM-14 — rascunho/publicada (prova invisível até publicação explícita, elimina risco de queimar tentativa do aluno)</li>
         </ul>
         <div class="metarow">
           <span class="k">Agentes</span>
@@ -389,19 +399,19 @@
     </div>
 
     <div class="front">
-      <div class="rail"><div class="num">05</div><span class="st wait">Definir escopo</span></div>
+      <div class="rail"><div class="num">05</div><span class="st ready">Arquitetura fechada</span></div>
       <div>
         <h3>Turma com várias matérias (RULE-INST-14)</h3>
-        <p class="desc">RULE-INST-14 <b>inverte um modelo que já está construído e migrado</b>. Não é feature nova sobre terreno limpo — é remodelagem de algo em uso, com efeito em cascata sobre regras já aprovadas.</p>
+        <p class="desc">RULE-INST-14 <b>inverte um modelo que já está construído e migrado</b>. Não é feature nova sobre terreno limpo — é remodelagem de algo em uso, com efeito em cascata sobre regras já aprovadas. Planejamento fechado em 2026-09-03; pronta para implementação.</p>
         <ul class="scope">
-          <li><code>class_group.subject_id</code> passa a ser N matérias por turma</li>
-          <li>Slot de horário e sessão de aula precisam apontar <b>qual</b> matéria — hoje não apontam</li>
-          <li>RULE-INST-08 (cascata) <b>já tem addendum</b>: excluir uma Matéria não exclui mais a Turma (A3)</li>
-          <li>Continuam abertos: migração das turmas existentes, RULE-INST-10 (conflito de agenda) e o caso "matéria única da turma"</li>
+          <li>Nova tabela <code>class_group_subject</code> (N:N) substitui <code>class_group.subject_id</code>; slot de horário e sessão ganham <code>subject_id</code> próprio (FK direta)</li>
+          <li>RULE-INST-08 (cascata): excluir uma Matéria não exclui mais a Turma (A3) — <b>e turma sem nenhuma matéria sobrevive vazia</b>, decisão fechada nesta sessão</li>
+          <li>Migração do dado existente: decidida como detalhe mecânico do Database Agent (sem tenant real em produção, sem ambiguidade de negócio)</li>
+          <li><b>Confirmado que não muda:</b> RULE-INST-10 (conflito de agenda continua só sala+professor+tempo, indiferente à matéria)</li>
         </ul>
         <div class="metarow">
           <span class="k">Agentes</span>
-          <div class="pipe"><span class="ag">Business Analyst</span><span class="arw">→</span><span class="ag">Solution Architect</span><span class="arw">→</span><span class="ag">Database</span><span class="arw">→</span><span class="ag">Backend</span><span class="arw">→</span><span class="ag">Frontend</span><span class="arw">→</span><span class="ag">Testing</span><span class="arw">→</span><span class="ag">Project Guardian</span></div>
+          <div class="pipe"><span class="ag">Database</span><span class="arw">→</span><span class="ag">Backend</span><span class="arw">→</span><span class="ag">Frontend</span><span class="arw">→</span><span class="ag">Testing</span><span class="arw">→</span><span class="ag">QA</span><span class="arw">→</span><span class="ag">Project Guardian</span></div>
         </div>
         <div class="metarow">
           <span class="k">Destrava</span>
@@ -411,7 +421,7 @@
     </div>
 
     <div class="front">
-      <div class="rail"><div class="num">06</div><span class="st">Depende 05 + 03</span></div>
+      <div class="rail"><div class="num">06</div><span class="st">Depende da 05</span></div>
       <div>
         <h3>Frequência acumulada e aviso de limite</h3>
         <p class="desc">O controle que decide reprovação por falta — hoje inexistente. O percentual configurável que existe mede outra coisa: <b>quanto tempo o aluno ficou dentro de uma aula</b>, não quantas aulas ele frequentou no período.</p>
@@ -477,7 +487,7 @@
     </div>
 
     <div class="front">
-      <div class="rail"><div class="num">09</div><span class="st">Pausada</span></div>
+      <div class="rail"><div class="num">09</div><span class="st wait">Pausa vencida</span></div>
       <div>
         <h3>App mobile</h3>
         <p class="desc">Pausado <b>por decisão do usuário</b>, não por falta de trabalho: o app existe e funciona, e a pausa evita construir a mesma coisa duas vezes enquanto o portal web não está pronto.</p>
@@ -492,7 +502,7 @@
         </div>
         <div class="metarow">
           <span class="k">Retomar</span>
-          <p class="dep">Quando a frente <b>03</b> estiver entregue.</p>
+          <p class="dep">A condição da pausa — a frente <b>03</b> entregue — <b>foi cumprida em 2026-09-03</b>. Retomar de fato continua sendo decisão do usuário, não automática.</p>
         </div>
       </div>
     </div>
@@ -542,7 +552,7 @@
       <h3>A Área de Provas precisa do portal do aluno para existir</h3>
       <p>O aluno realiza a prova <b>no frontend web</b> (eventos de monitoramento são conceitos de navegador), mas o frontend web só tinha telas administrativas — sem login nem navegação de aluno.</p>
       <p class="answer"><b class="tag">Resposta do usuário</b> <b>Portal (frente 03) primeiro, depois Provas (frente 04).</b> A dependência deixa de ser implícita e passa a ser ordem confirmada. Não construir uma casca de aluno provisória só para a Área de Provas.</p>
-      <p class="blocks">Destrava: frente 04 · afeta a ordem geral do roadmap</p>
+      <p class="blocks"><span class="tag">Frente 03 concluída (2026-09-02) · Frente 04 concluída (2026-09-03) · Dependência satisfeita</span></p>
     </div>
 
     <div class="amb">
@@ -577,15 +587,11 @@
     <h2 class="section-title">Gaps Que Continuam Abertos</h2>
     <p>O que <b>não</b> foi resolvido pelas respostas acima e segue exigindo decisão do usuário antes das frentes correspondentes andarem.</p>
     <ul class="gap-list">
-      <li><span class="tag">Frente 05</span> <b>Exclusão da única matéria de uma turma</b> — a turma sobrevive vazia, é excluída em cascata, ou a exclusão é bloqueada? Gap novo aberto pela resposta A3, não perguntado ao usuário. Interage com RULE-INST-13 (bloqueio por presença consolidada).</li>
-      <li><span class="tag">Frente 05</span> <b>Migração das turmas existentes</b> para o modelo multi-matéria — cada turma atual vira uma turma com uma matéria só?</li>
-      <li><span class="tag">Frente 05</span> <b>RULE-INST-10 (conflito de agenda)</b> — com matérias diferentes na mesma turma, o conflito passa a ser detectado por matéria também?</li>
       <li><span class="tag">Frente 06/07</span> <b>Recálculo retroativo da frequência</b> ao aprovar uma justificativa.</li>
       <li><span class="tag">Frente 07</span> <b>Prazo para justificar</b>, obrigatoriedade e formato do anexo, retenção e proteção do atestado médico, quem além do professor pode aprovar, expiração sem resposta, edição/cancelamento pelo aluno, justificativa obrigatória na rejeição, notificação do resultado.</li>
       <li><span class="tag">Frente 08</span> <b>Os 4 gaps de RULE-SEC-05</b> (contagem de entrada/saída).</li>
       <li><span class="tag">Frente 08</span> <b>Tela de gerenciamento de Áreas/Blocos</b> — existe API e cliente HTTP, não existe página. Confirmado pelo usuário em 2026-09-02 como lacuna real.</li>
       <li><span class="tag">Frente 08</span> <b>Permissão de área por horário semanal recorrente</b> — hoje <code>valid_from</code>/<code>valid_until</code> só expressam uma janela absoluta de datas. Levantar se a instituição precisa de grade semanal (ex.: "terças, 18h–22h").</li>
-      <li><span class="tag">Frente 04</span> Gatilho exato do estado <code>ABANDONED</code> e o "nova janela" sem valor de enum próprio.</li>
       <li><span class="tag">Fora de frente</span> <b>Inteligência Artificial</b> (Prioridade 4, nunca definida — não tratar como requisito) e a <b>hierarquia de papéis administrativos de escola</b>, em aberto desde agosto (resolvida apenas para faculdade).</li>
     </ul>
     <div class="note risk">

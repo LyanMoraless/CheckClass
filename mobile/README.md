@@ -7,8 +7,13 @@ Query (see `.claude/skills/project-knowledge/references/architecture-overview.md
 root for the approved architecture/technology decisions this implements).
 
 This app deliberately covers only what's confirmed for this round: Escola/Aluno content
-(attendance, schedule, check-in) plus Professor pending-review resolution. "Atividades" and
-the "Empresa" content variant are out of scope (see `pending-decisions.md`).
+(attendance, schedule, check-in) plus Professor pending-review resolution. "Atividades" is
+deferred — not rejected, just not this round (see `pending-decisions.md`).
+
+There is no "Empresa" content variant and there will not be one: "empresa" was **definitively
+disqualified as an institution type** on 2026-09-02, not merely deferred. The platform supports
+exactly two types, `faculdade` and `escola` (`INSTITUTION_TYPES` in
+`backend/src/modules/auth/tenant-bootstrap.service.ts`, enforced by RULE-INST-01).
 
 ## Setup
 

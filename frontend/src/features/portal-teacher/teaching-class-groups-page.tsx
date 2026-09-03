@@ -38,6 +38,10 @@ export function TeachingClassGroupsPage() {
               header: 'Presença',
               cell: (entry) => <Link to={`/portal/class-groups/${entry.classGroupId}/attendance`}>Ver presença</Link>,
             },
+            {
+              header: 'Provas',
+              cell: (entry) => <Link to={`/class-groups/${entry.classGroupId}/exams`}>Ver provas</Link>,
+            },
           ]}
         />
       )}

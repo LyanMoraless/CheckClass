@@ -10,6 +10,9 @@ import { ClassGroupDetailPage } from './features/class-groups/class-group-detail
 import { ClassGroupsPage } from './features/class-groups/class-groups-page';
 import { CourseCoordinatorAssignmentsPage } from './features/course-coordinator-assignments/course-coordinator-assignments-page';
 import { CoursesPage } from './features/courses/courses-page';
+import { ExamEditorPage } from './features/exams/exam-editor-page';
+import { ExamPanelPage } from './features/exams/exam-panel-page';
+import { ExamsPage } from './features/exams/exams-page';
 import { DevicesPage } from './features/devices/devices-page';
 import { HolidaysPage } from './features/holidays/holidays-page';
 import { InstitutionOnboardingPage } from './features/institution-onboarding/institution-onboarding-page';
@@ -18,6 +21,8 @@ import { PendingReviewsPage } from './features/pending-reviews/pending-reviews-p
 import { PermissionGroupsPage } from './features/permission-groups/permission-groups-page';
 import { ClassGroupAttendancePage } from './features/portal-class-group-attendance/class-group-attendance-page';
 import { LeadershipClassGroupsPage } from './features/portal-leadership/leadership-class-groups-page';
+import { StudentExamsPage } from './features/portal-exams/student-exams-page';
+import { TakeExamPage } from './features/portal-exams/take-exam-page';
 import { StudentAttendancePage } from './features/portal-student/student-attendance-page';
 import { StudentSchedulePage } from './features/portal-student/student-schedule-page';
 import { TeachingClassGroupsPage } from './features/portal-teacher/teaching-class-groups-page';
@@ -71,7 +76,16 @@ export function App() {
             enforces "is this really your data/scope" on every /v1/me/* call. */}
         <Route path="student/schedule" element={<StudentSchedulePage />} />
         <Route path="student/attendance" element={<StudentAttendancePage />} />
+        <Route path="student/exams" element={<StudentExamsPage />} />
+        <Route path="student/exams/:examId" element={<TakeExamPage />} />
         <Route path="teacher/class-groups" element={<TeachingClassGroupsPage />} />
+
+        {/* Área de Provas, lado do professor (RULE-EXAM-16: uma prova sempre
+            pertence a uma turma, então a lista é sempre escopada por turma —
+            não existe lista de provas da instituição para aterrissar). */}
+        <Route path="class-groups/:classGroupId/exams" element={<ExamsPage />} />
+        <Route path="exams/:examId/edit" element={<ExamEditorPage />} />
+        <Route path="exams/:examId/panel" element={<ExamPanelPage />} />
         <Route path="coordinator/class-groups" element={<LeadershipClassGroupsPage scope="coordinator" />} />
         <Route path="direction/class-groups" element={<LeadershipClassGroupsPage scope="direction" />} />
         <Route path="portal/class-groups/:classGroupId/attendance" element={<ClassGroupAttendancePage />} />

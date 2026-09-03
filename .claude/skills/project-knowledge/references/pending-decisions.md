@@ -944,9 +944,13 @@ do trabalho sobre "Área de Provas" (monitoramento/timer/sessão/auditoria,
 levantados como perguntas objetivas quando a etapa correspondente do
 trabalho tocar cada ponto, não assumidos:
 
-- Quantas tentativas um aluno pode ter por prova (não mencionado).
-- Se perguntas podem ser marcadas como obrigatórias/opcionais (não
-  mencionado).
+- ~~Quantas tentativas um aluno pode ter por prova (não mencionado).~~
+  **~~Pendente~~ Resolvido (2026-09-03)** — ver "Resolvido — Tentativa
+  única por aluno por prova (2026-09-03)" logo abaixo.
+- ~~Se perguntas podem ser marcadas como obrigatórias/opcionais (não
+  mencionado).~~
+  **~~Pendente~~ Resolvido (2026-09-03)** — ver "Resolvido — Todas as
+  perguntas são opcionais (2026-09-03)" logo abaixo.
 - Se há suporte a múltiplas seções/páginas dentro de uma prova (não
   mencionado).
 - Quem, além do professor, acessa a trilha de auditoria/timeline de
@@ -957,6 +961,64 @@ trabalho tocar cada ponto, não assumidos:
   citado como um dos eventos monitoráveis) implica um agente de
   monitoramento desktop real fora do navegador — não confirmado se está em
   escopo ou é só um exemplo aspiracional do texto original.
+
+> **Nota (2026-09-03):** dois dos cinco pontos desta lista deixaram de ser
+> "não confirmados" — tentativas por prova e obrigatoriedade de pergunta
+> foram respondidos pelo usuário antes do início da implementação da
+> Frente 04. Ver as duas seções imediatamente abaixo. Os três pontos
+> restantes (múltiplas seções/páginas; acesso à auditoria além do
+> professor — este já tratado em outra seção desta skill; agente local para
+> `EXTERNAL_APPLICATION_FOCUS`) seguem sem alteração.
+
+## Resolvido — Tentativa única por aluno por prova (2026-09-03)
+
+Fecha o ponto "Quantas tentativas um aluno pode ter por prova" da seção
+"Notas não-bloqueantes para Business Analyst / Solution Architect — Área de
+Provas" acima. Resposta a uma pergunta objetiva de múltipla escolha feita
+ao usuário antes do início da implementação da Frente 04.
+
+**Confirmado:** cada aluno tem **uma única sessão por prova**, garantida
+por **constraint de unicidade no banco**. Não há tentativas múltiplas nem
+configuração de quantidade de tentativas pelo professor nesta rodada.
+
+Isto **não conflita com RULE-EXAM-11**
+(`business-rules/references/exam-rules.md`): atualizar a página recupera a
+**mesma** sessão, não cria uma nova — é exatamente o comportamento que a
+tentativa única pressupõe.
+
+**Alternativa apresentada e rejeitada pelo usuário:** tentativas
+configuráveis pelo professor — rejeitada por exigir número de tentativa na
+sessão, regra de qual tentativa vale nota, e uma constraint de unicidade
+diferente; complexidade não justificada nesta rodada.
+
+Registrado no mesmo padrão de adiamento já usado no resto do projeto:
+**não rejeitado para sempre, apenas não incluído nesta rodada.**
+
+Ver nota anexada a RULE-EXAM-12 (`business-rules/references/exam-rules.md`,
+seção "Sessão, estados e auditoria").
+**Source of confirmation:** Usuário, 2026-09-03.
+
+## Resolvido — Todas as perguntas são opcionais (2026-09-03)
+
+Fecha o ponto "Se perguntas podem ser marcadas como obrigatórias/opcionais"
+da seção "Notas não-bloqueantes para Business Analyst / Solution Architect
+— Área de Provas" acima. Resposta a uma pergunta objetiva de múltipla
+escolha feita ao usuário antes do início da implementação da Frente 04.
+
+**Confirmado:** **nenhuma pergunta bloqueia a entrega da prova.** Deixar
+uma pergunta em branco é permitido e simplesmente vale zero na correção.
+Não existe coluna/conceito de "pergunta obrigatória" nesta rodada.
+
+Justificativa aceita pelo usuário: além da simplicidade, obrigatoriedade
+**conflitaria com a finalização automática por expiração de tempo**
+(RULE-EXAM-08), que precisa conseguir entregar uma prova incompleta quando
+o tempo acaba.
+
+Mesmo padrão de adiamento do resto do projeto: não rejeitado para sempre,
+apenas não incluído nesta rodada.
+
+Ver addendum em RULE-EXAM-03 (`business-rules/references/exam-rules.md`).
+**Source of confirmation:** Usuário, 2026-09-03.
 
 ## Resolvido — Vínculo prova↔turma e visibilidade de gabarito ao aluno (2026-09-02)
 
@@ -1012,27 +1074,91 @@ implementação real tocar cada ponto:
   inicia (`IN_PROGRESS`) — `NOT_STARTED`/`AVAILABLE` são estados
   calculados a partir da janela de disponibilidade, nunca persistidos.
 
-## Gap novo — Gatilho exato do estado `ABANDONED`
+> **Nota (2026-09-03) — duas destas suposições deixaram de ser suposições:**
+> a frase de abertura desta seção ("nenhuma foi formalizada como regra de
+> negócio confirmada") continua válida para os demais itens, **mas não**
+> para estes dois, que passaram por confirmação explícita do usuário antes
+> do início da implementação da Frente 04:
+> - **"Uma única tentativa por prova por aluno"** — agora confirmado pelo
+>   usuário, incluindo a constraint de unicidade no banco. Ver "Resolvido —
+>   Tentativa única por aluno por prova (2026-09-03)" acima nesta skill.
+> - **"Nenhuma pergunta obrigatória nesta rodada"** — agora confirmado pelo
+>   usuário. Ver "Resolvido — Todas as perguntas são opcionais (2026-09-03)"
+>   acima nesta skill.
+>
+> Os demais itens da lista seguem como suposições conservadoras, sem
+> alteração.
+> **Source of confirmation:** Usuário, 2026-09-03.
 
-RULE-EXAM-12 (`business-rules/references/exam-rules.md`) lista `ABANDONED`
+## ~~Gap novo~~ Resolvido — Gatilho exato do estado `ABANDONED`
+
+~~RULE-EXAM-12 (`business-rules/references/exam-rules.md`) lista `ABANDONED`
 como estado válido de sessão, mas não define a condição exata que o
 diferencia de `EXPIRED` (ex.: sessão sem duração limite que o aluno nunca
 retoma; janela de disponibilidade encerrada com sessão ainda
 `NOT_STARTED`/`AVAILABLE`, nunca iniciada). Levantado pelo Business
 Analyst durante a decomposição de fluxos — não bloqueia o restante do
 design, mas precisa de definição antes da implementação real do
-`ExamSessionService`.
+`ExamSessionService`.~~
 
-## Gap novo — "Nova janela" sem valor de enum próprio (2026-09-02)
+> **RESOLVIDO (2026-09-03) — gatilho definido, gap fechado:** o texto
+> riscado acima está superado. Em resposta a uma pergunta objetiva de
+> múltipla escolha feita antes do início da implementação da Frente 04
+> (Área de Provas), o usuário confirmou o gatilho exato:
+>
+> Uma sessão vira `ABANDONED` quando o aluno **iniciou a prova, nunca a
+> finalizou, e a janela de disponibilidade da prova (RULE-EXAM-06) fechou
+> com a sessão ainda em `IN_PROGRESS`**.
+>
+> É o **complemento** de `EXPIRED`, não um sinônimo:
+> - `EXPIRED` = acabou a **duração individual** do aluno (RULE-EXAM-08).
+> - `ABANDONED` = acabou a **janela geral de disponibilidade**
+>   (RULE-EXAM-06) sem o aluno entregar — caso típico de prova configurada
+>   **sem limite de duração**, em que `EXPIRED` nunca chegaria a disparar.
+>
+> **Alternativas apresentadas e rejeitadas pelo usuário:**
+> - *Inatividade prolongada do aluno* — rejeitada por exigir job/varredura
+>   periódica, infraestrutura que o projeto não tem hoje.
+> - *Não usar `ABANDONED` nesta rodada* — rejeitada por contrariar o enum
+>   de estados já fixado em RULE-EXAM-12.
+>
+> Ver addendum correspondente em RULE-EXAM-12
+> (`business-rules/references/exam-rules.md`).
+> **Source of confirmation:** Usuário, 2026-09-03.
 
-Flagado pelo Documentation Agent e confirmado pelo Project Guardian ao
+## ~~Gap novo~~ Resolvido — "Nova janela" sem valor de enum próprio (2026-09-02)
+
+~~Flagado pelo Documentation Agent e confirmado pelo Project Guardian ao
 revisar a documentação da Área de Provas: RULE-EXAM-05
 (`business-rules/references/exam-rules.md`) cita "nova aba, nova janela"
 como exemplos de evento monitorável, mas o vocabulário de enum confirmado
 só tem `NEW_TAB_ATTEMPT` — sem um valor próprio para "nova janela". Não
 presumir que `NEW_TAB_ATTEMPT` cobre os dois casos até confirmação
 explícita do usuário; `.doc/checkclass-area-de-provas.html` já documenta
-isso como gap em vez de tratar como resolvido.
+isso como gap em vez de tratar como resolvido.~~
+
+> **RESOLVIDO (2026-09-03) — um único valor cobre nova aba e nova janela:**
+> o texto riscado acima está superado. Em resposta a uma pergunta objetiva
+> de múltipla escolha feita antes do início da implementação da Frente 04,
+> o usuário confirmou que **"nova aba" e "nova janela" compartilham um
+> único valor de evento**, em vez de ganharem dois valores separados.
+>
+> Justificativa aceita pelo usuário: o navegador **não distingue de forma
+> confiável** abrir uma nova aba de abrir uma nova janela — ambos chegam à
+> aplicação como o mesmo sinal (perda de foco / mudança de visibilidade).
+> Dois valores distintos exibiriam ao professor uma diferença que a
+> plataforma não consegue realmente detectar.
+>
+> O **nome técnico exato** do valor único permanece como latitude normal do
+> Backend Agent (a sugestão em uso na implementação é
+> `NEW_TAB_OR_WINDOW_ATTEMPT`, substituindo `NEW_TAB_ATTEMPT`), seguindo a
+> mesma nota já registrada em RULE-EXAM-05 de que o formato final de
+> enum/schema cabe a agentes técnicos.
+>
+> Isto **não reabre RULE-EXAM-05** — apenas resolve o gap de vocabulário
+> que ela deixou em aberto. Ver addendum correspondente em RULE-EXAM-05
+> (`business-rules/references/exam-rules.md`).
+> **Source of confirmation:** Usuário, 2026-09-03.
 
 ## Resolvido — Extensão do público do Frontend Web para Aluno/Professor na Área de Provas (2026-09-02)
 
@@ -1184,6 +1310,17 @@ monitoramento nativo/desktop (`EXTERNAL_APPLICATION_FOCUS`); pausa de
 timer configurável (RULE-EXAM-10); configuração diferenciada por tipo de
 evento (RULE-EXAM-05); banco de questões reutilizável (já registrado
 acima).
+
+> **Nota (2026-09-03) — dois itens desta lista agora têm confirmação
+> explícita do usuário, sem mudança de conteúdo:** "tentativas múltiplas
+> por prova" e "obrigatoriedade de pergunta" continuam **fora desta
+> rodada**, exatamente como esta consolidação já dizia — mas deixaram de
+> ser suposição conservadora do desenho técnico e passaram a ser decisão de
+> produto confirmada. Ver "Resolvido — Tentativa única por aluno por prova
+> (2026-09-03)" e "Resolvido — Todas as perguntas são opcionais
+> (2026-09-03)" acima nesta skill. Nenhuma contradição: a posição de escopo
+> é a mesma, apenas com fonte de confirmação mais forte.
+> **Source of confirmation:** Usuário, 2026-09-03.
 
 > **Nota (2026-09-02):** esta lista citava também "tipos de pergunta
 > adicionais" — removido da consolidação, pois esse item saiu do radar do
@@ -1793,6 +1930,16 @@ seções correspondentes.
 
 ## HANDOFF (2026-09-02) — Organização em Frentes de Atuação, sessão interrompida por limite de contexto
 
+> **Nota (2026-09-03):** a Frente 03 (Portal de Autoatendimento Web) descrita
+> abaixo mudou de status desde a sessão de 2026-09-02 — foi **concluída**
+> (Backend, Frontend, Testing, QA e Project Guardian executados). Ver a
+> atualização dentro do item 3 da lista "As 11 frentes propostas" logo
+> abaixo. O restante deste bloco (incluindo o "Levantamento de estado real"
+> a seguir, que ainda descreve o frontend web sem consumir `/v1/me/*`)
+> permanece como registro histórico da sessão de 2026-09-02 e não reflete
+> mais o estado atual dessa frente específica — as demais frentes do
+> HANDOFF não foram tocadas e continuam válidas como estavam.
+
 Registro de continuidade: o usuário pediu para organizar todas as
 pendências do projeto em "Frentes de Atuação" (agrupamentos de trabalho
 com escopo, cadeia de agentes e dependências). Isso foi feito **num
@@ -1854,15 +2001,77 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
    Autoatendimento Web, estrutura (2026-09-02)" em `architecture-overview.md`.
    **Escopo novo identificado e aprovado na mesma etapa:** CRUD
    administrativo mínimo para atribuir Coordenador de Curso (não existia
-   forma de fazer essa atribuição antes) — ver item 5 da mesma seção. Hoje
-   só 2 endpoints backend existem, nenhuma tela — nada foi implementado
-   ainda. Agentes: ~~Business Analyst~~ → ~~Solution Architect~~ →
-   **Backend + Frontend (próximo)** → Testing → QA → Project Guardian.
+   forma de fazer essa atribuição antes) — ver item 5 da mesma seção.
+   ~~Hoje só 2 endpoints backend existem, nenhuma tela — nada foi
+   implementado ainda.~~ ~~Agentes: Business Analyst → Solution Architect
+   → Backend + Frontend (próximo) → Testing → QA → Project Guardian.~~
+   **FRENTE CONCLUÍDA (2026-09-03):** Backend e Frontend foram
+   implementados nesta sessão — todos os endpoints/telas da arquitetura
+   aprovada existem: `GET /v1/me/context`, `GET
+   /v1/me/teaching-class-groups`, `GET /v1/me/coordinated-class-groups`,
+   `GET /v1/me/class-groups/:classGroupId/attendance`, `GET /v1/me/schedule`
+   estendido com nomes legíveis, e CRUD de atribuição de Coordenador de
+   Curso (`POST`/`GET`/`DELETE /v1/course-coordinator-assignments`). No
+   frontend, os 4 grupos de navegação condicionais por papel em
+   `app-shell.tsx` foram implementados com todas as telas correspondentes
+   (`portal-student`, `portal-teacher`, `portal-leadership`,
+   `portal-class-group-attendance`, `course-coordinator-assignments`).
+   **Testing:** 464/464 testes automatizados do backend passam (specs
+   novos para cada serviço novo), typecheck do frontend limpo. **QA:**
+   validou os 12 critérios de aceite confirmados pelo usuário em
+   2026-09-02 (ver "Gaps resolvidos — segunda rodada" em
+   `architecture-overview.md`) — todos atendidos. Validação foi **estática
+   (leitura de código)** — não houve ambiente Postgres/Docker disponível
+   para rodar o app de ponta a ponta nesta sessão; essa limitação fica
+   registrada explicitamente, não foi um teste de ponta a ponta real.
+   **Project Guardian:** revisou consistência (naming, duplicação de
+   regra de negócio, permission enum, módulos marcados como inalterados,
+   acoplamento com Área de Provas) — nenhuma inconsistência nova
+   encontrada. Um ponto lateral não-bloqueante foi levantado e já estava
+   coberto por gap existente: a role "Coordenador de Curso" só é seedada
+   para tenants tipo faculdade (não escola) — isso já é o gap conhecido
+   registrado em "Resolvido (parcial, apenas Faculdade) — Papéis
+   administrativos internos da instituição", não é uma inconsistência
+   nova. Cadeia de agentes completa: ~~Business Analyst → Solution
+   Architect → Backend + Frontend → Testing → QA → Project
+   Guardian~~ — **todas as etapas executadas e concluídas.** Fonte de
+   confirmação: verificação de código + execução de QA/Project Guardian
+   nesta sessão (2026-09-03); fechamento formal confirmado pelo usuário,
+   2026-09-03.
 4. **Área de Provas** — depende da 03 (ver resolução da ambiguidade A1
-   abaixo). Tudo aprovado (regras, arquitetura, tecnologia, dados,
-   segurança), zero código.
-5. **Turma com várias matérias (RULE-INST-14)** — depende da resolução da
-   ambiguidade A3 abaixo. Remodela `class_group.subject_id` já migrado.
+   abaixo). ~~Tudo aprovado (regras, arquitetura, tecnologia, dados,
+   segurança), zero código.~~ **FRENTE CONCLUÍDA (2026-09-03):** Backend
+   (módulo `exam`, 46 arquivos, 633/633 testes passando, migration com 9
+   tabelas + RLS + constraints), Frontend (teacher-side: lista + criar modal
+   + editor de perguntas + painel de acompanhamento; student-side: lista +
+   tela de realizar prova com timer + monitoramento), routes wired,
+   navegação integrada. **Decisão registrada nesta sessão:** RULE-EXAM-14
+   (rascunho/publicação) — prova nasce invisível, professor publica
+   explicitamente, sem risco de queimar tentativa do aluno. **Testing:**
+   633/633 testes (up from 464 before this front), frontend typecheck
+   limpo. **QA:** validação estática de 12 critérios de produto — todos
+   atendidos (ABANDONED trigger, nova janela como evento único, tentativa
+   única, tudo opcional, rascunho/publicada). **Project Guardian:**
+   verificação de inconsistência com o resto do projeto — nenhuma
+   encontrada. Validação foi **estática (leitura de código)** — sem
+   Postgres/Docker nesta máquina. Cadeia de agentes: ~~Product Definition →
+   Business Analyst → Solution Architect → Tech Decision → Database →
+   Backend → Frontend → Testing → QA → Project Guardian~~ — **todas as
+   etapas executadas e concluídas.** Fonte de confirmação: verificação de
+   código + execução de QA/Project Guardian nesta sessão (2026-09-03).
+5. **Turma com várias matérias (RULE-INST-14)** — ~~depende da resolução da
+   ambiguidade A3 abaixo. Remodela `class_group.subject_id` já migrado.~~
+   **PLANEJAMENTO CONCLUÍDO (2026-09-03):** arquitetura fechada pelo
+   Solution Architect — ver "Decisão de arquitetura — Turma com várias
+   matérias, Frente 05 (2026-09-03)" em `architecture-overview.md`. Gap
+   novo fechado nesta mesma sessão: matéria excluída era a única da turma
+   → turma sobrevive vazia (ver addendum em RULE-INST-08,
+   `business-rules/references/institution-management-rules.md`).
+   Confirmado que RULE-INST-10 (conflito de agenda) não precisa de
+   nenhuma alteração. **Pronta para implementação:** Database (migration +
+   entidades) → Backend (CRUD de vínculo turma↔matéria, geração de
+   sessão, cascata de exclusão granular) → Frontend (formulário de montar
+   turma com N matérias) → Testing → QA → Project Guardian.
 6. **Frequência acumulada + aviso de limite (RULE-FREQ-01..04)** — depende
    da 05 (por matéria) e da 03 (home do aluno). Não existe infraestrutura
    de notificação.

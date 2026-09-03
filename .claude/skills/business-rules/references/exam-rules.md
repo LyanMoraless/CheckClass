@@ -83,6 +83,25 @@ do mesmo dia).
 > `project-knowledge/references/pending-decisions.md`.
 > **Source of confirmation:** Usuário, 2026-09-02.
 
+> **Addendum (2026-09-03) — todas as perguntas são opcionais; não há
+> marcação de obrigatoriedade nesta rodada.** Confirmado pelo usuário:
+> **nenhuma pergunta bloqueia a entrega da prova.** Deixar uma pergunta em
+> branco é permitido e simplesmente vale zero na correção (RULE-EXAM-14).
+> Não existe coluna/conceito de "pergunta obrigatória" nesta rodada — nem
+> na autoria pelo professor, nem na validação da entrega do aluno.
+>
+> Justificativa aceita pelo usuário: além da simplicidade, obrigatoriedade
+> **conflitaria com a finalização automática por expiração de tempo**
+> (RULE-EXAM-08), que precisa conseguir entregar uma prova incompleta
+> quando o tempo acaba.
+>
+> Mesmo padrão de adiamento já usado no resto do projeto: não rejeitado
+> para sempre, apenas não incluído nesta rodada. Fecha o ponto
+> correspondente da seção "Notas não-bloqueantes para Business Analyst /
+> Solution Architect — Área de Provas" em
+> `project-knowledge/references/pending-decisions.md`.
+> **Source of confirmation:** Usuário, 2026-09-03.
+
 ### RULE-EXAM-14: Correção automática para tipos objetivos, manual para subjetivos
 
 **Statement:** Por pergunta, o professor pode opcionalmente definir um
@@ -156,6 +175,28 @@ ao usuário sobre este ponto específico. Tratar como confirmação de baixo
 risco, revisitável se o usuário sinalizar o contrário.
 **Source of confirmation:** Usuário, 2026-09-02 (texto original,
 interpretado pelo Product Definition Agent).
+
+> **Addendum (2026-09-03) — vocabulário de evento: um único valor cobre
+> "nova aba" e "nova janela".** Confirmado pelo usuário: em vez de dois
+> valores separados, existe **um único valor de evento** para os dois
+> casos. Justificativa aceita pelo usuário: o navegador **não distingue de
+> forma confiável** abrir uma nova aba de abrir uma nova janela — ambos
+> chegam à aplicação como o mesmo sinal (perda de foco / mudança de
+> visibilidade); dois valores distintos exibiriam ao professor uma
+> diferença que a plataforma não consegue realmente detectar.
+>
+> O **nome técnico exato** do valor único segue como latitude normal do
+> Backend Agent, coerente com a ressalva já presente nesta regra de que o
+> formato final de enum/schema cabe a agentes técnicos — a sugestão em uso
+> na implementação é `NEW_TAB_OR_WINDOW_ATTEMPT`, substituindo
+> `NEW_TAB_ATTEMPT` na lista de vocabulário do enunciado acima.
+>
+> Isto **não reabre RULE-EXAM-05** (escopo atual vs. futuro da configuração
+> por tipo de evento permanece exatamente como está) — apenas resolve o gap
+> de vocabulário que ela deixou em aberto. Fecha "Gap novo — 'Nova janela'
+> sem valor de enum próprio (2026-09-02)" em
+> `project-knowledge/references/pending-decisions.md`.
+> **Source of confirmation:** Usuário, 2026-09-03.
 
 ## Timer e disponibilidade
 
@@ -250,12 +291,63 @@ mudança relevante de estado (início, ocorrência de monitoramento,
 expiração, encerramento, etc.) deve ser registrada em uma trilha de
 auditoria, com data/horário.
 **Applies to:** Ciclo de vida da sessão de prova.
-**Exceptions:** Nenhuma confirmada. Quem tem acesso à trilha de auditoria
-além do professor (ex.: Coordenador de Curso/Direção, no mesmo espírito de
-escopo de liderança já usado em `LeadershipScopeService` para resolução de
-pendência de chamada) não foi confirmado — ver gap em
-`project-knowledge/references/pending-decisions.md`.
+**Exceptions:** Nenhuma confirmada.
+
+> **Addendum (2026-09-02, mesmo dia da aprovação arquitetônica) — acesso à trilha de auditoria definido:** quem tem acesso à trilha de auditoria além do professor depende do papel:
+> - **Professor:** seus cursos (mesmo padrão de `follow_camera_events`).
+> - **Coordenador de Curso:** seus cursos (via `LeadershipScopeService`, conforme Frente 03).
+> - **Direção/Reitoria:** todas as provas da instituição (via `LeadershipScopeService`).
+>
+> Mesma hierarquia de liderança já consolidada no restante do produto — nenhuma exceção.
+> **Source of confirmation:** Usuário, 2026-09-02 (Pivot "Portal de Autoatendimento Web").
 **Source of confirmation:** Usuário, 2026-09-02.
+
+> **Addendum (2026-09-03) — gatilho do estado `ABANDONED` definido:** o
+> enunciado acima lista `ABANDONED` entre os estados válidos, mas não dizia
+> o que o dispara. Confirmado pelo usuário: uma sessão vira `ABANDONED`
+> quando o aluno **iniciou a prova, nunca a finalizou, e a janela de
+> disponibilidade da prova (RULE-EXAM-06) fechou com a sessão ainda em
+> `IN_PROGRESS`**.
+>
+> É o **complemento** de `EXPIRED`, não um sinônimo:
+> - `EXPIRED` = acabou a **duração individual** do aluno (RULE-EXAM-08).
+> - `ABANDONED` = acabou a **janela geral de disponibilidade**
+>   (RULE-EXAM-06) sem o aluno entregar — caso típico de prova configurada
+>   **sem limite de duração**, em que `EXPIRED` nunca chegaria a disparar.
+>
+> Alternativas rejeitadas pelo usuário: inatividade prolongada do aluno
+> (exigiria job/varredura periódica, infraestrutura que o projeto não tem
+> hoje) e não usar `ABANDONED` nesta rodada (contrariaria o enum já fixado
+> nesta regra). Isto **não altera** o enum de estados, apenas define a
+> condição de entrada em um deles. Fecha o gap "Gap novo — Gatilho exato do
+> estado `ABANDONED`" em
+> `project-knowledge/references/pending-decisions.md`.
+> **Source of confirmation:** Usuário, 2026-09-03.
+
+> **Nota anexada (2026-09-03) — esclarecimento novo, NÃO uma reescrita
+> desta regra: uma única tentativa por aluno por prova.** Este ponto não
+> tinha regra numerada própria; fica registrado aqui por pertencer ao ciclo
+> de vida da sessão de prova ("Sessão, estados e auditoria"). O enunciado
+> de RULE-EXAM-12 acima permanece exatamente como está.
+>
+> Confirmado pelo usuário: cada aluno tem **uma única sessão por prova**,
+> garantida por **constraint de unicidade no banco**. Não há tentativas
+> múltiplas nem configuração de quantidade de tentativas pelo professor
+> nesta rodada.
+>
+> Isto **não conflita com RULE-EXAM-11**: atualizar a página recupera a
+> **mesma** sessão, não cria uma nova — é exatamente o comportamento que a
+> tentativa única pressupõe.
+>
+> Alternativa rejeitada pelo usuário: tentativas configuráveis pelo
+> professor — exigiria número de tentativa na sessão, regra de qual
+> tentativa vale nota, e uma constraint de unicidade diferente;
+> complexidade não justificada nesta rodada. Registrado no mesmo padrão de
+> adiamento já usado no resto do projeto: **não rejeitado para sempre,
+> apenas não incluído nesta rodada.** Ver "Resolvido — Tentativa única por
+> aluno por prova (2026-09-03)" em
+> `project-knowledge/references/pending-decisions.md`.
+> **Source of confirmation:** Usuário, 2026-09-03.
 
 ### RULE-EXAM-13: Configuração resumida da prova pelo professor
 
@@ -268,6 +360,24 @@ checkboxes/configuração equivalente (RULE-EXAM-05).
 **Applies to:** Tela de criação/edição de prova pelo professor.
 **Exceptions:** Nenhuma confirmada.
 **Source of confirmation:** Usuário, 2026-09-02.
+
+### RULE-EXAM-14: Rascunho e Publicação
+
+**Statement:** Toda prova nasce em estado `DRAFT` (rascunho) e é invisível para
+alunos enquanto nesse estado — a prova **não aparece** nas listas do aluno, nem
+pode ser iniciada. O professor trabalha no rascunho: adiciona perguntas, edita
+opções, configura monitoramento. Quando pronto, o professor clica em "Publicar",
+o que muda o estado para `PUBLISHED` e a torna visível para alunos que se
+encaixam na janela de disponibilidade.
+
+**Justificativa técnica:** Sem estado rascunho, abrir uma prova ainda em
+construção queimaria a única tentativa do aluno, tornando o erro não-recuperável
+(diferente de outras operações, onde refresh ou logout deixa o estado disponível
+novamente). O estado rascunho elimina esse risco.
+
+**Applies to:** Ciclo de vida da prova; visibilidade inicial para alunos.
+**Exceptions:** Nenhuma confirmada.
+**Source of confirmation:** Usuário, 2026-09-03.
 
 ## Vínculo com turma e visibilidade de resultados
 

@@ -355,14 +355,25 @@ Comportamento confirmado (válido **somente** sob RULE-INST-14):
 vigente. Nenhum agente deve alterar código de cascata com base neste
 addendum antes da rodada de RULE-INST-14.
 
-**GAP NOVO em aberto (não perguntado ao usuário, NÃO presumir resposta):**
+~~**GAP NOVO em aberto (não perguntado ao usuário, NÃO presumir resposta):**
 o que acontece quando **a matéria excluída era a única matéria daquela
 turma** — a turma sobrevive vazia (sem nenhuma matéria), é excluída em
 cascata como hoje, ou a exclusão é bloqueada? Esta pergunta **não foi
 feita** ao usuário em 2026-09-02; a resposta literal dele ("remove só a
 matéria da turma; a turma continua") foi dada no contexto de uma turma com
 **várias** matérias e **não** pode ser estendida a este caso. Registrado
-também em `project-knowledge/references/pending-decisions.md`.
+também em `project-knowledge/references/pending-decisions.md`.~~
+
+> **Gap FECHADO (2026-09-03):** a turma **sobrevive vazia** (sem nenhuma
+> matéria vinculada) quando sua última matéria é excluída — mesmo
+> tratamento dado ao caso de várias matérias, apenas levado ao extremo de
+> zero. A turma não é excluída em cascata neste caso, e a exclusão da
+> matéria não é bloqueada por isso. Matrículas e histórico da turma são
+> preservados automaticamente, à espera de uma nova matéria ser
+> cadastrada nela. Não interage com RULE-INST-13 (que trata da exclusão
+> da própria Turma, não deste caso).
+> **Source of confirmation:** Usuário, 2026-09-03 (planejamento da Frente
+> 05).
 
 Interação com **RULE-INST-13** (exclusão de Turma bloqueada se houver
 presença consolidada) **não foi discutida** neste addendum e permanece como
@@ -494,10 +505,21 @@ exclusão em cascata" registrado em `pending-decisions.md`.
 
 ### RULE-INST-14: Turma agrupa VÁRIAS Matérias (cenário 1 — turma fechada), inverte o modelo hoje implementado
 
-> **Status: feature futura, NÃO aprovada para implementação agora.**
+> ~~**Status: feature futura, NÃO aprovada para implementação agora.**
 > Registrada a pedido explícito do usuário em 2026-09-02 ("adicione nas
 > pendências"). Escopo/regra confirmados; arquitetura, tecnologia, modelo
-> de dados e código são rodada futura separada. Nenhum código foi alterado.
+> de dados e código são rodada futura separada. Nenhum código foi alterado.~~
+>
+> **Status atualizado (2026-09-03): arquitetura fechada, aprovada para
+> implementação.** Ver "Decisão de arquitetura — Turma com várias
+> matérias, Frente 05 (2026-09-03)" em
+> `project-knowledge/references/architecture-overview.md` — modelo de
+> dados (`class_group_subject` many-to-many, FK direta de matéria em
+> `class_group_schedule_slot`/`class_session`), migração do dado
+> existente, impacto em RULE-INST-04/RULE-JUST-02/RULE-FREQ-01, e
+> confirmação de que RULE-INST-10 (conflito de agenda) não muda. O caso
+> "matéria excluída era a única da turma" também foi fechado nesta mesma
+> sessão: a Turma sobrevive vazia (ver addendum em RULE-INST-08 acima).
 
 **Statement:** Uma **Turma passa a ter várias Matérias**, cadastradas no
 momento de criar a turma ("ao cadastrar uma turma é necessário cadastrar as

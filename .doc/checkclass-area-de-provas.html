@@ -340,7 +340,7 @@
       <tr><th>Evento</th><th>Significado</th></tr>
       <tr><td><code>PAGE_BLUR</code></td><td>Perda de foco da página.</td></tr>
       <tr><td><code>PAGE_VISIBILITY_CHANGED</code></td><td>Mudança de aba.</td></tr>
-      <tr><td><code>NEW_TAB_ATTEMPT</code></td><td>Tentativa de abrir nova aba. <em>Gap aberto:</em> o texto original também cita "nova janela" como evento distinto, mas não há valor de enum próprio para isso ainda — não confirmado se <code>NEW_TAB_ATTEMPT</code> cobre os dois casos.</td></tr>
+      <tr><td><code>NEW_TAB_OR_WINDOW_ATTEMPT</code></td><td>Tentativa de abrir nova aba ou janela. (Evento único: o navegador não consegue distinguir aba de janela — relatório preserva a limitação do protocolo.)</td></tr>
       <tr><td><code>EXTERNAL_NAVIGATION_ATTEMPT</code></td><td>Tentativa de navegação externa.</td></tr>
       <tr><td><code>KEYBOARD_RESTRICTION_TRIGGERED</code></td><td>Atalho de teclado proibido.</td></tr>
       <tr><td><code>EXTERNAL_APPLICATION_FOCUS</code></td><td>Foco em aplicativo externo — depende de agente local (ver <a href="#fora-de-escopo">Fora desta rodada</a>).</td></tr>
@@ -443,8 +443,8 @@
     </div>
 
     <div class="note abandoned-note">
-      <span class="tag">Gap não-bloqueante — gatilho exato não confirmado</span>
-      <code>ABANDONED</code> é um estado válido do enum, mas a condição exata que o diferencia de <code>EXPIRED</code> ainda não foi definida (ex.: sessão sem limite de tempo que o aluno nunca retoma; janela de disponibilidade encerrada com a sessão ainda em <code>NOT_STARTED</code>/<code>AVAILABLE</code>, nunca iniciada). Precisa de definição antes da implementação real do <code>ExamSessionService</code>.
+      <span class="tag">Definido — 2026-09-03</span>
+      <code>ABANDONED</code> dispara quando a janela de disponibilidade encerra com a sessão ainda em <code>IN_PROGRESS</code> (aluno iniciou mas nunca entregou, e o prazo geral fechou). Diferencia-se de <code>EXPIRED</code> (duração individual esgotada) em provas sem limite de duração, onde <code>EXPIRED</code> nunca se aplica. Ambos preservam as respostas já salvas — fonte de verdade é `availableUntil` no backend.
     </div>
 
     <div class="note">
