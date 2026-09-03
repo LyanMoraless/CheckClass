@@ -1971,3 +1971,230 @@ Registra a resolução de um gap arquitetural não coberto pela decisão anterio
   entrada-saída (RULE-SEC-05), software de relay RTSP→HLS/WebRTC — cada
   uma segue exigindo proposta do Tech Decision Agent com aprovação
   explícita do usuário antes de ser tratada como decidida.
+
+## Decisão de arquitetura — Frequência acumulada e aviso de limite, Frente 06 (proposta em 2026-09-03)
+
+> **Proposta do Solution Architect, aguardando aprovação do usuário** —
+> mesma praxe do projeto, nenhuma decisão de arquitetura é automaticamente
+> aprovada. Escopo: RULE-FREQ-01 a 04
+> (`business-rules/references/attendance-frequency-rules.md`), a partir da
+> Análise de Requisitos do Business Analyst registrada no final do mesmo
+> arquivo (seção "Análise de Requisitos — Business Analyst
+> (2026-09-03)").
+
+### Contexto
+
+Controle B (frequência acumulada por matéria/período) empilhado sobre o
+Controle A já existente (`AttendanceRulesEngineService`, RULE-ATT-04),
+mais o aviso de proximidade do limite. Mecanismo básico de cálculo e a
+existência da necessidade de notificação estão liberados para desenho
+pelo Business Analyst; 4 gaps de negócio maiores e 8 ambiguidades menores
+seguem explicitamente não resolvidos (ver seção "Depende de resposta do
+usuário" na análise do Business Analyst) — o desenho abaixo absorve todos
+eles com placeholders explícitos, sem tentar adivinhar a resposta certa
+de nenhum.
+
+### Componentes afetados
+
+- `AttendanceRulesEngineService` (Controle A) — **zero alteração de
+  arquivo**; apenas consumido como fonte de leitura
+  (`session_attendance_consolidation`).
+- `PendingReviewService.resolve()` — ganha uma chamada nova (segundo
+  ponto que hoje finaliza uma linha de consolidação de pending para
+  present/absent, além do próprio Controle A).
+- `attendance_config` — ganha campo(s) novos, mesma entidade, não
+  substituída.
+- Módulo `self-service`/`MeController` — ganha rotas novas na mesma
+  família `/v1/me/*`.
+- Nenhum componente de Segurança de Intrusão, Área de Provas ou
+  Gerenciamento da Instituição é afetado.
+
+### Estrutura proposta
+
+Novo bounded context **`attendance-frequency`**, módulo NestJS dentro do
+mesmo monólito modular, paralelo a `attendance-rules`/`pending-review`:
+
+1. **`AttendanceFrequencyEngineService`** (Motor de Controle B) — expõe
+   uma única primitiva de entrada,
+   `recalculateForSessionPerson(classSessionId, personId)`. Lê
+   `session_attendance_consolidation` (join `class_session.subjectId`)
+   filtrado por `status IN ('present','absent')` (pending excluído do
+   numerador/denominador — placeholder da ambiguidade "sessões pendentes
+   no denominador") dentro da janela do período de apuração resolvido
+   para o escopo. Numerador = present; denominador = present+absent no
+   período. Nunca decide nada sobre Controle A, nunca é chamado por
+   device/ingestão.
+2. **`AttendanceFrequencyConfigResolutionService`** — reaproveita o mesmo
+   mecanismo de resolução de escopo já usado pelos demais parâmetros de
+   `attendance_config` (institution→course→class_group, mais específico
+   vence), aplicado ao(s) campo(s) novo(s) de período de apuração.
+3. **`AttendanceWarningService`** — chamado pelo item 1 logo após
+   recomputar; compara frequência ao mínimo + distância configurada; cria/
+   atualiza uma linha em nova tabela `attendance_frequency_warning`
+   (chave: person_id + subject_id).
+4. **Superfície de leitura do aluno** — apenas `/v1/me/*`, sem
+   controller/serviço de escrita externo; só os call sites internos
+   (itens 1 e 3) escrevem.
+
+**Gatilho do cálculo:** chamada síncrona in-process, nos pontos que hoje
+finalizam uma linha de `session_attendance_consolidation` de pending para
+present/absent — não pipeline de eventos, não fila. Hoje são dois pontos:
+o chamador de `AttendanceRulesEngineService.evaluateSession()` (hoje só o
+script CLI `session-evaluate.ts`) e `PendingReviewService.resolve()`
+(ganha a chamada nova logo após seu próprio `update()` de status).
+
+**Justificativa do timing síncrono:** mesmo raciocínio já usado em
+Gerenciamento da Instituição e Área de Provas — aqui não há borda de
+dispositivo IoT pouco confiável a desacoplar; a entrada é dado já
+consolidado internamente. Volume: o recompute ocorre por (sessão, pessoa)
+avaliada, limitado ao roster de uma turma — mesma ordem de grandeza do
+próprio Controle A, não um job de lote sobre o tenant inteiro. Nenhuma
+fila/broker nova se justifica pelo mesmo critério já usado para rejeitar
+broker no núcleo.
+
+### Integrações
+
+- **Contrato explícito para a Frente 07 (Justificativa de Falta, ainda
+  não implementada):** quando o serviço de aprovação de justificativa
+  (nome ilustrativo `JustificationApprovalService`) aprovar uma
+  justificativa, deve, na mesma transação que materializa "retirar a
+  falta" sobre `session_attendance_consolidation`, chamar a mesma
+  primitiva `AttendanceFrequencyEngineService.recalculateForSessionPerson`
+  — terceiro call site, mesmo padrão dos dois já existentes. Nenhum
+  mecanismo paralelo de recompute deve ser inventado pela Frente 07.
+- **Recompute é idempotente e orientado a query** (não contador
+  incremental) — "recálculo retroativo" (gap aberto) é estruturalmente
+  apenas "chamar a mesma primitiva de novo"; a política de *quando* isso
+  acontece (imediato vs. só períodos futuros) plugará nesta mesma
+  primitiva sem redesenho, quando o gap for respondido pelo usuário.
+- **API — admin:** extensão do endpoint já existente de configuração de
+  `attendance_config` (mesma família de RULE-ATT-04/05), não endpoint
+  novo.
+- **API — aluno:** novas rotas na família `/v1/me/*` (`me.controller.ts`),
+  mesma guarda (`JwtAuthGuard` + `TenantContextInterceptor`, sem checagem
+  de permissão — dado próprio), ex.: `GET /v1/me/warnings` (lista avisos
+  ativos por matéria) e um mecanismo de marcar "visto" (endpoint dedicado
+  ou implícito na própria leitura — detalhe do Backend Agent).
+- **"Primeiro acesso":** modelado como coluna `seen_at` nullable na
+  própria linha de aviso — sem sessão/evento separado; setada na primeira
+  leitura de `GET /v1/me/warnings` após `created_at`. Zero infraestrutura
+  de notificação real (sem push/websocket).
+- **Área de avisos da home:** reaproveita o precedente de polling
+  (TanStack Query `refetchInterval`) já usado em Segurança de Intrusão e
+  Área de Provas — quarta reutilização, mesmo raciocínio (sem infra de
+  tempo real em nenhum ponto do projeto; cruzamento de limiar de
+  frequência tem ritmo humano). Não é uma divergência do precedente.
+
+### Padrão arquitetural aplicado
+
+Módulo síncrono de domínio dentro do monólito modular NestJS — mesmo
+padrão já usado em Gerenciamento da Instituição e Área de Provas, não o
+pipeline orientado a eventos do núcleo/Segurança de Intrusão (não há
+borda de dispositivo aqui). RLS + `tenant_id` em toda tabela nova, sem
+exceção.
+
+### Escalabilidade
+
+Recompute limitado ao roster de uma sessão, não ao tenant inteiro — sem
+job de lote. Tabela de avisos é pequena (só alunos perto do limiar), não
+uma cópia de todos os alunos. Polling em intervalo baixo, revisitar só
+com evidência real de necessidade de latência menor (mesmo critério já
+usado 3x no projeto).
+
+### Acoplamento e coesão
+
+- Novo acoplamento estreito e unidirecional: `PendingReviewService` (e
+  futuramente a Frente 07) passam a depender de
+  `AttendanceFrequencyEngineService` via uma única chamada de método —
+  nunca o inverso.
+- `attendance_config` passa a servir dois controles conceitualmente
+  distintos (A e B) — custo de coesão aceito deliberadamente para evitar
+  duplicar todo o mecanismo de resolução de escopo numa segunda entidade.
+- `attendance-rules-engine.service.ts` permanece com diff zero — o
+  empilhamento acontece inteiramente nos chamadores.
+- **Risco não estruturalmente garantido, sinalizado e não resolvido
+  aqui:** nada impede uma futura terceira via de finalizar
+  `session_attendance_consolidation` sem lembrar de chamar o recompute —
+  disciplina de code review, não constraint de banco.
+
+### Consistência com decisões anteriores
+
+Consistente com: resolução de escopo de `attendance_config` (reaproveitada,
+não reinventada); modelo `class_session.subjectId`/`class_group_subject`
+da Frente 05 (consumido diretamente, sem join extra até `class_group`);
+padrão `/v1/me/*` de RULE-ATT-15; precedente de polling (3ª decisão,
+reaplicado aqui pela 4ª vez, mesma justificativa). Nenhuma decisão
+anterior é contradita ou revertida.
+
+### Trade-offs
+
+Otimiza para: reuso máximo de padrões já aprovados (resolução de escopo,
+`/v1/me/*`, polling), infraestrutura nova mínima, e prontidão estrutural
+para os 12 gaps documentados pelo Business Analyst sem tentar adivinhar a
+resposta certa de nenhum. Custa: `attendance_config` fica um pouco
+sobrecarregada (dois controles); a integridade de "todo call site que
+finaliza uma consolidação também recomputa B" depende de disciplina de
+código, não de um mecanismo estrutural que force isso.
+
+### Placeholders explícitos para os gaps abertos (não travam o desenho)
+
+- **Distância do gatilho (RULE-FREQ-03):** campo nullable ao lado de
+  `min_attendance_percentage`, com valor seed de exemplo (10 p.p.); virar
+  configurável por admin não exige redesenho.
+- **Comportamento do aviso ao subir acima do gatilho (RULE-FREQ-04):**
+  `attendance_frequency_warning.status` nasce com um único valor
+  (`active`); `resolved`/`dismissed` são valores aditivos futuros.
+- **Aviso a professor/coordenador (RULE-FREQ-04):** chave da linha já é
+  (person_id, subject_id); estender leitura a professor/coordenador é
+  endpoint aditivo reaproveitando `LeadershipScopeService`, sem mudar
+  geração/persistência.
+- **Denominador zero:** recompute retorna "sem frequência calculável",
+  aviso nunca dispara sem denominador válido — defensivo, não decisão de
+  negócio.
+- **Sessões pending no denominador:** placeholder assumido e
+  documentado — excluídas do numerador e denominador até decisão
+  contrária.
+- **Matéria removida no meio do período:** recompute só lê o que existir
+  em `class_session.subjectId`; contingente à decisão já tomada na Frente
+  05 de preservar sessões ao remover matéria. Aviso de matéria removida
+  não é auto-resolvido — gap, não decidido aqui.
+- **Matrícula tardia:** placeholder assumido — conta desde o início do
+  período, não da matrícula; é um predicado a mais na mesma query, não
+  redesenho.
+- **Mudança de configuração em período em andamento:** não resolvido,
+  mesma natureza do gap de recálculo retroativo.
+- **Arredondamento:** `numeric` sem arredondamento, mesmo estilo já
+  usado em `attendance_percentage` de Controle A.
+- **Aluno já abaixo do mínimo:** shape do aviso não impede adicionar um
+  `warning_type` aditivo depois.
+- **Finalização de turma:** avisos persistem indefinidamente por ora; um
+  filtro/consulta adicional plugará quando "turma finalizada" existir no
+  schema — sem alterar a entidade de aviso.
+
+### Gap técnico novo identificado pelo Solution Architect (fora do levantamento do Business Analyst)
+
+**Não existe nenhuma regra de negócio ou dado no schema que defina os
+limites de data concretos de um bimestre/trimestre/semestre** — precisa
+virar uma decisão própria (calendário acadêmico dedicado vs. divisão
+simples das datas de `class_group`) antes do Database Agent poder desenhar
+a tabela real. Encaminhado ao Tech Decision Agent, junto com o intervalo
+de polling de `GET /v1/me/warnings` e o mecanismo exato de "marcar aviso
+como visto".
+
+> **CHECKPOINT (2026-09-03) — planejamento da Frente 06 pausado aqui por
+> limite de orçamento da sessão.** Business Analyst e Solution Architect
+> concluídos (seções acima). **Falta rodar o Tech Decision Agent** — as
+> três perguntas técnicas que ele precisa responder já estão formuladas
+> acima ("Gap técnico novo identificado..."):
+> 1. Como calcular os limites de data de um período de apuração
+>    (bimestre/trimestre/semestre) — divisão matemática simples de
+>    `class_group.termStartDate`/`termEndDate` vs. tabela dedicada de
+>    calendário acadêmico.
+> 2. Intervalo de polling de `GET /v1/me/warnings` (avaliar se os 5s do
+>    precedente de Área de Provas fazem sentido para um aviso de ritmo
+>    lento, ou se um intervalo maior é mais apropriado).
+> 3. Biblioteca de datas a reaproveitar (checar `backend/package.json`
+>    antes de propor uma nova).
+> Depois do Tech Decision: Database → Backend → Frontend → Testing → QA
+> (Prática), ainda não iniciados. Próxima sessão: retomar acionando o
+> agente Tech Decision com este contexto.
