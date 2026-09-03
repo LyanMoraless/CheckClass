@@ -8,13 +8,12 @@ export enum Permission {
   VIEW_ATTENDANCE_REGISTER = 'view_attendance_register',
   MANAGE_INSTITUTION_STRUCTURE = 'manage_institution_structure',
 
-  // RULE-ACC-07's six camera-permission codes, confirmed 2026-08-23 — six
-  // independent codes, no dependency between them (e.g. FOLLOW_CAMERA_EVENTS
+  // RULE-ACC-07's five camera-permission codes, confirmed 2026-08-23 — five
+  // independent codes, no dependency between them (e.g. ACCESS_CAMERA_RECORDINGS
   // does NOT require VIEW_CAMERA to also be granted).
   VIEW_CAMERA = 'view_camera',
   VIEW_SECTOR_CAMERAS = 'view_sector_cameras',
   FULLSCREEN_CAMERA = 'fullscreen_camera',
-  FOLLOW_CAMERA_EVENTS = 'follow_camera_events',
   ACCESS_CAMERA_RECORDINGS = 'access_camera_recordings',
   ADMINISTER_CAMERA_DEVICES = 'administer_camera_devices',
 

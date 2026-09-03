@@ -16,9 +16,9 @@ import { PermissionGroupService } from './permission-group.service';
 const BCRYPT_SALT_ROUNDS = 10;
 
 // RULE-INST-01: only "faculdade" has a leadership hierarchy defined this
-// round (actors.md, "Hierarquia de liderança — Faculdade") — escola/empresa
-// stay without one, so no leadership_role/leadership_assignment seeding
-// happens for them.
+// round (actors.md, "Hierarquia de liderança — Faculdade") — escola
+// stays without one, so no leadership_role/leadership_assignment seeding
+// happens for it.
 const FACULDADE_INSTITUTION_TYPE = 'faculdade';
 
 // Names/ranks per actors.md's confirmed chain: Aluno (not a leadership_role
@@ -39,12 +39,12 @@ const FACULDADE_LEADERSHIP_ROLES: ReadonlyArray<{ name: string; rank: number }> 
 
 const TOP_LEADERSHIP_ROLE_NAME = 'Direção/Reitoria';
 
-// RULE-INST-01: fixed 3-value institution-type enum. Shared with
+// RULE-INST-01: fixed 2-value institution-type enum. Shared with
 // CreateInstitutionOnboardingDto's @IsIn (institution-onboarding module) so
 // the public onboarding DTO and this service never drift out of sync on the
 // valid-values list — same precedent as ENROLLMENT_STATUSES in
 // class-group.service.ts.
-export const INSTITUTION_TYPES = ['faculdade', 'escola', 'empresa'] as const;
+export const INSTITUTION_TYPES = ['faculdade', 'escola'] as const;
 
 export interface CreateTenantInput {
   institutionName: string;

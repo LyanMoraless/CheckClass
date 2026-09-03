@@ -1,9 +1,9 @@
 import { api } from '../../lib/api-client';
 
-// RULE-INST-01: fixed three-value enum — only "faculdade" has detailed
-// institution-management behavior this round, but all three are valid
+// RULE-INST-01: fixed two-value enum — only "faculdade" has detailed
+// institution-management behavior this round, but both are valid
 // choices on the onboarding form itself.
-export type InstitutionType = 'faculdade' | 'escola' | 'empresa';
+export type InstitutionType = 'faculdade' | 'escola';
 
 export interface OnboardingStatus {
   configured: boolean;

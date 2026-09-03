@@ -26,7 +26,7 @@ const VIEW_PERMISSIONS = ['view_camera', 'view_sector_cameras'] as const;
 export function CamerasPage() {
   const { hasPermission } = useAuth();
   // Backend gates GET /v1/cameras with @RequirePermission(VIEW_CAMERA,
-  // VIEW_SECTOR_CAMERAS) — OR semantics (RULE-ACC-07's six codes are
+  // VIEW_SECTOR_CAMERAS) — OR semantics (RULE-ACC-07's five codes are
   // independent, so either is enough to see the inventory).
   const canView = VIEW_PERMISSIONS.some((permission) => hasPermission(permission));
   const canManage = hasPermission('administer_camera_devices');

@@ -20,7 +20,7 @@ export class CreateInstitutionOnboardingDto {
   @MaxLength(18)
   cnpj: string;
 
-  // RULE-INST-01: fixed 3-value enum (faculdade/escola/empresa), same list
+  // RULE-INST-01: fixed 2-value enum (faculdade/escola), same list
   // TenantBootstrapService seeds leadership roles against for "faculdade" —
   // imported from there so the two never drift out of sync.
   @IsIn(INSTITUTION_TYPES)

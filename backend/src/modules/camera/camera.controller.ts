@@ -7,7 +7,7 @@ import { RequirePermission } from '../auth/require-permission.decorator';
 import { CameraService } from './camera.service';
 import { CreateCameraDto } from './dto/create-camera.dto';
 
-// RULE-ACC-07's six camera-permission codes are independent — list() and
+// RULE-ACC-07's five camera-permission codes are independent — list() and
 // create() are gated differently, so each route sets its own
 // @RequirePermission rather than relying on a single class-level default
 // (same per-route override pattern PermissionCheckInterceptor documents).

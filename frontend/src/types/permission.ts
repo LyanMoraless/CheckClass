@@ -9,7 +9,6 @@ export type Permission =
   | 'view_camera'
   | 'view_sector_cameras'
   | 'fullscreen_camera'
-  | 'follow_camera_events'
   | 'access_camera_recordings'
   | 'administer_camera_devices'
   | 'manage_security_incidents';
@@ -22,7 +21,6 @@ export const PERMISSIONS: Permission[] = [
   'view_camera',
   'view_sector_cameras',
   'fullscreen_camera',
-  'follow_camera_events',
   'access_camera_recordings',
   'administer_camera_devices',
   'manage_security_incidents',
@@ -36,7 +34,6 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   view_camera: 'Ver câmera',
   view_sector_cameras: 'Ver câmeras do setor',
   fullscreen_camera: 'Câmera em tela cheia',
-  follow_camera_events: 'Acompanhar eventos de câmera',
   access_camera_recordings: 'Acessar gravações de câmera',
   administer_camera_devices: 'Administrar dispositivos de câmera',
   manage_security_incidents: 'Gerenciar incidentes de segurança',

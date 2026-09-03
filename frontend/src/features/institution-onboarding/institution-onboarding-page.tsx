@@ -190,7 +190,6 @@ export function InstitutionOnboardingPage() {
             <select value={institutionType} onChange={(event) => setInstitutionType(event.target.value as InstitutionType)} required>
               <option value="faculdade">Faculdade</option>
               <option value="escola">Escola</option>
-              <option value="empresa">Empresa</option>
             </select>
           </label>
         </fieldset>
