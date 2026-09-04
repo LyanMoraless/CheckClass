@@ -13,6 +13,7 @@ import {
   SessionAttendanceConsolidationEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
+import { AttendanceWarningService } from '../attendance-frequency/attendance-warning.service';
 
 // RULE-INST-13: cascading a Turma deletion (whether requested directly, or
 // reached via a Curso/Matéria cascade under RULE-INST-08) is blocked if the
@@ -37,7 +38,10 @@ import { TenantContextService } from '../../database/tenant-context.service';
 // its own LeadershipScopeService check before invoking anything here.
 @Injectable()
 export class ClassGroupDeletionOrchestrator {
-  constructor(private readonly tenantContext: TenantContextService) {}
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly warningService: AttendanceWarningService,
+  ) {}
 
   // Throws ConflictException, deletes nothing, if this one class_group has
   // recorded attendance activity.
@@ -88,6 +92,15 @@ export class ClassGroupDeletionOrchestrator {
     await manager.getRepository(ClassGroupScheduleSlotEntity).delete({ classGroupId });
     await manager.getRepository(ClassGroupSubjectEntity).delete({ classGroupId });
     await manager.getRepository(ClassGroupEnrollmentEntity).delete({ classGroupId });
+    // Controle B's warnings (Frente 06) are turma-scoped like the three
+    // deletes above, and this one is NOT optional or defensive:
+    // attendance_frequency_warning.class_group_id is a real FK to class_group,
+    // so leaving a single row behind — active OR already resolved — makes the
+    // final delete below fail on the constraint. Physical delete, matching
+    // the FK note in the AddAttendanceFrequencyWarning migration: the turma
+    // ceased to exist, so there is nothing left for a warning to be a fact
+    // about.
+    await this.warningService.deleteWarningsForClassGroup(manager, classGroupId);
     await manager.getRepository(ClassGroupEntity).delete({ id: classGroupId });
   }
 
@@ -122,6 +135,23 @@ export class ClassGroupDeletionOrchestrator {
     }
     await manager.getRepository(ClassGroupScheduleSlotEntity).delete({ classGroupId, subjectId });
     await manager.getRepository(ClassGroupSubjectEntity).delete({ classGroupId, subjectId });
+
+    // RULE-FREQ-04 addendum c: removing a matéria from a turma ENDS the
+    // warnings of that matéria as `resolved` — a different outcome from "the
+    // frequency went back up", which deletes the row and leaves no history.
+    //
+    // CONSCIOUSLY DEAD CODE TODAY — do not delete it as unreachable. Every
+    // path into here goes through assertSubjectRemovable, and RULE-INST-13
+    // blocks the removal the moment the matéria's sessions carry any
+    // attendance activity; without attendance activity there is no
+    // consolidation row, hence no calculable frequency, hence no warning to
+    // close. So this statement can only ever match zero rows as the code
+    // stands. It is written anyway, by explicit decision (architecture
+    // addendum, second round, answer 3): it costs one statement, and it is
+    // the correct behavior the day RULE-INST-13's protection is relaxed or a
+    // second removal path appears. Keeping the business rule implemented is
+    // cheaper than rediscovering it later.
+    await this.warningService.closeWarningsForClassGroupSubject(manager, classGroupId, subjectId);
   }
 
   private async findSessionIds(

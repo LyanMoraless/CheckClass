@@ -14,6 +14,7 @@ import {
   createMockTenantContext,
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
+import { AccumulatedFrequencyPeriod } from '../config/accumulated-frequency-period.enum';
 import { ResolvedAttendanceConfig, TenantConfigService } from '../config/tenant-config.service';
 import { ClassSessionService, CreateClassSessionInput, EditClassSessionInput } from './class-session.service';
 
@@ -32,6 +33,12 @@ describe('ClassSessionService', () => {
   const resolvedConfig: ResolvedAttendanceConfig = {
     configId: 'config-1',
     minAttendancePercentage: 75,
+    // Controle B's two fields (Frente 06) ride along on the resolved config
+    // but are never snapshotted onto class_session — this suite is about the
+    // Controle A snapshot of RULE-ATT-04/05, so they are only here to make
+    // the fixture a complete ResolvedAttendanceConfig.
+    minAccumulatedFrequencyPercentage: 75,
+    accumulatedFrequencyPeriod: AccumulatedFrequencyPeriod.BIMESTER,
     toleranceMinutes: 10,
     postToleranceBehavior: 'block_checkin',
     requiredFactorTypeIds: [],

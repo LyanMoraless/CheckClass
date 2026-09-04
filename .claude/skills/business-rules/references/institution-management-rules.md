@@ -161,9 +161,20 @@ hoje feita via script (`backend/src/scripts/session-create.ts`).
 faculdade.
 **Exceptions:** Não confirmado: comportamento para feriados/exceções
 pontuais de calendário; edição/cancelamento de uma sessão individual já
-gerada automaticamente; formato exato do período letivo (datas de
-início/fim). Tratar como gap.
-**Source of confirmation:** Usuário, 2026-08-31 (decisão #7).
+gerada automaticamente; ~~formato exato do período letivo (datas de
+início/fim). Tratar como gap.~~
+**Corrigido (2026-09-03):** o trecho riscado está **superado** — o formato
+do período letivo foi fechado na "Atualização (2026-09-01 — arquitetura,
+decisão delegada)", item 1, mais abaixo nesta mesma regra: as datas de
+início/fim vivem na própria Turma (`class_group.term_start_date` /
+`class_group.term_end_date`), sem entidade "Período Letivo" separada.
+**Não tratar mais como gap.** Os outros dois pontos desta lista de
+Exceptions foram igualmente endereçados pelas atualizações de 2026-08-31 e
+2026-09-01 abaixo. Correção feita porque RULE-FREQ-08 (item 3,
+`business-rules/references/attendance-frequency-rules.md`) passou a
+depender diretamente de `term_end_date` como dado confirmado.
+**Source of confirmation:** Usuário, 2026-08-31 (decisão #7); correção
+documental a partir da própria atualização de 2026-09-01 desta regra.
 
 > **Atualização (2026-08-31 — segunda rodada):** a geração automática de
 > cronograma **já nasce com suporte a exceções pontuais**, não uma versão
@@ -172,9 +183,12 @@ início/fim). Tratar como gap.
 > Definition Agent. Nesta primeira versão, a funcionalidade deve permitir:
 > (a) marcar um feriado/data sem gerar sessão de aula naquele dia, e (b)
 > cancelar ou editar uma sessão pontual já gerada pela grade recorrente,
-> sem afetar as demais sessões da mesma turma. O formato exato do período
+> sem afetar as demais sessões da mesma turma. ~~O formato exato do período
 > letivo (datas de início/fim) continua não confirmado — ver gap em
-> `project-knowledge/references/pending-decisions.md`.
+> `project-knowledge/references/pending-decisions.md`.~~
+> **Corrigido (2026-09-03):** frase riscada superada — o formato do período
+> letivo foi fechado na atualização de 2026-09-01 logo abaixo (datas na
+> própria `class_group`). Não é mais gap.
 > **Source of confirmation:** Usuário, 2026-08-31 (segunda rodada de
 > fechamento de gaps, item #9).
 

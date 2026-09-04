@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { TenantContextService } from '../database/tenant-context.service';
+import { AccumulatedFrequencyPeriod } from '../modules/config/accumulated-frequency-period.enum';
 import { ConfigScopeType } from '../modules/config/config-scope-type.enum';
 import { PostToleranceBehavior } from '../modules/config/post-tolerance-behavior.enum';
 import { TenantConfigService } from '../modules/config/tenant-config.service';
@@ -10,10 +11,25 @@ import { TenantConfigService } from '../modules/config/tenant-config.service';
 // validation), not a substitute for the institutional-management admin UI
 // (priority 2, not built yet — no human-user auth exists in this backend).
 async function main() {
-  const [tenantId, scopeType, scopeIdArg, minPct, toleranceMin, postBehavior, factorCodesCsv] = process.argv.slice(2);
-  if (!tenantId || !scopeType || !minPct || !toleranceMin || !postBehavior) {
+  // The two Controle B arguments (minAccumulatedPct, accumulatedPeriod) sit
+  // right after the Controle A minimum they must never be confused with, and
+  // are required for the same reason the DTO requires them: their columns are
+  // NOT NULL with no default, so this script could not create a config row
+  // without them.
+  const [
+    tenantId,
+    scopeType,
+    scopeIdArg,
+    minPct,
+    minAccumulatedPct,
+    accumulatedPeriod,
+    toleranceMin,
+    postBehavior,
+    factorCodesCsv,
+  ] = process.argv.slice(2);
+  if (!tenantId || !scopeType || !minPct || !minAccumulatedPct || !accumulatedPeriod || !toleranceMin || !postBehavior) {
     console.error(
-      'Usage: npm run config:set -- <tenantId> <institution|course|class_group> <scopeId|-> <minPct> <toleranceMin> <block_checkin|deny_presence|register_only> [factorCodesCsv]',
+      'Usage: npm run config:set -- <tenantId> <institution|course|class_group> <scopeId|-> <minPct> <minAccumulatedPct> <bimester|trimester|semester> <toleranceMin> <block_checkin|deny_presence|register_only> [factorCodesCsv]',
     );
     process.exitCode = 1;
     return;
@@ -28,6 +44,8 @@ async function main() {
       scopeType: scopeType as ConfigScopeType,
       scopeId: scopeIdArg === '-' ? null : scopeIdArg,
       minAttendancePercentage: Number(minPct),
+      minAccumulatedFrequencyPercentage: Number(minAccumulatedPct),
+      accumulatedFrequencyPeriod: accumulatedPeriod as AccumulatedFrequencyPeriod,
       toleranceMinutes: Number(toleranceMin),
       postToleranceBehavior: postBehavior as PostToleranceBehavior,
     });

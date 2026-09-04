@@ -1972,15 +1972,21 @@ Registra a resolução de um gap arquitetural não coberto pela decisão anterio
   uma segue exigindo proposta do Tech Decision Agent com aprovação
   explícita do usuário antes de ser tratada como decidida.
 
-## Decisão de arquitetura — Frequência acumulada e aviso de limite, Frente 06 (proposta em 2026-09-03)
+## Decisão de arquitetura — Frequência acumulada e aviso de limite, Frente 06 (IMPLEMENTADA E FECHADA — 2026-09-04)
 
+> ~~**APROVADA pelo usuário em 2026-09-03** ("siga para o desenvolvimento").
 > **Proposta do Solution Architect, aguardando aprovação do usuário** —
 > mesma praxe do projeto, nenhuma decisão de arquitetura é automaticamente
-> aprovada. Escopo: RULE-FREQ-01 a 04
+> aprovada.~~ **IMPLEMENTADA E FECHADA em 2026-09-04** — decisão aprovada
+> em 2026-09-03, implementação completa (Database, Backend, Frontend,
+> Testing) finalizada nesta data. Escopo: RULE-FREQ-01 a 04
 > (`business-rules/references/attendance-frequency-rules.md`), a partir da
 > Análise de Requisitos do Business Analyst registrada no final do mesmo
 > arquivo (seção "Análise de Requisitos — Business Analyst
-> (2026-09-03)").
+> (2026-09-03)"). Verificação: fatiamento de datas do termo
+> (`addUtcMonths()` em `utc-date.util.ts`), polling de 60000ms
+> (`student-warnings-page.tsx`), nenhuma biblioteca de datas (apenas
+> `Date.UTC` nativo). ✓
 
 ### Contexto
 
@@ -2181,20 +2187,773 @@ a tabela real. Encaminhado ao Tech Decision Agent, junto com o intervalo
 de polling de `GET /v1/me/warnings` e o mecanismo exato de "marcar aviso
 como visto".
 
-> **CHECKPOINT (2026-09-03) — planejamento da Frente 06 pausado aqui por
-> limite de orçamento da sessão.** Business Analyst e Solution Architect
-> concluídos (seções acima). **Falta rodar o Tech Decision Agent** — as
-> três perguntas técnicas que ele precisa responder já estão formuladas
-> acima ("Gap técnico novo identificado..."):
-> 1. Como calcular os limites de data de um período de apuração
->    (bimestre/trimestre/semestre) — divisão matemática simples de
->    `class_group.termStartDate`/`termEndDate` vs. tabela dedicada de
->    calendário acadêmico.
-> 2. Intervalo de polling de `GET /v1/me/warnings` (avaliar se os 5s do
->    precedente de Área de Provas fazem sentido para um aviso de ritmo
->    lento, ou se um intervalo maior é mais apropriado).
-> 3. Biblioteca de datas a reaproveitar (checar `backend/package.json`
->    antes de propor uma nova).
-> Depois do Tech Decision: Database → Backend → Frontend → Testing → QA
-> (Prática), ainda não iniciados. Próxima sessão: retomar acionando o
-> agente Tech Decision com este contexto.
+## Decisão de tecnologia — Frequência acumulada e aviso de limite, Frente 06 (IMPLEMENTADA E FECHADA — 2026-09-04)
+
+> ~~**APROVADA pelo usuário em 2026-09-03** ("siga para o desenvolvimento") —
+> as 3 decisões abaixo (fatiamento das datas do termo, polling de 60000ms,
+> nenhuma biblioteca de datas nova) estão em vigor.
+> **Proposta do Tech Decision Agent, aguardando aprovação do usuário**~~ —
+> **IMPLEMENTADA E FECHADA em 2026-09-04** — as 3 decisões abaixo estão
+> aprovadas desde 2026-09-03 e implementadas nesta data. Mesma praxe do
+> projeto, nenhuma decisão de tecnologia é automaticamente aprovada. Responde
+> às 3 perguntas deixadas em aberto pelo Solution Architect na seção acima
+> ("Gap técnico novo identificado pelo Solution Architect"). Verificação
+> direta no código feita antes de decidir (não presumida): `class-group.entity.ts`
+> (`termStartDate`/`termEndDate`, `date` nullable, únicos campos de período
+> existentes — comentário no próprio arquivo já registra a decisão de não
+> criar entidade "Período Letivo" separada), `common/utc-date.util.ts`
+> (convenção já estabelecida: `Date`/`Date.UTC` nativo, sem timezone de
+> instituição, gap já sinalizado no próprio arquivo), `backend/package.json`/
+> `frontend/package.json` (nenhuma biblioteca de datas em uso em nenhum dos
+> dois), e os dois precedentes reais de polling via `refetchInterval` no
+> frontend: `exam-panel-page.tsx` (`POLL_INTERVAL_MS = 5000`, professor
+> acompanhando uma prova aberta) e `security-incident-detail-page.tsx`
+> (`OPEN_INCIDENT_POLL_INTERVAL_MS = 4000`, condicional a
+> `status === 'open'`).
+
+1. **Cálculo dos limites de data do período de apuração:** divisão
+   matemática de `class_group.termStartDate`/`termEndDate` em fatias de
+   igual duração em meses de calendário (bimestral = 2 meses, trimestral =
+   3, semestral = 6), a partir de `termStartDate`, com a última fatia
+   absorvendo o resto quando a duração total não é múltiplo exato; se o
+   período configurado for maior que a duração total do termo, todo o
+   termo vira uma única fatia (mesma postura defensiva do placeholder de
+   "denominador zero" já registrado acima). Implementado como função pura
+   nova ao lado de `AttendanceFrequencyConfigResolutionService`, **sem**
+   tabela nova. **Rejeitado:** tabela dedicada de calendário acadêmico
+   (`academic_period` com resolução de escopo própria) — reverteria a
+   decisão já tomada de não criar "Período Letivo" separado, para resolver
+   um problema (bimestres com datas irregulares alinhadas a
+   feriados/provas) que nenhuma regra de negócio hoje exige; RULE-FREQ-02
+   fala apenas em categorias (bimestral/trimestral/semestral), não em
+   datas específicas por instituição. Mesmo critério já usado para
+   rejeitar broker/MQTT no núcleo: sem evidência concreta de necessidade,
+   não se paga o custo da opção mais complexa. **Risco sinalizado, não
+   bloqueante:** se o usuário confirmar futuramente que bimestres
+   precisam de datas irregulares reais, migrar para calendário dedicado
+   nesse momento, com evidência real, não antes.
+
+2. **Intervalo de polling de `GET /v1/me/warnings`:** **60000ms (1
+   minuto)**, mesmo mecanismo já aprovado (TanStack Query
+   `refetchInterval`), sem condição de status (diferente de Segurança de
+   Intrusão, que para de pollar ao fechar o incidente — aqui não há
+   "estado fechado" análogo, a home fica potencialmente ativa o tempo
+   todo). **Rejeitado:** reaproveitar literalmente os 4-5s dos dois
+   precedentes existentes — ambos têm cardinalidade **baixa e delimitada**
+   (um professor por prova em andamento; um observador por incidente
+   aberto), enquanto `/v1/me/warnings` teria cardinalidade igual ao número
+   de alunos logados simultaneamente da instituição inteira — multiplicador
+   de carga estruturalmente diferente para um dado que muda em ritmo de
+   horas/dias (sessão de aula finalizada, justificativa aprovada), nunca de
+   segundos. **Também rejeitado:** sem polling (fetch só no
+   mount/navegação) — risco de o aluno já estar com a home aberta quando o
+   aviso é gerado e só ver a notificação de "primeiro acesso" numa sessão
+   de navegador futura, fragilizando RULE-FREQ-04 item 1. O valor de 60s é
+   estimativa inicial, ajustável sem mudança de mecanismo.
+
+3. **Biblioteca de datas:** **nenhuma biblioteca nova.** Estender
+   `backend/src/common/utc-date.util.ts` com as funções puras necessárias
+   (soma de N meses a uma data UTC, cálculo do índice de fatia dado início
+   do termo + duração da fatia em meses), no mesmo estilo das funções já
+   existentes ali (`extractUtcYmd`, `combineUtc`, `utcDayRange`).
+   **Rejeitadas:** date-fns e dayjs (resolvem um problema que `Date.UTC`
+   nativo já cobre neste projeto, sem necessidade demonstrada — 100% do
+   resto do backend já usa `Date`/`getTime()`/`Date.UTC` nativo, nenhum
+   módulo usa biblioteca de datas); luxon (candidato mais forte **se e
+   quando** o projeto adotar timezone real por instituição — gap já
+   sinalizado no próprio `utc-date.util.ts` — mas resolveria hoje um
+   problema que o projeto ainda não tem); moment.js (legado, API mutável,
+   descartada independentemente de necessidade).
+
+**Justificativa geral:** as três respostas seguem a mesma ordem de
+prioridade do projeto (simplicidade, confiabilidade, manutenibilidade
+antes de modernidade/ergonomia), maximizam reuso de convenções já
+estabelecidas (`utc-date.util.ts`, TanStack Query `refetchInterval`,
+ausência de entidade "Período Letivo" separada) e evitam abrir superfícies
+novas (tabela de calendário, dependência de datas, carga de polling
+desproporcional) sem evidência concreta de necessidade — mesmo critério já
+aplicado a decisões anteriores do projeto (broker de mensagens, MQTT,
+vinculação de dispositivo/token).
+
+**Fora desta decisão (não resolvido aqui):** ~~os 4 gaps de negócio e 8
+ambiguidades já listados na Análise de Requisitos do Business Analyst e nos
+placeholders da Decisão de arquitetura acima~~ — nenhum deles depende destas
+3 respostas técnicas para ser respondido futuramente pelo usuário.
+**Atualização (2026-09-03, mesma data):** os 12 pontos foram todos
+respondidos pelo usuário e viraram RULE-FREQ-05/06/07 mais addenda de
+RULE-FREQ-02/03/04; as consequências arquiteturais estão na seção
+"Addendum à Decisão de arquitetura … segunda rodada" abaixo. As 3
+respostas técnicas acima seguem válidas sem alteração (ver item F7 do
+addendum).
+
+## Addendum à Decisão de arquitetura — Frequência acumulada e aviso de limite, Frente 06, segunda rodada (IMPLEMENTADO E FECHADO — 2026-09-04)
+
+> ~~**APROVADO pelo usuário em 2026-09-03** ("siga para o desenvolvimento").
+> **Proposta do Solution Architect, aguardando aprovação do usuário.**~~ —
+> **IMPLEMENTADO E FECHADO em 2026-09-04** — addendum aprovado em
+> 2026-09-03, implementação completa (Database, Backend, Frontend, Testing)
+> finalizada nesta data.
+> **Não substitui** a "Decisão de arquitetura — Frequência acumulada e
+> aviso de limite, Frente 06" acima: o desenho base (bounded context
+> `attendance-frequency`, primitiva única `recalculateForSessionPerson`,
+> gatilho síncrono in-process, superfície só em `/v1/me/*`, polling)
+> continua válido e não é reescrito. Este addendum fecha os 11
+> placeholders daquela seção agora que os 4 gaps e as 8 ambiguidades
+> viraram RULE-FREQ-05/06/07 e os addenda de RULE-FREQ-02/03/04, e resolve
+> o único item que o usuário delegou explicitamente ao Solution Architect
+> (estrutura do segundo tipo de aviso, RULE-FREQ-07). Verificação direta no
+> código antes de propor (não presumida): `tenant-context.service.ts`,
+> `pending-review.service.ts`, `tenant-config.service.ts`,
+> `class-session.entity.ts`, `class-group.entity.ts`,
+> `class-group-enrollment.entity.ts`,
+> `session-attendance-consolidation.entity.ts`,
+> `class-group-deletion-orchestrator.service.ts`, `session-evaluate.ts`, a
+> migration `1755849000000-AddIntrusionIncident.ts` (precedente de índice
+> único parcial + CHECK) e `configurable-parameters.md`.
+
+### Contexto
+
+Três consequências estruturais reais aparecem: (1) o segundo tipo de aviso
+precisa de modelo de dados concreto; (2) a mudança de configuração no meio
+do período (addendum de RULE-FREQ-02) ataca diretamente a premissa
+"recompute orientado a query, sem job de lote"; (3) a regra de matrícula
+tardia (RULE-FREQ-05.4) invalida o formato de query assumido no
+placeholder correspondente. O resto é confirmação de placeholders.
+
+### A) Estrutura do segundo tipo de aviso (RULE-FREQ-07)
+
+**Proposta: uma única tabela `attendance_frequency_warning` com coluna
+discriminadora `warning_type`.** Valores concretos (nomenclatura em inglês,
+como todo o schema — `present|absent|pending`, `block_checkin`,
+`active|on_leave|graduated|withdrawn`; o texto em português é copy do
+frontend, não dado):
+
+- `approaching_minimum` — frequência arredondada dentro de `[min, min+10]`
+  (RULE-FREQ-03).
+- `below_minimum` — frequência arredondada `< min` (RULE-FREQ-07).
+
+Esboço da tabela (sintaxe final é do Database Agent; o que é decisão de
+arquitetura é a forma):
+
+```
+attendance_frequency_warning
+  id, tenant_id
+  person_id, class_group_id, subject_id
+  warning_type           varchar(30)  -- approaching_minimum | below_minimum
+  warning_type_since     timestamptz
+  frequency_percentage   smallint     -- valor ARREDONDADO (ver C1)
+  present_count          int
+  considered_count       int
+  min_percentage_applied numeric(5,2)
+  period_start_date      date
+  period_end_date        date
+  status                 varchar(20)  -- active | resolved
+  resolved_at            timestamptz
+  resolution_reason      varchar(40)
+  seen_at                timestamptz
+  created_at, updated_at
+  CHECK (warning_type IN ('approaching_minimum','below_minimum'))
+  CHECK (status IN ('active','resolved'))
+  CHECK ((status='active'   AND resolved_at IS NULL     AND resolution_reason IS NULL)
+      OR (status='resolved' AND resolved_at IS NOT NULL AND resolution_reason IS NOT NULL))
+  UNIQUE INDEX (tenant_id, person_id, class_group_id, subject_id) WHERE status='active'
+  + RLS/FORCE RLS + policy tenant_isolation
+```
+
+O trio CHECK de status/resolução + índice único parcial + RLS copia
+literalmente o padrão de `intrusion_incident` (migration
+`1755849000000-AddIntrusionIncident.ts`, linhas 75-101) — não é invenção
+nova.
+
+**Chave da linha muda de (person_id, subject_id) para (person_id,
+class_group_id, subject_id)** — correção do desenho base, não capricho:
+(1) a janela do período **e** a configuração efetiva derivam da turma
+(`termStartDate`/`termEndDate`; `attendance_config` resolvido
+institution→course→class_group) — a mesma matéria em duas turmas teria duas
+janelas e potencialmente dois mínimos, e uma chave (pessoa, matéria)
+colapsaria duas realidades distintas em uma linha; (2) o encerramento do
+addendum (c) de RULE-FREQ-04 é literalmente um par (turma, matéria) — a
+linha de `class_group_subject` apagada —, então resolver o aviso vira um
+`UPDATE ... WHERE class_group_id=? AND subject_id=? AND status='active'`,
+sem join; (3) `class_group_enrollment` é por turma: "as matérias do aluno"
+só existem através de uma turma.
+
+**`warning_type` NÃO entra na chave de unicidade** — deliberado e é o ponto
+principal. RULE-FREQ-07 diz que o sistema "deixa de mostrar o aviso de
+proximidade e passa a mostrar" o outro: os dois tipos são **mutuamente
+exclusivos** por construção (as faixas `< min` e `[min, min+10]` são
+disjuntas). Incluir o tipo na chave permitiria dois avisos ativos
+simultâneos para a mesma matéria — exatamente o bug que a regra proíbe, e
+violação também de RULE-FREQ-04 item 4. Com a chave sem o tipo, o índice
+único parcial transforma a exclusividade em invariante de banco, não em
+disciplina de código.
+
+**Transição entre tipos: UPDATE na mesma linha**, não linha nova +
+resolução da antiga. O addendum (a) de RULE-FREQ-04 estabelece que um aviso
+que deixa de valer some "como se nunca tivesse sido emitido" — o negócio
+declarou explicitamente que **não quer histórico de avisos**; gerar linhas
+`resolved` a cada transição produziria justamente o histórico dispensado. E
+o addendum (c) reserva `resolved` para **um** significado específico
+(matéria removida): sobrecarregar o termo tornaria "quantos avisos foram
+resolvidos" uma métrica sem sentido. O UPDATE mexe em `warning_type`,
+`warning_type_since`, `frequency_percentage`/contagens e **`seen_at =
+NULL`**.
+
+**Efeito em `seen_at`: sim, o aviso já visto volta a "não visto" quando o
+tipo muda.** RULE-FREQ-07 diz que é conceitualmente **outro** aviso e
+RULE-FREQ-04 item 1 manda exibi-lo como notificação no primeiro acesso após
+ser gerado; se `seen_at` sobrevivesse à transição, o aluno **nunca seria
+notificado** de que cruzou para baixo do mínimo — perderia exatamente a
+informação mais grave que o sistema tem a dar. Regra simétrica (vale
+também `below_minimum → approaching_minimum`), por simplicidade e porque a
+melhora também é informação nova. **Ponto de julgamento sinalizado:** se o
+usuário achar que a direção de melhora não merece re-notificar, é uma linha
+de condição a mais — decisão dele. `seen_at` **não** é resetado por
+atualização de percentual sem mudança de tipo (repetir a notificação a cada
+aula seria ruído).
+
+**Alternativas rejeitadas:** duas tabelas (`..._approaching` /
+`..._below`) — duplica todo o ciclo de vida, obriga UNION na leitura e,
+decisivo, **nenhuma constraint de banco expressa "no máximo um aviso ativo
+por (pessoa, turma, matéria)" atravessando duas tabelas**, então a
+exclusividade de RULE-FREQ-07 viraria disciplina de aplicação; tipo ENUM
+nativo do PostgreSQL — o projeto usa `varchar` + CHECK em 100% dos casos
+análogos (`session_attendance_consolidation.status`, `class_session.status`,
+`intrusion_incident.status`, `enrollment_status`,
+`post_tolerance_behavior`), seria o primeiro ENUM do schema e `ALTER TYPE
+ADD VALUE` é operacionalmente pior; aviso genérico com `severity` numérico —
+perde o vocabulário discreto que a regra afirma existir; linha nova por
+transição (histórico) — rejeitada acima.
+
+### B) Fechamento dos 11 placeholders da primeira rodada
+
+1. **Distância do gatilho — o campo nullable MORRE.** Não existe coluna. A
+   constante mora como constante TypeScript exportada do próprio módulo
+   (ex.: `attendance-frequency/frequency-warning.constants.ts` →
+   `FREQUENCY_WARNING_MARGIN_POINTS = 10`). **Não** em variável de ambiente
+   (seria configuração por deploy disfarçada, contradizendo "valor único,
+   igual para todas as instituições") e **não** em `attendance_config`. A
+   linha persiste `min_percentage_applied` para que um aviso antigo continue
+   explicável se a constante mudar numa versão futura.
+   > **Conflito documental verificado, precisa de correção:**
+   > `business-rules/references/configurable-parameters.md`, linhas 28-35,
+   > ainda lista essa distância como parâmetro que "nunca [é] um valor
+   > absoluto fixo no código". A confirmação do usuário agora diz o
+   > contrário. Enquanto esse bullet não for atualizado, o Backend Agent tem
+   > dois documentos oficiais mandando fazer coisas opostas.
+2. **`status` do aviso — `resolved` passa a existir de fato, mas os dois
+   desfechos NÃO são o mesmo caminho de código.** Frequência volta a subir
+   (addendum a) → **DELETE físico da linha** (leitura literal de "como se
+   nunca tivesse sido emitido"). Matéria removida da turma (addendum c) →
+   `UPDATE status='resolved', resolved_at=now(),
+   resolution_reason='subject_removed_from_class_group'`. Vocabulário:
+   `active` e `resolved` apenas — não há `dismissed`, nenhuma regra dá ao
+   aluno o poder de dispensar um aviso. **Honestidade sobre o custo:** como
+   `GET /v1/me/warnings` devolve só os `active`, o aluno **não distingue**
+   os dois desfechos; a diferença é retenção interna. E o DELETE **perde
+   para sempre o fato de que aquele aluno já foi avisado** — se um dia a
+   instituição quiser "quantos alunos foram avisados neste semestre", o dado
+   não existirá. Consequência direta de decisão do usuário, registrada para
+   não ser descoberta depois como acidente de projeto.
+3. **Aviso a professor/coordenador — REJEITADO, e o desenho para de se
+   preparar:** nenhuma coluna de destinatário/audiência, nenhuma dependência
+   de `LeadershipScopeService` neste módulo, nenhum endpoint fora de
+   `/v1/me/*`. Manter a porta aberta custaria ~zero, mas **a rejeição compra
+   algo**: como o aluno é o **único observador possível**, a reconciliação
+   preguiçosa na leitura (ponto D) é *observacionalmente completa*. Se o
+   usuário reverter o gap 4, essa propriedade cai e o recompute na mudança
+   de configuração precisa virar ansioso — reverter **não** é "só um
+   endpoint aditivo".
+4. **Denominador zero — vira firme e é promovido a estado explícito.** A
+   primitiva não retorna `number | null`: retorna união discriminada, ex.
+   `{ calculable: false, reason: 'no_definitive_sessions' | 'no_period_window' }`
+   vs. `{ calculable: true, presentCount, consideredCount, percentage }` —
+   impede estruturalmente que algum chamador leia 0/0 como 0% e dispare
+   `below_minimum` (o pior falso positivo possível desta feature). O motivo
+   `no_period_window` é novo: `term_start_date`/`term_end_date` são
+   **nullable** e sem eles o fatiamento da decisão de tecnologia não tem
+   entrada. Propagação até `GET /v1/me/warnings`: **nenhuma** — matéria sem
+   frequência calculável simplesmente não produz entrada; o endpoint é lista
+   de avisos, não relatório de frequência.
+5. **Sessões `pending` no denominador — placeholder confirmado, vira
+   firme.** RULE-FREQ-05.1 ratifica o que estava assumido; o predicado
+   `status IN ('present','absent')` fica. Zero mudança.
+6. **Matéria removida no meio do período — vira firme e exige um call site
+   que o desenho base não tinha:**
+   `ClassGroupDeletionOrchestratorService.removeSubjectFromClassGroup(manager,
+   classGroupId, subjectId)` (linha 116) ganha um único `UPDATE` de
+   resolução — uma instrução, sem laço sobre o roster, e o método **já
+   recebe o `manager`**, então já está na transação da remoção.
+   > **Contradição verificada no código, precisa de resposta do usuário:**
+   > `ClassGroupService.removeSubject()` (linha 203) chama antes
+   > `assertSubjectRemovable()`, que **bloqueia** a remoção de matéria cujas
+   > sessões já tenham qualquer atividade de presença (RULE-INST-13). Um
+   > aviso só existe se houver consolidação — logo **hoje o estado "matéria
+   > removida com aviso ativo" é inalcançável** e o addendum (c) de
+   > RULE-FREQ-04 é letra morta. Recomendação: implementar o UPDATE assim
+   > mesmo (defensivo, custo ~zero, correto no dia em que RULE-INST-13 for
+   > relaxada), mas o usuário precisa saber que a regra que confirmou não
+   > dispara.
+
+   **Item novo, não era placeholder:** `deleteClassGroupUnchecked(manager,
+   classGroupId)` (linha 79) precisa apagar as linhas de
+   `attendance_frequency_warning` da turma — DELETE físico, não `resolved`,
+   porque a turma deixou de existir. Sem isso a FK **bloqueia a exclusão da
+   turma**: é bug de execução, não sujeira cosmética.
+7. **Matrícula tardia — o placeholder estava ERRADO em ponto que sustenta o
+   desenho.** Ver C3: não é "um predicado a mais na mesma query", muda a
+   tabela que dirige a query.
+8. **Mudança de configuração em período em andamento — ver D.** É o item
+   caro.
+9. **Arredondamento — o placeholder ("`numeric` sem arredondamento, mesmo
+   estilo do Controle A") cai.** Ver C1.
+10. **Aluno já abaixo do mínimo — vira firme, ver A.** O placeholder
+    original ("o shape não impede adicionar um `warning_type` aditivo
+    depois") se sustentou: o addendum concretiza o previsto sem redesenho; o
+    único ajuste é a chave de unicidade, que ganhou `class_group_id` por
+    motivo independente.
+11. **Finalização de turma — inalterado, continua placeholder** (ambiguidade
+    8, decisão consciente de escopo do usuário). **Mas a interação com os
+    itens agora fechados merece registro:** como o aviso persiste
+    indefinidamente e só é encerrado por "frequência subiu" ou "matéria
+    removida" (item 6: inalcançável), um aviso de um período letivo
+    encerrado há um ano fica na home do aluno para sempre. Somado a F2, é o
+    candidato mais provável a lixo visível em produção. Mitigação barata
+    disponível hoje (ocultar na leitura avisos cuja `term_end_date` já
+    passou) **é** decisão de comportamento — sinalizada, não assumida.
+
+### C) Impactos no motor de cálculo
+
+**C1. Arredondamento.** Arredonda **no serviço** (TypeScript), a partir das
+contagens inteiras: `Math.round((presentCount * 100) / consideredCount)` —
+não em coluna do banco, não via `numeric` do Postgres, não reaproveitando o
+estilo `numeric(5,2)` do Controle A. **O valor persistido é o ARREDONDADO**
+(`frequency_percentage smallint`), acompanhado das contagens brutas
+(`present_count`, `considered_count`): RULE-FREQ-05.3 diz que **as duas
+comparações** usam o arredondado — ele é o valor de decisão, e persistir
+também o bruto criaria duas verdades, permitindo a UI mostrar "69,6%"
+enquanto o sistema trata o aluno como 70%. Nada se perde (33/40 é exato e o
+bruto é rederivável), e as contagens dão à UI a mensagem boa ("33 de 40
+aulas"). **Divergência deliberada do Controle A**, por motivo semântico:
+`session_attendance_consolidation.attendance_percentage numeric(5,2)` guarda
+uma **medição**; `frequency_percentage` guarda um **insumo de decisão já
+normalizado** — registrar como comentário na entidade para que ninguém
+"corrija" depois por simetria. **Empate precisa ser documentado e testado:**
+`Math.round` arredonda `.5` para cima (69,5 → 70), o que favorece o aluno na
+fronteira do aviso e o desfavorece na fronteira do mínimo; RULE-FREQ-05.3
+diz "inteiro mais próximo" sem regra de empate — micro-gap com default
+recomendado (metade para cima, igual ao `ROUND` de `numeric` do Postgres,
+para que os dois nunca discordem), não assumido em silêncio. **Ordem das
+comparações, após arredondar:** `p < min` → `below_minimum`;
+`min <= p <= min+10` → `approaching_minimum`; `p > min+10` → nenhum aviso.
+Ambas as bordas inclusivas, conforme o critério de aceite (c) do Business
+Analyst; as duas faixas são exaustivas e disjuntas por construção — é isso
+que faz o índice único parcial de A funcionar.
+
+**C2. Denominador zero.** Coberto em B4: união discriminada na primitiva,
+duas razões, propagação até o endpoint = ausência de entrada. *Pergunta nova
+pequena (F/8):* aviso **ativo** quando o estado passa a não-calculável
+(virada de período, por exemplo) — recomendo **congelar** (não apagar, não
+resolver), porque apagar aplicaria a semântica "a frequência subiu" a um
+caso em que nada subiu.
+
+**C3. Matrícula tardia — correção do placeholder.** RULE-FREQ-05.4 **impede
+que a query seja dirigida por `session_attendance_consolidation`**: um aluno
+matriculado depois **não tem linha nenhuma** para as sessões anteriores à
+matrícula, então contar as linhas *daquela pessoa* faria essas sessões
+sumirem do denominador — o aluno **não seria cobrado** por elas, o oposto do
+que a regra determina. Forma correta: a query é dirigida por `class_session`
+(do par turma+matéria, dentro da janela do período), com LEFT JOIN em
+`session_attendance_consolidation` por `(class_session_id, person_id)` —
+**denominador** = sessões em que a linha da pessoa é `present`/`absent` **OU**
+a pessoa não tem linha **e a sessão já foi avaliada**; **numerador** =
+sessões em que a linha da pessoa é `present`; **fora** = sessões `pending`
+(RULE-FREQ-05.1) e sessões ainda não avaliadas.
+
+**Problema estrutural: "sessão já avaliada" não existe como dado.**
+Verificado: `class_session.status` só tem `scheduled | edited | cancelled` —
+não há `closed`/`evaluated`. **(a) recomendada:** `EXISTS` de qualquer linha
+de consolidação daquela sessão (para qualquer pessoa) → a sessão passou pelo
+Motor de Regras; é um fato, não um chute de relógio, e exclui naturalmente
+sessões canceladas e nunca avaliadas. **(b) rejeitada:** `scheduled_end <
+now()` → cobra o aluno por sessões que ninguém avaliou; não existe scheduler
+automático de "aula terminou" (o próprio `session-evaluate.ts` registra isso
+em comentário), então qualquer atraso de avaliação viraria falta indevida.
+**Correção estrutural recomendada, sinalizada e não assumida:** uma coluna
+`evaluated_at timestamptz` em `class_session`, gravada por
+`AttendanceRulesEngineService.evaluateSession()`, transformaria um EXISTS
+derivado em fato — é o **único** ponto em que este addendum quer tocar em
+território do Controle A, e é uma coluna, não a lógica do motor (o
+compromisso "diff zero em `attendance-rules-engine.service.ts`" deixaria de
+ser literal). Por isso é pergunta, não decisão.
+
+**Consequência adicional:** o gatilho por (sessão, pessoa) não cobre um
+aluno recém-matriculado — ele passa a dever faltas retroativas no instante
+da matrícula, mas nada recomputa para ele até a próxima sessão avaliada.
+Duas saídas: um quinto call site na criação da matrícula, ou deixar a
+reconciliação na leitura (D) cobrir. **Recomendo a segunda** — custo
+adicional zero, e é o tipo de defasagem que a reconciliação existe para
+absorver.
+
+*Gap pequeno novo:* `enrollment_status`
+(`active | on_leave | graduated | withdrawn`) não é considerado por nenhuma
+regra de frequência. Aluno trancado deve continuar acumulando faltas e
+recebendo aviso? Hoje o desenho não filtra por esse campo.
+
+### D) RULE-FREQ-02 addendum — mudança de configuração no meio do período
+
+**Resposta direta: não é de graça, e "recompute orientado a query" sozinho
+não salva.**
+
+- **Grátis:** todo recompute que ocorra **depois** da mudança já usa a
+  configuração nova, porque o Controle B resolve a configuração **ao vivo**
+  no momento do cálculo (nunca por snapshot). Sem versionamento, sem
+  migração de valores, sem redesenho.
+- **Não é grátis:** **nada dispara espontaneamente** um recompute para
+  alunos cujas sessões já estão todas consolidadas. Trocar
+  bimestral→trimestral move as fronteiras do período corrente, o que muda o
+  denominador, o que pode criar, apagar ou trocar o tipo de um aviso. Até a
+  próxima sessão daquela turma/matéria ser avaliada — dias, ou nunca, se o
+  termo já acabou — os avisos persistidos **contradizem a configuração em
+  vigor**. Como o addendum de RULE-FREQ-02 diz que a mudança aplica
+  imediatamente, essa defasagem é **violação de regra**, não atraso
+  cosmético.
+
+**Opção 1 — recompute em massa ansioso no `upsertConfig`, limitado ao escopo
+da configuração.** Escopo turma: aceitável de forma síncrona. Escopo curso:
+todas as turmas do curso. **Escopo instituição: literalmente todo aluno ×
+toda matéria do tenant** — job de lote vestido de requisição HTTP: **sim,
+contradiz** a decisão anterior de "sem job de lote", e de forma agravada,
+porque `TenantContextService.runWithTenant` envolve a requisição inteira em
+**uma transação**, o que seria O(alunos × matérias) segurando locks do começo
+ao fim, sem fila para absorver. Inaceitável no escopo instituição sem
+introduzir fila/job, que o projeto vem rejeitando por bons motivos.
+
+**Opção 2 — reconciliação preguiçosa na leitura, dentro de
+`GET /v1/me/warnings` (recomendada).** Antes de responder, o endpoint
+recalcula as matérias **do aluno que está pedindo** e reconcilia as linhas
+persistidas, **escrevendo apenas quando há delta**. Custo: 1 resolução de
+configuração + 1 query agregada por turma/matéria daquele aluno (na prática
+< 15 linhas de agregação), a cada 60s por aluno logado — ordem de um
+carregamento de página por minuto por aluno, indexado por `(tenant_id,
+person_id)`. Não é lote. **Por que é correta e não só barata:** o aviso é
+**exclusivo do aluno** (addendum b de RULE-FREQ-04), não existe outro
+observador; um valor que só é observável por um endpoint e é recomputado a
+**toda** leitura desse endpoint está, sob qualquer ponto de vista
+observável, sempre atualizado. "Imediatamente", no addendum de
+RULE-FREQ-02, significa "não espera o próximo período", e a primeira leitura
+após a mudança já reflete a configuração nova. A mesma reconciliação
+absorve, sem gatilho próprio, matrícula tardia (C3), virada de período (F2),
+alteração do mínimo, edição das datas do termo e qualquer fonte futura de
+defasagem.
+
+**Recomendação: manter os gatilhos de escrita do desenho base E acrescentar
+a reconciliação na leitura — os dois, não um ou outro.** Os gatilhos
+continuam sendo o caminho primário (mantêm o caso comum fresco e mantêm
+honesto o `created_at` que sustenta a notificação de primeiro acesso); a
+reconciliação é a rede de segurança que torna "sem job de lote"
+sustentável.
+
+**O que isso custa, dito sem maquiagem:** (1) `GET /v1/me/warnings` passa a
+ser um GET que calcula e pode escrever — **já era** um GET que escreve no
+desenho base (`seen_at` na leitura), é aprofundamento de um compromisso já
+aceito, mas é aprofundamento; (2) os 60000ms da decisão de tecnologia deixam
+de ser só um botão de UX e viram **parâmetro de carga** — não dá mais para
+baixar para os 4-5s dos precedentes sem revisitar este ponto; (3) o aluno
+que nunca entra nunca é recomputado — irrelevante enquanto ninguém mais
+puder ler o aviso, e problema real no dia em que o gap 4 for revertido (B3).
+
+**Opção 3 — rejeitada: snapshot do período de apuração na sessão**, ao
+estilo de `min_attendance_percentage_snapshot`. É o que o precedente
+existente (RULE-ATT-04/05 e o comentário em `tenant-config.service.ts`,
+linhas 42-44) sugeriria, e tornaria a mudança de configuração literalmente
+grátis. Rejeitada porque produz **o oposto da regra confirmada**: snapshot
+torna o passado imune à mudança, e o addendum manda recalcular o período
+corrente. Divergência deliberada do precedente, restrita ao Controle B — ver
+F3.
+
+### E) RULE-FREQ-06 — contrato da Frente 07 e o que "mesma transação" impõe
+
+**Confirmação: sim, o terceiro call site já registrado atende exatamente a
+regra formalizada.** Duas precisões: (1) **ordem dentro da transação** — o
+recompute roda **depois** do update que transforma a falta em presença em
+`session_attendance_consolidation`, senão lê o estado pré-aprovação (mesma
+ordem já exigida de `PendingReviewService.resolve()`, cuja chamada nova
+entra depois dos dois `update()`, linhas 124-133); (2) **a reavaliação do
+aviso já está dentro da primitiva** — a Frente 07 não chama mais nada: sem
+segundo método, sem evento, sem etapa de "notificar", o que fecha "pode
+surgir, sumir ou mudar de tipo" sem contrato adicional.
+
+**"Mesma transação" — verificado no código: não impõe nada de novo.**
+`TenantContextService.runWithTenant()` (`tenant-context.service.ts`, linha
+23) já envolve a **requisição inteira** num único `dataSource.transaction()`
+e guarda esse `EntityManager` no AsyncLocalStorage; todo serviço o obtém via
+`this.tenantContext.getManager()`. Qualquer serviço chamado na mesma
+requisição **já está na mesma transação, por construção** — é também o que
+faz o RLS funcionar (`SET LOCAL app.tenant_id` é escopado à transação). O
+script CLI (`session-evaluate.ts`, linha 22) também roda dentro de
+`runWithTenant`.
+
+- **`recalculateForSessionPerson(classSessionId, personId)` MANTÉM a
+  assinatura. Sem parâmetro de `EntityManager`.** Não é estética: aceitar um
+  manager externo permitiria a um chamador passar um manager que **não**
+  carrega `app.tenant_id`, furando o RLS silenciosamente — regressão de
+  segurança em troca de ganho ergonômico zero.
+- **Contra-precedente existe e não se aplica:**
+  `removeSubjectFromClassGroup(manager, ...)` e
+  `deleteClassGroupUnchecked(manager, ...)` recebem manager, mas são
+  primitivas internas "Unchecked" compartilhadas por vários caminhos de
+  orquestração — ali o parâmetro marca "você está dentro da unidade de
+  trabalho de outro", não escape do contexto de tenant. Se o Backend Agent
+  preferir simetria, a única forma aceitável é parâmetro **opcional** com
+  default `tenantContext.getManager()` — nunca obrigatório, nunca um manager
+  vindo direto do `DataSource`.
+- **Invariante documentada do módulo:** `AttendanceFrequencyEngineService`
+  **nunca** abre transação própria (`dataSource.transaction`) e nunca usa
+  manager que não seja o do contexto de tenant. Transação aninhada aqui ou
+  quebra RLS ou cria savepoint cuja semântica de rollback nenhum chamador
+  espera.
+- **Risco novo que "mesma transação" compra:** o recompute passa a fazer
+  parte da atomicidade do caminho crítico — falha no Controle B **desfaz a
+  aprovação da justificativa** (e, nos outros call sites, a resolução da
+  pendência). É o que a regra pede, mas significa que um bug numa feature
+  secundária e consultiva bloqueia uma operação acadêmica central.
+  Alternativa considerada e rejeitada: tornar só a escrita do aviso
+  não-fatal — a regra diz que o aviso é reavaliado na hora. **Aceito como
+  risco**, com exigência de cobertura de teste pesada nesse caminho; não é
+  pergunta em aberto.
+- **Nota para a Frente 07:** aprovação de RULE-JUST-03 afeta um par (sessão,
+  pessoa) → **uma** chamada por justificativa aprovada. Se vier a existir
+  aprovação em lote, são N chamadas na mesma transação — limitado, mas
+  registrado para que ninguém invente um caminho de recompute em lote
+  paralelo.
+
+### F) Riscos novos ou alterados, e consistência com a decisão de tecnologia
+
+**F1 — NOVO E SÉRIO: qual "mínimo" o Controle B compara?** RULE-FREQ-05.3 e
+RULE-FREQ-07 apontam para "o mínimo exigido (RULE-ATT-04)". Verificado no
+código: `attendance_config.min_attendance_percentage` significa hoje
+**percentual de permanência dentro de UMA aula**
+(`attendance-rules-engine.service.ts`, linha 160) — e a própria RULE-FREQ-01
+insiste que A e B são controles distintos. Reaproveitar a coluna faz um
+número servir a duas semânticas sem relação ("ficar 75% da aula para ser
+marcado presente" e "comparecer a 75% das aulas para não reprovar"). Em
+muitas instituições coincidem, mas nenhuma regra diz que precisam coincidir.
+Duas saídas, ambas do usuário: **(i)** confirmar o reúso da coluna única
+(custo zero, leitura literal das regras); **(ii)** criar
+`min_accumulated_frequency_percentage` em `attendance_config` (semântica
+correta, mais um campo na tela de configuração, e o "+10 p.p." passa a
+pendurar nele). **Perguntar antes de o Database Agent escrever a
+migration** — é uma pergunta de uma linha agora e uma migration com backfill
+depois.
+
+**F2 — NOVO: virada de período vs. ciclo de vida do aviso.** A frequência é
+por período de apuração (RULE-FREQ-02), mas a vida do aviso é indefinida
+(RULE-FREQ-04.3 + addendum). Dois relógios em conflito: quando começa o
+bimestre 2, o denominador zera, o aluno fica momentaneamente não-calculável
+(ou saudável) e o aviso do bimestre 1 ou **some** — parecendo o desfecho "a
+frequência subiu", o que é falso — ou **congela para sempre** exibindo um
+percentual de período encerrado. Nenhuma regra cobre isso. Recomendação não
+assumida: a linha já carrega `period_start_date`/`period_end_date`; na
+virada, encerrar a linha do período anterior com
+`resolution_reason='period_closed'` e começar o novo período limpo. Só ficou
+visível agora que as fronteiras do período são calculadas por fatiamento
+(decisão de tecnologia, item 1) em vez de serem conceito abstrato.
+
+**F3 — ALTERADO: divergência deliberada do precedente de snapshot.**
+RULE-ATT-04/05 + `class_session.min_attendance_percentage_snapshot` + o
+comentário em `tenant-config.service.ts` estabelecem "mudanças de
+configuração não recalculam sessões passadas". O addendum de RULE-FREQ-02
+exige o oposto para o Controle B. Não contradiz a regra (controles
+diferentes), mas **é** divergência de padrão estabelecido e precisa ficar
+registrada, ou um agente futuro lendo `tenant-config.service.ts` vai
+"consertar" o Controle B aplicando snapshot. Concretamente: **o Controle B
+nunca faz snapshot; sempre resolve ao vivo.** Se F1 for respondido como
+"reusa `min_attendance_percentage`", a mesma coluna passa a ser snapshotada
+para A e lida ao vivo para B — legítimo, mas tem que estar em comentário no
+código, não em folclore.
+
+**F4 — ALTERADO: `configurable-parameters.md` passou a contradizer decisão
+confirmada** (bullet da distância do gatilho, linhas 28-35). Ver B1.
+
+**F5 — NOVO: o addendum (c) de RULE-FREQ-04 é hoje inalcançável** por causa
+de `assertSubjectRemovable`/RULE-INST-13. Ver B6. Precisa de resposta de
+negócio.
+
+**F6 — ALTERADO (para melhor):** o risco "nada impede uma terceira via de
+finalizar consolidação sem chamar o recompute", sinalizado na decisão base,
+fica **mitigado** (não eliminado) pela reconciliação na leitura: um call
+site esquecido se autocorrige na próxima leitura do aluno, em vez de ficar
+errado para sempre. Paga parte do custo do ponto D.
+
+**F7 — Consistência com a decisão de tecnologia: nada precisa mudar.** Três
+precisões: **(a)** as entradas do fatiamento
+(`class_group.term_start_date`/`term_end_date`) são **nullable** — sem elas
+a função pura não tem entrada, resolver como "sem frequência calculável"
+(`no_period_window`, B4), sem inventar janela default; **(b)** os **60000ms
+ficam confirmados** e passam a ser carga, não só UX (ponto D) — a
+justificativa original para rejeitar os 4-5s dos precedentes sai
+**reforçada**, e baixar esse número exige revisitar D; **(c)** "última fatia
+absorve o resto" + "config muda no meio do período" implica que trocar
+bimestral→trimestral **re-fatia o termo inteiro**, movendo inclusive
+fronteiras de períodos já decorridos — consequência coerente da regra
+confirmada, mas o usuário deve saber que mexer na configuração no meio do
+termo **reembaralha o histórico**, não só o futuro.
+
+### ~~Perguntas abertas novas~~ RESPONDIDAS pelo usuário em 2026-09-03
+
+As 8 perguntas abertas por esta segunda rodada foram respondidas pelo
+usuário na mesma data, todas na opção recomendada pelo Solution Architect.
+Nenhuma alterou o desenho; quatro delas alteram a migration ou o
+comportamento observável, e por isso estavam listadas como bloqueantes de
+implementação. **Continuam bloqueantes apenas no sentido de que o desenho
+inteiro segue aguardando aprovação explícita.**
+
+1. **(F1) Campo novo dedicado.** O Controle B **não** reusa
+   `attendance_config.min_attendance_percentage` (que significa permanência
+   dentro de UMA aula): passa a existir
+   `min_accumulated_frequency_percentage` em `attendance_config`, com
+   semântica própria — comparecimento às aulas do período. Os dois podem
+   divergir na mesma instituição. `min_percentage_applied` na linha de aviso
+   passa a guardar o valor **desse** campo, e o gatilho de +10 p.p.
+   (RULE-FREQ-03) e a comparação de RULE-FREQ-07 penduram nele. **Efeito
+   colateral que precisa de correção documental:** RULE-FREQ-05.3 e
+   RULE-FREQ-07 apontam textualmente para "o mínimo exigido (RULE-ATT-04)" —
+   referência agora incorreta, encaminhada ao Product Definition Agent.
+   **Efeito colateral positivo em F3:** como as colunas passam a ser
+   distintas, some o cenário incômodo de "a mesma coluna é snapshotada para
+   A e lida ao vivo para B" — a divergência de precedente do Controle B
+   (nunca snapshot, sempre ao vivo) fica confinada a um campo que só o
+   Controle B usa.
+2. **(F2) Encerra como `period_closed`.** Na virada do período de apuração,
+   a linha do período anterior é encerrada com
+   `resolution_reason='period_closed'` e o novo período começa limpo. Como o
+   encerramento passa a ser `resolved` (e não DELETE), a assimetria
+   documentada em B2 ganha um terceiro caso: DELETE só para "a frequência
+   voltou a subir"; `resolved` para `subject_removed_from_class_group` e
+   agora `period_closed`.
+3. **(F5) Manter RULE-INST-13, código defensivo.** A proteção continua como
+   está e o addendum (c) de RULE-FREQ-04 fica registrado como **letra morta
+   consciente**: o `UPDATE` de resolução em `removeSubjectFromClassGroup` é
+   implementado mesmo assim (uma instrução, custo ~zero), correto no dia em
+   que a proteção for relaxada ou surgir outro caminho de remoção. O item
+   novo de B6 (`deleteClassGroupUnchecked` precisa apagar os avisos ou a FK
+   bloqueia a exclusão da turma) **não** é afetado por esta resposta e
+   continua sendo bug de execução a corrigir.
+4. **(C3) `EXISTS` derivado, sem coluna nova.** "Sessão já avaliada" continua
+   sendo deduzida da existência de qualquer linha de consolidação daquela
+   sessão. **O compromisso de diff zero no território do Controle A fica
+   mantido na íntegra** — `class_session` não ganha `evaluated_at` e
+   `attendance-rules-engine.service.ts` segue intocado. Custo aceito: um
+   `EXISTS` correlacionado a mais na query de cálculo, e a dedução continua
+   sendo dedução (se um dia existir sessão avaliada sem produzir nenhuma
+   linha de consolidação, ela cai fora do denominador).
+5. **(C1) Metade para cima, confirmado.** `Math.round` nativo, idêntico ao
+   `ROUND` de `numeric` do Postgres — serviço e banco nunca discordam, sem
+   código especial. Registrar em teste o caso de fronteira (69,5 → 70).
+6. **(B4/C2) Congela.** Aviso ativo cuja matéria passa a não ter frequência
+   calculável permanece como está, com o último percentual conhecido, até
+   haver dado novo — não é apagado (apagar aplicaria a semântica "a
+   frequência subiu" a um caso em que nada subiu) nem marcado como resolvido.
+   Nota de interação com o item 2: a virada de período agora tem desfecho
+   próprio (`period_closed`), então "congela" cobre só os casos genuinamente
+   sem dado — turma sem `term_start_date`/`term_end_date`, ou período
+   corrente ainda sem nenhuma sessão definitiva.
+7. **(C3) Só matrícula `active` gera aviso.** A frequência continua
+   calculável para `on_leave`/`graduated`/`withdrawn` (o dado não
+   desaparece), mas não se gera aviso novo para eles e os avisos ativos são
+   encerrados quando a matrícula deixa de ser `active`. Estruturalmente:
+   `enrollment_status` entra como predicado na etapa de decisão do
+   `AttendanceWarningService`, **não** na query de cálculo do motor — o
+   motor permanece agnóstico a status de matrícula.
+8. **(B11) Ocultar quando `term_end_date` já passou.** Filtro de **exibição**
+   em `GET /v1/me/warnings` (um predicado a mais na leitura, usando dado que
+   já existe), **não** exclusão do dado nem criação do conceito "turma
+   finalizada", que segue adiado. O placeholder 11 deixa de ser risco de
+   lixo em produção e vira comportamento definido.
+
+**Nenhuma das 8 respostas contradiz a decisão de tecnologia** (fatiamento de
+`termStartDate`/`termEndDate`, polling de 60000ms, nenhuma biblioteca de
+datas nova). A resposta 8 passa a consumir `term_end_date` também na
+leitura, o que reforça F7(a): turma sem essas datas continua resolvendo como
+`no_period_window`, sem janela default inventada.
+
+**Dois refinamentos confirmados pelo usuário na mesma data**, abertos pela
+formalização das respostas 7 e 8 em regra de negócio:
+
+- **Retorno de matrícula a `active` (resposta 7):** o aviso encerrado **não
+  revive**. Nenhum caminho de reativação de linha, nenhum estado a preservar
+  para reabertura — o recálculo normal gera um aviso novo se a frequência
+  atual justificar. Estruturalmente é a opção que não custa nada: o
+  encerramento continua sendo terminal, e o caso do aluno que volta é
+  literalmente o caso comum.
+- **Rótulo do encerramento por perda de matrícula ativa (detalhe técnico,
+  não gap de negócio):** o Product Definition Agent notou corretamente que a
+  resposta 7 confirma o encerramento sem nomear o motivo. Fica
+  `resolution_reason='enrollment_inactive'` — quarto e último valor do
+  vocabulário, ao lado de `subject_removed_from_class_group` e
+  `period_closed` (o caso "a frequência voltou a subir" não usa
+  `resolution_reason`: é DELETE físico). O comportamento observável pelo
+  aluno é idêntico em todos eles; o motivo existe só para diagnóstico
+  interno.
+- **Turma sem `term_end_date` (resposta 8):** o filtro de exibição esconde
+  apenas turma cuja data esteja **preenchida e vencida**; `NULL` não esconde.
+  Em SQL isso é o comportamento natural de `term_end_date < CURRENT_DATE`
+  (NULL não satisfaz o predicado), então é o default correto **por
+  acidente** — registrar em teste para que ninguém "conserte" com
+  `COALESCE`. Postura conservadora deliberada: cadastro incompleto nunca
+  deve suprimir alerta de risco de reprovação.
+
+### Nota de implementação (2026-09-03) — nome técnico do campo de período de apuração
+
+Lacuna encontrada pelo Database Agent ao escrever a migration: nem a
+decisão de arquitetura nem a de tecnologia registraram o **nome da coluna**
+e o **vocabulário fechado** do período de apuração de RULE-FREQ-02 — a
+regra fala em categorias em português (bimestral/trimestral/semestral) e
+delega explicitamente o nome técnico ("Nota de implementação" sob
+RULE-FREQ-02). Decidido aqui, por ser nomenclatura de implementação dentro
+de decisão já aprovada, não decisão de produto:
+
+- Coluna **`accumulated_frequency_period`** em `attendance_config`, ao lado
+  de `min_accumulated_frequency_percentage` — mesmo prefixo, deixando
+  explícito que os dois pertencem ao Controle B e não ao Controle A.
+- Vocabulário fechado **`bimester | trimester | semester`**, `varchar(20)`
+  + CHECK, seguindo o padrão usado em 100% dos casos análogos do schema
+  (`session_attendance_consolidation.status`, `class_session.status`,
+  `enrollment_status`, `post_tolerance_behavior`) — nunca ENUM nativo.
+  Mapeamento para o fatiamento da decisão de tecnologia: 2, 3 e 6 meses de
+  calendário, respectivamente.
+- Mesma nullability e mesma resolução de escopo
+  (institution→course→class_group, mais específico vence) de
+  `min_accumulated_frequency_percentage`.
+
+> **APROVAÇÃO (2026-09-03).** O usuário aprovou as três propostas de uma
+> vez ("siga para o desenvolvimento"): a decisão de arquitetura, este
+> addendum e as 3 decisões de tecnologia. O aviso de troca de fase
+> Planejamento → Prática foi emitido antes de qualquer código. A partir
+> daqui o desenho acima é **decisão em vigor**, não proposta, e a
+> implementação segue Database → Backend → Frontend → Testing → QA.
+>
+> **CHECKPOINT (2026-09-04) — Frente 06 IMPLEMENTADA E FECHADA.** Business
+> Analyst, Solution Architect (duas rodadas), Tech Decision concluídos e
+> aprovados em 2026-09-03. Implementação em todas as fases (Database,
+> Backend, Frontend, Testing, QA) concluída e verificada nesta data. Os 4
+> gaps de negócio e as 8 ambiguidades da primeira rodada viraram
+> RULE-FREQ-05/06/07 + addenda de RULE-FREQ-02/03/04; as 8 perguntas
+> técnicas da segunda rodada foram respondidas pelo usuário em 2026-09-03.
+> Correções documentais decorrentes das respostas foram aplicadas pelo
+> Product Definition Agent na mesma data, em quatro arquivos de
+> `business-rules/`: addendum de RULE-FREQ-01 (mínimo próprio do Controle B)
+> e RULE-FREQ-08 nova (ciclo de vida do aviso) em
+> `attendance-frequency-rules.md`; bullet superado dos 10 p.p. riscado e
+> parâmetro `min_accumulated_frequency_percentage` registrado em
+> `configurable-parameters.md`; texto superado de RULE-INST-04 riscado em
+> `institution-management-rules.md`; nota de referência cruzada sob
+> RULE-ATT-04 em `attendance-rules.md`. Verificação de implementação:
+> fatiamento de datas via `addUtcMonths()`, polling de 60000ms em
+> `student-warnings-page.tsx`, constante `FREQUENCY_WARNING_MARGIN_POINTS=10`
+> em `frequency-warning.constants.ts`, tabela `attendance_frequency_warning`
+> com dois tipos de aviso (`approaching_minimum`/`below_minimum`), suporte a
+> múltiplos encerramentos de aviso. ✓ Testes: 80 caso de teste backend
+> (`frequency-*.*.spec.ts`), 34 casos frontend (`student-warnings-page.spec.tsx`
+> e `warnings-list.spec.tsx`), todos passando.

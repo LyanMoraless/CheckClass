@@ -46,6 +46,38 @@ export function utcDayRange(date: Date): { start: Date; end: Date } {
   return { start: new Date(Date.UTC(year, month, day)), end: new Date(Date.UTC(year, month, day + 1)) };
 }
 
+// The UTC midnight instant of the calendar day `date` falls on — the
+// normalization step every caller of the two month/day helpers below needs
+// first, since a `date` column read back through TypeORM carries whatever
+// time component the driver gave it.
+export function utcMidnight(date: Date): Date {
+  const { year, month, day } = extractUtcYmd(date);
+  return new Date(Date.UTC(year, month, day));
+}
+
+export function addUtcDays(date: Date, days: number): Date {
+  const { year, month, day } = extractUtcYmd(date);
+  return new Date(Date.UTC(year, month, day + days));
+}
+
+// Calendar-month arithmetic for Controle B's reporting-period slicing
+// (RULE-FREQ-02: bimester/trimester/semester = 2/3/6 calendar months from
+// class_group.term_start_date). No date library is involved anywhere in this
+// project — the approved technology decision for Frente 06 explicitly
+// rejected adding one — so the one non-obvious case is handled here, once:
+//
+// The day-of-month is CLAMPED to the target month's length instead of being
+// left to Date.UTC's overflow. Date.UTC(2026, 1, 31) silently becomes 3 March,
+// so a term starting on the 31st would have every later slice boundary drift
+// into the following month, and two slices in a row could then claim the same
+// days. Clamping keeps each boundary inside the month it names (31 Jan + 1
+// month = 28 Feb), which is also what every date library does.
+export function addUtcMonths(date: Date, months: number): Date {
+  const { year, month, day } = extractUtcYmd(date);
+  const daysInTargetMonth = new Date(Date.UTC(year, month + months + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(year, month + months, Math.min(day, daysInTargetMonth)));
+}
+
 export function timeToSeconds(time: string): number {
   const [hours, minutes, seconds] = time.split(':').map((part) => Number(part));
   return hours * 3600 + minutes * 60 + (seconds || 0);

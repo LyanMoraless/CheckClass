@@ -7,6 +7,7 @@ import { DatabaseModule } from './database/database.module';
 import { AppCheckinModule } from './modules/app-checkin/app-checkin.module';
 import { AreaAuthorizationModule } from './modules/area-authorization/area-authorization.module';
 import { AreaModule } from './modules/area/area.module';
+import { AttendanceFrequencyModule } from './modules/attendance-frequency/attendance-frequency.module';
 import { AttendanceRegisterModule } from './modules/attendance-register/attendance-register.module';
 import { AttendanceRulesModule } from './modules/attendance-rules/attendance-rules.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -60,6 +61,9 @@ import { QueueModule } from './queue/queue.module';
     TenantConfigModule,
     ClassSessionModule,
     AttendanceRulesModule,
+    // Controle B (Frente 06) sits between Controle A and its consumers on
+    // purpose: PendingReviewModule below depends on it, never the reverse.
+    AttendanceFrequencyModule,
     PendingReviewModule,
     AttendanceRegisterModule,
     AuthModule,

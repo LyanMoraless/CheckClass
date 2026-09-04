@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Backpack,
+  BellRing,
   BookOpen,
   CalendarClock,
   CalendarOff,
@@ -134,6 +135,7 @@ function buildRoleNavGroups(roleContext: RoleContext): NavGroup[] {
       items: [
         { to: '/student/schedule', label: 'Meu cronograma', icon: CalendarClock },
         { to: '/student/attendance', label: 'Minhas faltas', icon: Backpack },
+        { to: '/student/warnings', label: 'Meus avisos', icon: BellRing },
         { to: '/student/exams', label: 'Minhas provas', icon: FileText },
       ],
     });

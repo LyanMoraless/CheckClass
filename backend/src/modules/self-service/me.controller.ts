@@ -1,5 +1,6 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { TenantContextInterceptor } from '../../database/tenant-context.interceptor';
+import { FrequencyWarningReadService } from '../attendance-frequency/frequency-warning-read.service';
 import { AttendanceRegisterService } from '../attendance-register/attendance-register.service';
 import { AuthenticatedRequest, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CoordinatedClassGroupsService } from './coordinated-class-groups.service';
@@ -47,6 +48,7 @@ export class MeController {
     private readonly teachingClassGroupsService: TeachingClassGroupsService,
     private readonly coordinatedClassGroupsService: CoordinatedClassGroupsService,
     private readonly classGroupAttendanceService: MeClassGroupAttendanceService,
+    private readonly warningReadService: FrequencyWarningReadService,
   ) {}
 
   @Get('attendance')
@@ -83,5 +85,26 @@ export class MeController {
     @Req() request: AuthenticatedRequest,
   ) {
     return this.classGroupAttendanceService.getAttendanceForAuthorizedClassGroup(request.personId, classGroupId);
+  }
+
+  // Frente 06, Controle B — the student's avisos area (RULE-FREQ-04 items 2
+  // and 4). Squarely the FIRST idiom of this controller: "my own data", no
+  // permission check, for the reason the header above already states — and
+  // reinforced here by RULE-FREQ-04 addendum b, which makes the warning
+  // EXCLUSIVE to the student (professor and coordenador have no access to it
+  // at all). So: no @RequirePermission, and no LeadershipScopeService —
+  // Controle B has no dependency on it and must not acquire one. No
+  // admin/professor-facing variant of this route exists, deliberately.
+  //
+  // personId comes from request.personId only, never from a route/query/body
+  // param — the security invariant stated in the header, which here also
+  // means a student can never read another student's warnings.
+  //
+  // This GET writes (seen_at on first read, plus the lazy reconciliation the
+  // service runs before reading). That is by design, not an accident of
+  // implementation; the full reasoning is in FrequencyWarningReadService.
+  @Get('warnings')
+  getMyWarnings(@Req() request: AuthenticatedRequest) {
+    return this.warningReadService.listActiveWarningsForPerson(request.personId);
   }
 }

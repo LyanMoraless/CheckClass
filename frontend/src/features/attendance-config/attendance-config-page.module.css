@@ -10,3 +10,20 @@
   gap: 0.4rem;
   max-width: none;
 }
+
+/* Controle A / Controle B are nested fieldsets inside the outer "Criar /
+   atualizar configuração" fieldset — this border/spacing is what makes the
+   grouping itself visible, on top of the legend text and helper paragraph,
+   so the two minimums never read as one undifferentiated block of fields. */
+.controlGroup {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.helperText {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}

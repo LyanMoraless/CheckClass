@@ -23,6 +23,7 @@ export * from './identification-checkin.entity';
 export * from './presence-interval.entity';
 export * from './session-attendance-consolidation.entity';
 export * from './attendance-pending-review.entity';
+export * from './attendance-frequency-warning.entity';
 export * from './person-facial-reference.entity';
 export * from './class-session-required-factor.entity';
 export * from './person-credential.entity';

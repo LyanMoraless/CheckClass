@@ -58,8 +58,12 @@ describe('PendingReviewService', () => {
       hasAuthorityOverClassGroup: jest.fn().mockResolvedValue(options.authorized ?? false),
       hasAuthorityOverCourse: jest.fn(),
     };
-    const service = new PendingReviewService(tenantContext as never, leadershipScope as never);
-    return { service, pendingReviewRepo, consolidationRepo, leadershipScope };
+    // Controle B (RULE-FREQ-06) is a seam here, not a subject: resolve() must
+    // hand off to the recompute primitive, but what that primitive decides is
+    // AttendanceFrequencyEngineService's own coverage.
+    const frequencyEngine = { recalculateForSessionPerson: jest.fn().mockResolvedValue(undefined) };
+    const service = new PendingReviewService(tenantContext as never, leadershipScope as never, frequencyEngine as never);
+    return { service, pendingReviewRepo, consolidationRepo, leadershipScope, frequencyEngine };
   }
 
   test('test_resolve_rejectsDecisionOtherThanPresentOrAbsent', async () => {
@@ -163,7 +167,13 @@ describe('PendingReviewService', () => {
       manager.query.mockResolvedValue(queryResult);
       const tenantContext = createMockTenantContext(manager);
       const leadershipScope = { hasAuthorityOverClassGroup: jest.fn(), hasAuthorityOverCourse: jest.fn() };
-      return { service: new PendingReviewService(tenantContext as never, leadershipScope as never), manager };
+      // listUnresolvedForPerson is a pure read — it never reaches the
+      // Controle B recompute, so the engine seam is a bare stub here.
+      const frequencyEngine = { recalculateForSessionPerson: jest.fn() };
+      return {
+        service: new PendingReviewService(tenantContext as never, leadershipScope as never, frequencyEngine as never),
+        manager,
+      };
     }
 
     test('test_listUnresolvedForPerson_noAuthorizedReviews_returnsEmpty', async () => {

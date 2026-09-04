@@ -54,10 +54,18 @@ describe('ClassGroupDeletionOrchestrator', () => {
       ]),
     );
     const tenantContext = createMockTenantContext(manager);
-    const orchestrator = new ClassGroupDeletionOrchestrator(tenantContext as never);
+    // Controle B's warning cleanup (Frente 06) is a collaborator seam here —
+    // this suite is about RULE-INST-13's block conditions, not about what a
+    // warning row ends up looking like.
+    const warningService = {
+      closeWarningsForClassGroupSubject: jest.fn().mockResolvedValue(undefined),
+      deleteWarningsForClassGroup: jest.fn().mockResolvedValue(undefined),
+    };
+    const orchestrator = new ClassGroupDeletionOrchestrator(tenantContext as never, warningService as never);
     return {
       orchestrator,
       manager,
+      warningService,
       sessionRepo,
       consolidationRepo,
       pendingReviewRepo,

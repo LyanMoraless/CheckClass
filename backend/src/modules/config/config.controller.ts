@@ -36,6 +36,8 @@ export class ConfigController {
       scopeType: body.scopeType,
       scopeId: body.scopeId ?? null,
       minAttendancePercentage: body.minAttendancePercentage,
+      minAccumulatedFrequencyPercentage: body.minAccumulatedFrequencyPercentage,
+      accumulatedFrequencyPeriod: body.accumulatedFrequencyPeriod,
       toleranceMinutes: body.toleranceMinutes,
       postToleranceBehavior: body.postToleranceBehavior,
     });

@@ -25,6 +25,7 @@ import { StudentExamsPage } from './features/portal-exams/student-exams-page';
 import { TakeExamPage } from './features/portal-exams/take-exam-page';
 import { StudentAttendancePage } from './features/portal-student/student-attendance-page';
 import { StudentSchedulePage } from './features/portal-student/student-schedule-page';
+import { StudentWarningsPage } from './features/portal-student-warnings/student-warnings-page';
 import { TeachingClassGroupsPage } from './features/portal-teacher/teaching-class-groups-page';
 import { RoomsPage } from './features/rooms/rooms-page';
 import { SecurityIncidentDetailPage } from './features/security-incidents/security-incident-detail-page';
@@ -76,6 +77,7 @@ export function App() {
             enforces "is this really your data/scope" on every /v1/me/* call. */}
         <Route path="student/schedule" element={<StudentSchedulePage />} />
         <Route path="student/attendance" element={<StudentAttendancePage />} />
+        <Route path="student/warnings" element={<StudentWarningsPage />} />
         <Route path="student/exams" element={<StudentExamsPage />} />
         <Route path="student/exams/:examId" element={<TakeExamPage />} />
         <Route path="teacher/class-groups" element={<TeachingClassGroupsPage />} />

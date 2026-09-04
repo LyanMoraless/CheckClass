@@ -11,6 +11,7 @@ import {
   createMockTenantContext,
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
+import { AccumulatedFrequencyPeriod } from './accumulated-frequency-period.enum';
 import { ConfigScopeType } from './config-scope-type.enum';
 import { PostToleranceBehavior } from './post-tolerance-behavior.enum';
 import { TenantConfigService } from './tenant-config.service';
@@ -38,6 +39,15 @@ describe('TenantConfigService', () => {
     code: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+  };
+
+  // Controle B's two fields (RULE-FREQ-01 addendum / RULE-FREQ-02) are
+  // required on UpsertConfigInput but are not what any case below exercises,
+  // so they are spread in as a valid constant and each case keeps stating
+  // only the field it is actually about.
+  const controleBInput = {
+    minAccumulatedFrequencyPercentage: 75,
+    accumulatedFrequencyPeriod: AccumulatedFrequencyPeriod.BIMESTER,
   };
 
   function buildService(options: {
@@ -149,6 +159,7 @@ describe('TenantConfigService', () => {
       service.upsertConfig({
         scopeType: ConfigScopeType.INSTITUTION,
         scopeId: null,
+        ...controleBInput,
         minAttendancePercentage: 75,
         toleranceMinutes: 20,
         postToleranceBehavior: 'allow_late_forever' as PostToleranceBehavior,
@@ -163,6 +174,7 @@ describe('TenantConfigService', () => {
       service.upsertConfig({
         scopeType: ConfigScopeType.INSTITUTION,
         scopeId: null,
+        ...controleBInput,
         minAttendancePercentage: 101,
         toleranceMinutes: 20,
         postToleranceBehavior: PostToleranceBehavior.REGISTER_ONLY,
@@ -177,6 +189,7 @@ describe('TenantConfigService', () => {
       service.upsertConfig({
         scopeType: ConfigScopeType.INSTITUTION,
         scopeId: null,
+        ...controleBInput,
         minAttendancePercentage: -1,
         toleranceMinutes: 20,
         postToleranceBehavior: PostToleranceBehavior.REGISTER_ONLY,
@@ -191,6 +204,7 @@ describe('TenantConfigService', () => {
       service.upsertConfig({
         scopeType: ConfigScopeType.INSTITUTION,
         scopeId: null,
+        ...controleBInput,
         minAttendancePercentage: 75,
         toleranceMinutes: -5,
         postToleranceBehavior: PostToleranceBehavior.REGISTER_ONLY,
@@ -205,6 +219,7 @@ describe('TenantConfigService', () => {
       service.upsertConfig({
         scopeType: ConfigScopeType.COURSE,
         scopeId: null,
+        ...controleBInput,
         minAttendancePercentage: 75,
         toleranceMinutes: 20,
         postToleranceBehavior: PostToleranceBehavior.REGISTER_ONLY,
@@ -222,6 +237,7 @@ describe('TenantConfigService', () => {
     const result = await service.upsertConfig({
       scopeType: ConfigScopeType.INSTITUTION,
       scopeId: null,
+      ...controleBInput,
       minAttendancePercentage: 80,
       toleranceMinutes: 15,
       postToleranceBehavior: PostToleranceBehavior.BLOCK_CHECKIN,
@@ -242,6 +258,7 @@ describe('TenantConfigService', () => {
     await service.upsertConfig({
       scopeType: ConfigScopeType.INSTITUTION,
       scopeId: null,
+      ...controleBInput,
       minAttendancePercentage: 75,
       toleranceMinutes: 20,
       postToleranceBehavior: PostToleranceBehavior.REGISTER_ONLY,

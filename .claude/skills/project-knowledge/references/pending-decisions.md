@@ -1483,16 +1483,23 @@ concedido essa permissão a um grupo em dado real (produção/seed), isso é
 uma consideração de migração de dados a avaliar no momento da remoção —
 não presumida aqui.
 
-## Feature futura confirmada em escopo, implementação NÃO aprovada — Frequência acumulada por matéria + aviso de proximidade do limite (2026-09-02)
+## ~~Feature futura confirmada em escopo, implementação NÃO aprovada~~ IMPLEMENTADA E FECHADA (2026-09-04) — Frequência acumulada por matéria + aviso de proximidade do limite
 
-O usuário submeteu esta feature em 2026-09-02 e respondeu a uma rodada de
+~~O usuário submeteu esta feature em 2026-09-02 e respondeu a uma rodada de
 perguntas objetivas do Product Definition Agent na mesma data. Pedido
 explícito do usuário: **"adicione também nas pendências"** — ou seja, o
 **escopo e as regras de negócio estão confirmados**, mas a feature **não
 está aprovada para implementação agora**. Arquitetura, tecnologia, modelo
 de dados e código são **rodada futura separada**; **nenhuma decisão de
 arquitetura ou tecnologia foi tomada** para ela. Mesmo padrão "decisão
-primeiro, código depois" usado em toda feature grande deste projeto.
+primeiro, código depois" usado em toda feature grande deste projeto.~~
+
+**STATUS ATUALIZADO (2026-09-04):** Feature foi aprovada para implementação
+em 2026-09-03 (com decisão de arquitetura, segunda rodada de addenda, e 3
+decisões de tecnologia), e implementada completamente em 2026-09-04
+(Database, Backend, Frontend, Testing, QA). Este registro permanece aqui como
+histórico da progressão — de escopo confirmado (2026-09-02) → arquitetura
+aprovada (2026-09-03) → implementação fechada (2026-09-04).
 
 Regras registradas: **RULE-FREQ-01 a 04** em
 `business-rules/references/attendance-frequency-rules.md` (arquivo novo).
@@ -1556,30 +1563,166 @@ cenário 2 nem implementá-lo por antecipação.
 
 ### Gaps abertos — Frequência acumulada (não confirmados, NÃO presumir resposta)
 
-- **Distância exata do gatilho do aviso** (os 10 pontos percentuais foram
+> **Atualização (2026-09-03):** quatro dos cinco gaps abaixo foram
+> resolvidos pelo usuário numa rodada de perguntas objetivas do Product
+> Definition Agent (parte de uma resposta mais ampla que também fechou as
+> 8 ambiguidades novas mapeadas pelo Business Analyst na mesma data). Ver
+> a análise completa e as novas regras RULE-FREQ-05/06/07 e os addenda de
+> RULE-FREQ-02/03/04 em
+> `business-rules/references/attendance-frequency-rules.md`. ~~O quinto item
+> (relação com `term_start_date`/`term_end_date`) **não foi perguntado
+> nesta rodada e continua em aberto**, sem alteração.~~ **Atualizado ainda
+> em 2026-09-03:** o quinto item também deixou de estar em aberto — foi
+> endereçado pela Decisão de tecnologia da mesma data (fatiamento das datas
+> do termo), pendente apenas de aprovação. Ver o próprio bullet abaixo.
+> **Com isso, os 5 gaps desta seção estão fechados.**
+
+- ~~**Distância exata do gatilho do aviso** (os 10 pontos percentuais foram
   apresentados como **exemplo** dentro da opção escolhida, não confirmados
   como valor final) e **se essa distância é configurável** pelo
-  administrador.
-- **O que acontece com o aviso se a frequência do aluno voltar a subir**
-  acima do gatilho — o aviso some, permanece, ou vira "resolvido"?
-- **Se o aviso também vai para o professor/coordenador** ou é exclusivo do
-  aluno.
-- **Como o período de apuração se relaciona com
+  administrador.~~ **Resolvido (2026-09-03):** valor final e fixo de 10
+  pontos percentuais, não configurável. Ver addendum de RULE-FREQ-03.
+- ~~**O que acontece com o aviso se a frequência do aluno voltar a subir**
+  acima do gatilho — o aviso some, permanece, ou vira "resolvido"?~~
+  **Resolvido (2026-09-03):** o aviso desaparece automaticamente, sem
+  virar "resolvido". Ver addendum de RULE-FREQ-04.
+- ~~**Se o aviso também vai para o professor/coordenador** ou é exclusivo do
+  aluno.~~ **Resolvido (2026-09-03):** o aviso é exclusivo do aluno. Ver
+  addendum de RULE-FREQ-04.
+- ~~**Como o período de apuração se relaciona com
   `class_group.term_start_date`/`term_end_date`** (datas do período letivo
   já existentes na Turma, fechadas em 2026-09-01 — ver RULE-INST-04) — ex.:
-  um semestre da turma dividido em 2 bimestres.
-- **Se a frequência é recalculada retroativamente quando uma justificativa
+  um semestre da turma dividido em 2 bimestres. **Continua em aberto —
+  não perguntado nesta rodada de 2026-09-03; não presumir resposta.**~~
+  **Endereçado tecnicamente (2026-09-03), pendente apenas de aprovação:** a
+  Decisão de tecnologia da Frente 06 propõe divisão matemática de
+  `term_start_date`/`term_end_date` em fatias de meses iguais (bimestral =
+  2, trimestral = 3, semestral = 6), sem tabela de calendário acadêmico
+  dedicada — ver `project-knowledge/references/architecture-overview.md`,
+  "Decisão de tecnologia — Frequência acumulada e aviso de limite, Frente
+  06", item 1. Turma sem essas datas resolve como "sem frequência
+  calculável" (`no_period_window`), sem janela default inventada. **Risco
+  registrado lá:** se o usuário confirmar futuramente que os bimestres
+  precisam de datas irregulares reais (alinhadas a feriados/provas), migrar
+  para calendário dedicado nesse momento, com evidência.
+- ~~**Se a frequência é recalculada retroativamente quando uma justificativa
   de falta é aprovada** — dependência direta com a feature de justificativa
-  de faltas (ver seção seguinte).
+  de faltas (ver seção seguinte).~~ **Resolvido (2026-09-03):** sim, e de
+  forma imediata (mesma transação da aprovação). Ver RULE-FREQ-06.
 
-### Implicação técnica conhecida (não é gap de produto) — não existe infraestrutura de notificação
+> **Ambiguidades novas do Business Analyst (8, mapeadas em 2026-09-03,
+> `attendance-frequency-rules.md`) também resolvidas na mesma rodada:**
+> denominador zero sem sessão definitiva (sem aviso), sessões `pending`
+> fora do denominador até resolvidas, matéria removida da turma encerra o
+> aviso marcando-o como resolvido, matrícula tardia conta desde o início
+> do período, mudança de período de apuração aplica-se imediatamente ao
+> período corrente, arredondamento do percentual para inteiro, aviso
+> distinto para aluno já abaixo do mínimo, e decisão consciente de não
+> implementar lógica de finalização de turma por ora (aviso persiste
+> indefinidamente). Ver RULE-FREQ-05/07 e os addenda de RULE-FREQ-02/04 em
+> `business-rules/references/attendance-frequency-rules.md` para o texto
+> completo de cada um.
+> **Source of confirmation:** Usuário, 2026-09-03.
 
-Verificado no código em 2026-09-02: **não existe nenhuma infraestrutura de
+### ~~Perguntas técnicas novas~~ Resolvidas — Frente 06, segunda rodada do Solution Architect (2026-09-03)
+
+Ao revisitar o desenho da Frente 06 para absorver RULE-FREQ-05/06/07 e os
+addenda de RULE-FREQ-02/03/04, o Solution Architect fechou os 11
+placeholders da primeira rodada e abriu 8 perguntas novas. **Todas foram
+respondidas pelo usuário na mesma data (2026-09-03), na opção recomendada
+pelo próprio arquiteto.** Texto completo de cada resposta, com consequência
+estrutural, em `project-knowledge/references/architecture-overview.md`,
+seção "Addendum à Decisão de arquitetura — Frequência acumulada e aviso de
+limite, Frente 06, segunda rodada".
+
+1. ~~O Controle B compara com `min_attendance_percentage` (reúso) ou com um
+   campo novo?~~ **Resolvido:** campo novo dedicado,
+   `min_accumulated_frequency_percentage` em `attendance_config`, semântica
+   própria (comparecimento às aulas do período, distinto de permanência
+   dentro de uma aula). Os dois podem divergir na mesma instituição.
+2. ~~Aviso do período anterior na virada de período.~~ **Resolvido:**
+   encerra com `resolution_reason='period_closed'`; o período novo começa
+   limpo.
+3. ~~RULE-INST-13 vs. addendum (c) de RULE-FREQ-04.~~ **Resolvido:** manter
+   RULE-INST-13 como está; o addendum (c) fica como **letra morta
+   consciente** e o código de resolução é implementado assim mesmo, de forma
+   defensiva.
+4. ~~Coluna `evaluated_at` em `class_session` ou `EXISTS` derivado?~~
+   **Resolvido:** `EXISTS` derivado. O compromisso de diff zero no
+   território do Controle A fica mantido na íntegra.
+5. ~~Empate no arredondamento.~~ **Resolvido:** metade para cima
+   (`Math.round`, idêntico ao `ROUND` do Postgres).
+6. ~~Aviso ativo quando o estado vira não-calculável.~~ **Resolvido:**
+   congela, com o último percentual conhecido.
+7. ~~`enrollment_status` filtra alguma coisa?~~ **Resolvido:** só matrícula
+   `active` gera aviso; a frequência continua calculável para os demais
+   status, e avisos ativos são encerrados quando a matrícula deixa de ser
+   `active`.
+8. ~~Avisos de turma com `term_end_date` já passada.~~ **Resolvido:** filtro
+   de **exibição** em `GET /v1/me/warnings` — o dado não é excluído e o
+   conceito "turma finalizada" segue adiado.
+
+**Source of confirmation:** Usuário, 2026-09-03.
+
+**Dois gaps menores abertos pela própria escrita das regras acima, também
+respondidos em 2026-09-03:**
+
+- **Retorno de matrícula a `active` (aluno volta do tranco):** o aviso
+  encerrado **não revive**. O recálculo normal decide — gera um aviso novo
+  se a frequência atual ainda justificar, e nada se não justificar. Sem caso
+  especial no fluxo.
+- **Turma sem `term_end_date` preenchida:** continua **exibindo** o aviso. O
+  filtro de exibição só esconde turma cuja data de fim esteja preenchida E
+  já vencida. Postura conservadora deliberada — cadastro incompleto nunca
+  deve suprimir alerta de risco de reprovação por falta.
+
+**Source of confirmation:** Usuário, 2026-09-03.
+
+**Correções documentais decorrentes — todas APLICADAS pelo Product
+Definition Agent em 2026-09-03:**
+
+- `business-rules/references/configurable-parameters.md`, linhas 28-35 —
+  o bullet ainda lista a distância do gatilho do aviso como parâmetro
+  configurável que "nunca [é] um valor absoluto fixo no código", enquanto o
+  addendum de RULE-FREQ-03 diz o contrário (10 p.p. fixos em código). O
+  mesmo arquivo precisa passar a listar o parâmetro **novo** e configurável
+  criado pela resposta 1.
+- RULE-FREQ-05.3 e RULE-FREQ-07 apontam textualmente para "o mínimo exigido
+  (RULE-ATT-04)" — referência incorreta depois da resposta 1, já que o
+  Controle B passa a ter mínimo próprio.
+- A resposta 3 precisa ficar registrada junto ao addendum (c) de
+  RULE-FREQ-04, para que ninguém futuramente leia a regra como ativa.
+- **RULE-INST-04** (`business-rules/references/institution-management-rules.md`)
+  está internamente desatualizada e RULE-FREQ-08 se apoia nela: o bloco
+  *Exceptions* e o addendum de 2026-08-31 ainda dizem que "o formato exato
+  do período letivo (datas de início/fim) continua não confirmado — tratar
+  como gap", enquanto o addendum de 2026-09-01 do mesmo arquivo já fechou
+  isso (as datas vivem em `class_group`, sem entidade "Período Letivo"
+  separada). Quem lê a regra de cima para baixo encontra primeiro o texto
+  superado.
+- **RULE-ATT-04** (`business-rules/references/attendance-rules.md`) precisa
+  de nota de referência cruzada apontando que o Controle B passou a ter
+  parâmetro próprio e que RULE-ATT-04 não o governa. Não é contradição — a
+  nota de 2026-09-02 lá já diz que RULE-ATT-04 "NÃO é frequência
+  acumulada" —, falta só o ponteiro inverso.
+
+### ~~Implicação técnica conhecida (não é gap de produto) — não existe infraestrutura de notificação~~  IMPLEMENTADA (2026-09-04)
+
+~~Verificado no código em 2026-09-02: **não existe nenhuma infraestrutura de
 notificação no backend** — nenhum módulo, entidade ou serviço de
 notificação/aviso. A área de avisos da home e a notificação de primeiro
 acesso (RULE-FREQ-04) são uma **necessidade técnica nova completa**, a
 desenhar do zero na rodada futura. Registrado para que nenhum agente
-presuma reaproveitamento de algo existente.
+presuma reaproveitamento de algo existente.~~
+
+**STATUS ATUALIZADO (2026-09-04):** A infraestrutura de notificação de
+frequência foi completamente implementada na Frente 06 (módulo
+`attendance-frequency`, serviço `FrequencyWarningService`, tabela
+`attendance_frequency_warning`, endpoints `GET /v1/me/warnings` no módulo
+`self-service`). A primeira iteração da infraestrutura está fechada; pontos
+de expansão futura (notificação para professor/coordenador, infraestrutura
+de notificação genérica para todo o sistema) permanecem como tópicos
+futuros.
 
 ## Feature futura confirmada em escopo, implementação NÃO aprovada — Justificativa de faltas (aluno solicita, professor aprova/rejeita) (2026-09-02)
 
@@ -2072,9 +2215,38 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
    entidades) → Backend (CRUD de vínculo turma↔matéria, geração de
    sessão, cascata de exclusão granular) → Frontend (formulário de montar
    turma com N matérias) → Testing → QA → Project Guardian.
-6. **Frequência acumulada + aviso de limite (RULE-FREQ-01..04)** — depende
-   da 05 (por matéria) e da 03 (home do aluno). Não existe infraestrutura
-   de notificação.
+6. ~~**Frequência acumulada + aviso de limite (RULE-FREQ-01..07)** — depende
+   da 05 (por matéria, já com planejamento concluído) e da 03 (home do
+   aluno). Não existe infraestrutura de notificação. **Regras de negócio
+   totalmente fechadas em 2026-09-03:** os 4 gaps e as 8 ambiguidades
+   mapeados pelo Business Analyst foram todos respondidos pelo usuário —
+   ver "Pronto para desenho técnico? Sim" em
+   `business-rules/references/attendance-frequency-rules.md` e a
+   atualização da seção "Gaps abertos — Frequência acumulada" acima nesta
+   skill. Falta apenas arquitetura/tecnologia/implementação — ainda não
+   aprovadas.~~
+
+   **FRENTE 06 CONCLUÍDA (2026-09-04):** Regras de negócio totalmente
+   fechadas em 2026-09-03 (todos os 4 gaps e 8 ambiguidades resolvidos pelo
+   usuário). Arquitetura aprovada em 2026-09-03 (decisão base + addendum de
+   segunda rodada). Tecnologia aprovada em 2026-09-03 (3 decisões: fatiamento
+   de datas, polling de 60s, sem biblioteca nova). Implementação concluída em
+   2026-09-04: módulo `attendance-frequency` (Backend), serviço
+   `FrequencyWarningService` + tabela `attendance_frequency_warning` +
+   endpoints `GET /v1/me/warnings` (self-service), página `student-warnings-page`
+   com polling em TanStack Query + lista de avisos `warnings-list.tsx`
+   (Frontend), constante `FREQUENCY_WARNING_MARGIN_POINTS=10`, suporte a
+   múltiplos encerramentos de aviso (`active`, `resolved` com
+   `resolution_reason`). Testes: 80 backend, 34 frontend. **Cadeia de agentes:**
+   Product Definition → Business Analyst → Solution Architect (2x) → Tech
+   Decision → Database → Backend → Frontend → Testing → QA → Project Guardian.
+   **Verificação:** fatiamento de datas do termo (`addUtcMonths()` em
+   `utc-date.util.ts`), polling de 60000ms (`student-warnings-page.tsx`),
+   constante `FREQUENCY_WARNING_MARGIN_POINTS = 10` em
+   `frequency-warning.constants.ts`, nenhuma biblioteca de datas adicional.
+   **Source of confirmation:** código verificável no repositório (2026-09-04);
+   decisões documentadas em `project-knowledge/references/architecture-overview.md`
+   (3 seções de Frente 06) e em `business-rules/references/attendance-frequency-rules.md`.
 7. **Justificativa de faltas (RULE-JUST-01..04)** — depende da 06 (ver
    resolução da ambiguidade A4 abaixo). Não existe infraestrutura de
    upload. Atestado é dado sensível de saúde sob LGPD — passagem

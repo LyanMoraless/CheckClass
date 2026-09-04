@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AttendanceFrequencyModule } from '../attendance-frequency/attendance-frequency.module';
 import { AttendanceRegisterModule } from '../attendance-register/attendance-register.module';
 import { AuthModule } from '../auth/auth.module';
 import { LeadershipScopeModule } from '../leadership-scope/leadership-scope.module';
@@ -17,8 +18,16 @@ import { TeachingClassGroupsService } from './teaching-class-groups.service';
 // -chain-scoped reads (MeContextService, CoordinatedClassGroupsService,
 // MeClassGroupAttendanceService) — without touching the permission-group
 // system at all.
+//
+// AttendanceFrequencyModule (Frente 06, Controle B) is imported, not
+// re-provided: GET /v1/me/warnings is a plain "my own data" read whose entire
+// read model — including the lazy reconciliation it runs first — belongs to
+// that bounded context, so this module contributes the route and nothing
+// else. Note that the warning is exclusive to the student (RULE-FREQ-04
+// addendum b): this import adds NO leadership-scoped surface, and Controle B
+// deliberately has no dependency on LeadershipScopeService.
 @Module({
-  imports: [AuthModule, AttendanceRegisterModule, LeadershipScopeModule],
+  imports: [AuthModule, AttendanceRegisterModule, LeadershipScopeModule, AttendanceFrequencyModule],
   controllers: [MeController],
   providers: [
     MyScheduleService,

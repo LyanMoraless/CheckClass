@@ -76,6 +76,26 @@ aula de 2 horas).
 > (RULE-JUST-01 a 04). RULE-ATT-04 permanece **sem alteração**.
 > **Source of confirmation:** Usuário, 2026-09-02.
 
+> **Nota aditiva de referência cruzada (2026-09-03) — o controle de
+> frequência acumulada tem parâmetro PRÓPRIO, e RULE-ATT-04 não o
+> governa:** o usuário confirmou que a frequência acumulada por matéria
+> (Controle B) **não reusa** o `min_attendance_percentage` desta regra.
+> Passa a existir um parâmetro configurável separado,
+> `min_accumulated_frequency_percentage` (nome técnico ilustrativo), com
+> semântica "percentual mínimo de comparecimento às aulas do período de
+> apuração para não reprovar por falta" — ver o addendum de 2026-09-03 em
+> RULE-FREQ-01, `business-rules/references/attendance-frequency-rules.md`,
+> e o registro em `business-rules/references/configurable-parameters.md`.
+> Os dois parâmetros são independentes e **podem ter valores diferentes na
+> mesma instituição**; nenhum deriva do outro. Consequência para quem
+> implementa: alterar `min_attendance_percentage` **não** altera o gatilho
+> do aviso de frequência (RULE-FREQ-03) nem a comparação "abaixo do
+> mínimo" (RULE-FREQ-07), que penduram no parâmetro novo. Esta nota é
+> **puramente aditiva** — o texto e o alcance de RULE-ATT-04 continuam
+> **sem nenhuma alteração**, e a feature de frequência acumulada segue
+> **não aprovada para implementação**.
+> **Source of confirmation:** Usuário, 2026-09-03.
+
 ### RULE-ATT-05: Tolerância de atraso para check-in configurável
 
 **Statement:** O sistema deve permitir configurar um período de

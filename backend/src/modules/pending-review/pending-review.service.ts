@@ -8,6 +8,7 @@ import {
   SubjectEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
+import { AttendanceFrequencyEngineService } from '../attendance-frequency/attendance-frequency-engine.service';
 import { LeadershipScopeService } from '../leadership-scope/leadership-scope.service';
 
 export type PendingReviewDecision = 'present' | 'absent';
@@ -23,6 +24,7 @@ export class PendingReviewService {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly leadershipScope: LeadershipScopeService,
+    private readonly frequencyEngine: AttendanceFrequencyEngineService,
   ) {}
 
   async listUnresolved(): Promise<AttendancePendingReviewEntity[]> {
@@ -131,5 +133,18 @@ export class PendingReviewService {
         { classSessionId: pending.classSessionId, personId: pending.personId },
         { status: decision, resolvedByPersonId: resolvingPersonId, resolvedAt },
       );
+
+    // Controle B (RULE-FREQ-06), stacked on top of the two updates above and
+    // running in the SAME transaction — resolving a pending review is one of
+    // the points where a session_attendance_consolidation row becomes
+    // definitive, and the accumulated frequency is only ever recomputed from
+    // definitive rows (RULE-FREQ-05.1).
+    //
+    // ORDER MATTERS: this call has to come AFTER the consolidation update,
+    // never before. The recompute is query-driven, not incremental — it
+    // re-reads the consolidation rows itself — so calling it first would read
+    // the pre-resolution state and write a warning based on the pending row
+    // this method just decided.
+    await this.frequencyEngine.recalculateForSessionPerson(pending.classSessionId, pending.personId);
   }
 }

@@ -17,6 +17,7 @@ import {
   listFactorTypes,
   setRequiredFactors,
   upsertConfig,
+  type AccumulatedFrequencyPeriod,
   type AttendanceConfig,
   type ConfigScopeType,
   type PostToleranceBehavior,
@@ -24,6 +25,16 @@ import {
 import styles from './attendance-config-page.module.css';
 
 const POST_TOLERANCE_OPTIONS: PostToleranceBehavior[] = ['block_checkin', 'deny_presence', 'register_only'];
+
+// AccumulatedFrequencyPeriod is a closed set of exactly three values
+// (accumulated-frequency-period.enum.ts) — a select, never free text.
+const ACCUMULATED_FREQUENCY_PERIOD_OPTIONS: AccumulatedFrequencyPeriod[] = ['bimester', 'trimester', 'semester'];
+
+const ACCUMULATED_FREQUENCY_PERIOD_LABELS: Record<AccumulatedFrequencyPeriod, string> = {
+  bimester: 'Bimestre',
+  trimester: 'Trimestre',
+  semester: 'Semestre',
+};
 
 // Display-only labels/tones for the raw enum values coming back from the
 // API — the underlying value sent to/received from the backend is untouched.
@@ -57,6 +68,11 @@ export function AttendanceConfigPage() {
   const [scopeType, setScopeType] = useState<ConfigScopeType>('institution');
   const [scopeId, setScopeId] = useState('');
   const [minAttendancePercentage, setMinAttendancePercentage] = useState('75');
+  // Controle B (RULE-FREQ-01/02) — required by upsert-config.dto.ts, so these
+  // two always ride along in the same submit as Controle A above; there is
+  // no separate save action for them.
+  const [minAccumulatedFrequencyPercentage, setMinAccumulatedFrequencyPercentage] = useState('75');
+  const [accumulatedFrequencyPeriod, setAccumulatedFrequencyPeriod] = useState<AccumulatedFrequencyPeriod>('bimester');
   const [toleranceMinutes, setToleranceMinutes] = useState('10');
   const [postToleranceBehavior, setPostToleranceBehavior] = useState<PostToleranceBehavior>('register_only');
   const [lastConfigId, setLastConfigId] = useState<string | null>(null);
@@ -75,6 +91,8 @@ export function AttendanceConfigPage() {
       scopeType,
       scopeId: scopeType === 'institution' ? undefined : scopeId,
       minAttendancePercentage: Number(minAttendancePercentage),
+      minAccumulatedFrequencyPercentage: Number(minAccumulatedFrequencyPercentage),
+      accumulatedFrequencyPeriod,
       toleranceMinutes: Number(toleranceMinutes),
       postToleranceBehavior,
     });
@@ -97,7 +115,18 @@ export function AttendanceConfigPage() {
           getRowKey={(config) => config.id}
           columns={[
             { header: 'Escopo', cell: scopeLabel },
-            { header: '% mínimo de presença', cell: (config) => config.minAttendancePercentage },
+            {
+              header: 'Controle A — % mín. por aula',
+              cell: (config) => config.minAttendancePercentage,
+            },
+            {
+              header: 'Controle B — % mín. acumulado',
+              cell: (config) => config.minAccumulatedFrequencyPercentage,
+            },
+            {
+              header: 'Controle B — período de apuração',
+              cell: (config) => ACCUMULATED_FREQUENCY_PERIOD_LABELS[config.accumulatedFrequencyPeriod],
+            },
             { header: 'Tolerância (min)', cell: (config) => config.toleranceMinutes },
             {
               header: 'Comportamento pós-tolerância',
@@ -166,39 +195,92 @@ export function AttendanceConfigPage() {
             </label>
           )}
 
-          <label>
-            Percentual mínimo de presença
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step="0.01"
-              value={minAttendancePercentage}
-              onChange={(event) => setMinAttendancePercentage(event.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Tolerância (minutos)
-            <input
-              type="number"
-              min={0}
-              step="1"
-              value={toleranceMinutes}
-              onChange={(event) => setToleranceMinutes(event.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Comportamento pós-tolerância
-            <select value={postToleranceBehavior} onChange={(event) => setPostToleranceBehavior(event.target.value as PostToleranceBehavior)}>
-              {POST_TOLERANCE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {POST_TOLERANCE_LABELS[option]}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* Controle A (RULE-ATT-04/05/13/14): a per-CLASS check — did the
+              student stay present for enough of THIS specific aula. Grouped
+              and labelled apart from Controle B below on purpose: the two
+              minimums look identical (both are "% mínimo") but answer
+              different questions, and an administrator who conflates them
+              misconfigures the institution. */}
+          <fieldset className={styles.controlGroup}>
+            <legend>Controle A — presença dentro de cada aula</legend>
+            <p className={styles.helperText}>
+              "O aluno permaneceu tempo suficiente NESTA aula?" — aplicado aula a aula, no momento do registro de
+              presença.
+            </p>
+            <label>
+              Percentual mínimo de presença por aula
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                value={minAttendancePercentage}
+                onChange={(event) => setMinAttendancePercentage(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Tolerância (minutos)
+              <input
+                type="number"
+                min={0}
+                step="1"
+                value={toleranceMinutes}
+                onChange={(event) => setToleranceMinutes(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Comportamento pós-tolerância
+              <select value={postToleranceBehavior} onChange={(event) => setPostToleranceBehavior(event.target.value as PostToleranceBehavior)}>
+                {POST_TOLERANCE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {POST_TOLERANCE_LABELS[option]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </fieldset>
+
+          {/* Controle B (RULE-FREQ-01/02/03): a per-PERIOD check — did the
+              student attend enough of the classes ACROSS the reporting
+              period (bimestre/trimestre/semestre), independent of how any
+              single aula went. Both fields are REQUIRED by
+              upsert-config.dto.ts — there is no optional/partial submit. */}
+          <fieldset className={styles.controlGroup}>
+            <legend>Controle B — frequência acumulada no período</legend>
+            <p className={styles.helperText}>
+              "O aluno compareceu a aulas suficientes NO PERÍODO?" — apurado ao longo do bimestre/trimestre/semestre;
+              gera o aviso de frequência exibido ao aluno quando ele se aproxima ou cai abaixo deste mínimo.
+            </p>
+            <label>
+              Percentual mínimo de frequência acumulada
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                value={minAccumulatedFrequencyPercentage}
+                onChange={(event) => setMinAccumulatedFrequencyPercentage(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Período de apuração
+              <select
+                value={accumulatedFrequencyPeriod}
+                onChange={(event) => setAccumulatedFrequencyPeriod(event.target.value as AccumulatedFrequencyPeriod)}
+                required
+              >
+                {ACCUMULATED_FREQUENCY_PERIOD_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {ACCUMULATED_FREQUENCY_PERIOD_LABELS[option]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </fieldset>
+
           <button
             type="submit"
             className={styles.iconButton}
