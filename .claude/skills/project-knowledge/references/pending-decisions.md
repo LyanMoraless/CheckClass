@@ -1864,6 +1864,297 @@ decisão do usuário).
 > Agent). O item 3 em particular teve sua ressalva resolvida: "bloco" foi
 > de fato absorvido pelo conceito de área (área raiz), não é lacuna.
 
+## Resolvido — Regras de negócio da Frente 07 (Justificativa de Faltas) fechadas (2026-09-08)
+
+O usuário confirmou **16 decisões de produto** que fecham a maior parte das
+lacunas de **regra de negócio** da frente 07. Todas foram formalizadas em
+`business-rules/references/absence-justification-rules.md`, no padrão
+citação + `Source of confirmation` usado no restante do projeto, com o
+texto superado **preservado riscado**. **Arquitetura, tecnologia, modelo de
+dados e código continuam sendo rodada futura** — nada foi aprovado para
+implementação, mesmo padrão "decisão primeiro, código depois".
+
+**Forma do pedido (RULE-JUST-01 addendum, RULE-JUST-05, RULE-JUST-06):**
+- Um pedido cobre um **intervalo de datas** e **todas as matérias** do
+  intervalo — **supera** a formulação original de RULE-JUST-01 ("o dia", "a
+  matéria", no singular).
+- Um envio (um anexo, uma mensagem, um intervalo) **se desdobra em vários
+  itens**, um por aula faltada. Cada professor decide **só os itens da
+  turma dele**, e o resultado pode ser **parcial** (ex.: 4 abonadas, 1
+  rejeitada).
+- **Anexo sempre obrigatório** — não existe pedido sem arquivo.
+- **15 dias corridos** após a falta para pedir.
+- Falta de **período de apuração encerrado não pode ser justificada** — o
+  prazo vale até **o que vier primeiro**, 15 dias ou o fechamento.
+- **Não é possível justificar aula pendente de revisão**
+  (`status = 'pending'`, RULE-ATT-07/09) — a pendência precisa ser
+  resolvida antes.
+- Aluno **pode cancelar** enquanto ninguém decidiu; **não pode editar**.
+  Rejeitado, pode abrir novo pedido.
+
+**Decisão e efeito (RULE-JUST-03 addendum, RULE-JUST-07):**
+- A falta abonada **conta como presença E permanece distinguível**: fica
+  marcada como falta justificada, com **quem aprovou, quando e com base em
+  qual pedido**. **Não altera a aritmética** de RULE-JUST-03 (33/40, nunca
+  32/39) — altera **o que fica registrado**. Sem isso o sistema perderia
+  para sempre a distinção entre quem assistiu à aula e quem apresentou
+  atestado, e a aprovação sobrescreveria o registro de quem resolveu a
+  pendência de chamada original.
+- **Rejeitar exige motivo escrito obrigatório**; aprovar tem motivo
+  opcional.
+- Um pedido **nunca expira nem se resolve sozinho** — fica aberto até um
+  humano decidir, mesmo comportamento de RULE-ATT-11. Sem escalonamento
+  automático e sem aprovação/rejeição por decurso de prazo.
+- O aluno **é avisado do resultado na área de avisos da home que já
+  existe** (RULE-FREQ-04). **Consequência registrada explicitamente:**
+  essa área passa a ter um **segundo tipo de conteúdo** — é expansão real
+  de escopo dela, e o addendum de RULE-FREQ-04 que a descreve como
+  exclusiva do aluno/frequência ~~**precisa ser reconciliado**~~.
+  **Reconciliado em 2026-09-08:** o usuário confirmou que a área **não é
+  mais exclusiva de frequência**; addendum escrito em RULE-FREQ-04.
+
+**Motivo estruturado (RULE-JUST-12, 2026-09-08):**
+- Além do texto livre, o aluno escolhe uma **categoria legal da ausência**
+  em lista fechada (doença, gestação, convocação militar, convocação
+  judicial/eleitoral, representação desportiva, representação estudantil,
+  escusa de consciência religiosa, falecimento de familiar, outro previsto
+  no regimento). **A composição da lista é proposta do agente, pendente de
+  validação jurídica** — o direito brasileiro não oferece lista única e
+  fechada de ausências abonáveis no ensino superior.
+- **Ressalva registrada:** boa parte dessas hipóteses concede na lei
+  **exercícios domiciliares** (compensação), não **abono** de falta. O
+  CheckClass abona (RULE-JUST-07) — decisão consciente, com a ressalva à
+  vista. Distinguir "abonar" de "compensar" seria regra nova.
+- A categoria **é ela própria dado sensível** (saúde, crença) e
+  **sobrevive à eliminação do anexo** em 30 dias (RULE-JUST-09). Em
+  aberto: se a liderança que vê a decisão sem ver o arquivo
+  (RULE-JUST-08) também vê a categoria.
+
+**Autoridade e acesso (RULE-JUST-08):**
+- **O professor da turma decide e é quem abre o atestado.** Coordenador de
+  Curso e Direção/Reitoria veem **a decisão** (quem justificou, qual dia,
+  qual matéria, aprovado/rejeitado, por quem) mas **não abrem o arquivo**.
+  Fecha o gap que RULE-JUST-03 registrava nas `Exceptions`.
+- **Divergência deliberada de RULE-ATT-12**, registrada como intencional
+  para que ninguém a "corrija" depois por consistência aparente: a cadeia
+  de liderança resolve pendência de chamada, mas **não recebe acesso a
+  dado de saúde por hierarquia**.
+
+**Anexo e LGPD (RULE-JUST-09, RULE-JUST-10):**
+- A **Frente 07 entrega o apagamento automático do anexo**: apagado **30
+  dias após a decisão**. A decisão (quem, quando, resultado, motivo)
+  **sobrevive ao arquivo** e vai para o histórico acadêmico.
+- **Só faculdade nesta rodada.** A feature **não vale para escola** por
+  causa do regime reforçado da LGPD para dado de saúde de **menor de
+  idade** — padrão "não rejeitado, apenas não incluído nesta rodada".
+
+**Source of confirmation:** Usuário, 2026-09-08.
+
+### Requisitos de segurança da Frente 07 — exigência legal, não escolha do usuário (RULE-JUST-11)
+
+Definidos pelo **Security Agent** em 2026-09-08 como **exigência legal**,
+registrados como regras confirmadas **por consequência legal** — mesmo
+raciocínio pelo qual RULE-JUST-04 já havia classificado o dado como
+sensível sem perguntar ao usuário:
+
+- O anexo **fica fora do ciclo de RULE-RET-01/02** — não entra no
+  fechamento mensal copiado para **mídia física própria** (exportaria dado
+  de saúde para fora de qualquer controle técnico). O fechamento carrega,
+  no máximo, a informação de que houve **justificativa aprovada**. Isso
+  **resolve, no sentido negativo**, o ponteiro registrado em
+  `business-rules/references/data-retention-rules.md` — **aquele ponteiro
+  também foi atualizado** nesta rodada.
+- **Todo acesso ao conteúdo do anexo é registrado**, para todos os papéis,
+  **inclusive o próprio aluno** e **inclusive tentativas negadas**. A
+  trilha é **append-only de verdade** (privilégio revogado + trigger), no
+  padrão já implementado em `exam_session_event` — **convenção de código
+  não é controle aceitável**.
+- O **aluno titular sempre pode ver o próprio anexo e saber quem o abriu**
+  (direito do titular, Art. 18).
+- **Nenhuma URL pública ou permanente**; autorização **reverificada a cada
+  abertura**, no servidor.
+- **Criptografia em repouso**, com chave gerenciada **fora do processo da
+  aplicação**.
+- Abrir o anexo exige **código de permissão dedicado e novo** no enum
+  `Permission` (o enum atual tem 10 códigos, nenhum aproveitável), sempre
+  **escopado à turma** — nunca permissão global.
+- O sistema **não consegue verificar se o atestado é verdadeiro**. A
+  verificação é humana e é o próprio ato de aprovar/rejeitar. A interface
+  deve dizer **"enviado pelo aluno"** e **nunca** apresentar o anexo como
+  validado ou verificado.
+- O modelo deve permitir **apagar o arquivo mantendo a decisão íntegra e
+  auditável** — se o desenho acoplar as duas coisas, é **falha a corrigir
+  antes de implementar**.
+
+**Source of confirmation:** Security Agent, 2026-09-08 (consequência legal
+direta, não opção de produto e não escolha do usuário).
+
+### GAPS da Frente 07 que continuam EM ABERTO (2026-09-08) — não presumir resposta
+
+~~**BLOQUEANTE, ainda não respondido — base legal do tratamento (Art. 11
+LGPD):** não foi perguntado ao usuário.~~ **RESOLVIDO em 2026-09-08:** a
+base legal é **cumprimento de obrigação legal/regulatória (Art. 11, II,
+"a")**, não consentimento — consentimento foi descartado por não ser livre
+na relação instituição↔aluno e por ser revogável, o que poderia derrubar
+uma justificativa já aprovada. Consequências (sem tela de consentimento;
+pedido de eliminação não derruba a decisão acadêmica; finalidade estrita;
+RULE-JUST-11 integralmente exigível) registradas no addendum de
+RULE-JUST-04. **Nenhum gap bloqueante permanece na Frente 07.**
+Demais itens — **os três primeiros DECIDIDOS pelo usuário em 2026-09-08; os
+casos-limite e as consequências conhecidas FECHADOS na passagem do Business
+Analyst no mesmo dia** (RULE-JUST-13 a RULE-JUST-23). O que continua aberto
+está no fim desta seção:
+- ~~**Formatos e tamanho máximo aceitos.** Proposta do Security, não
+  confirmada.~~ **DECIDIDO em 2026-09-08 — adotada a proposta do
+  Security:** PDF, JPEG e PNG, até **10 MB**, **1 arquivo por pedido**.
+  **SVG, HTML, compactados e executáveis proibidos, sem negociação.**
+- ~~Se o log de acesso guarda **IP e user-agent**~~ **DECIDIDO: sim**,
+  conforme recomendação do Security — são eles próprios dado pessoal e
+  entram no mesmo regime de acesso restrito do log.
+- ~~**Quem pode consultar o log** de "quem abriu o atestado de quem".~~
+  **DECIDIDO em 2026-09-08:** o **titular** (seu próprio log, já em
+  RULE-JUST-11) e o **papel de administração/DPO da instituição**. Nem
+  professor nem coordenação/direção consultam o log — ele revela **quais
+  alunos apresentaram atestado**, que é quase tão sensível quanto o
+  próprio atestado.
+- ~~Duas aulas da **mesma matéria no mesmo dia** com falta em só uma.~~
+  **FECHADO em 2026-09-08 → RULE-JUST-13:** a unidade de decisão é a
+  **sessão de aula concreta** (`class_session`), não o par dia+matéria.
+- ~~Aluno que **já constava presente** naquela aula.~~ **FECHADO →
+  RULE-JUST-14:** inelegível; a discordância se resolve pela **correção de
+  chamada** (RULE-ATT-11/12), nunca pela justificativa.
+- ~~Aulas **canceladas** (inclusive por feriado) aparecem ou não na lista do
+  dia.~~ **FECHADO → RULE-JUST-14:** não geram item — já estão fora do
+  denominador do Controle B, aprová-las não mudaria nada.
+- ~~Faltas **anteriores à matrícula** do aluno (hoje contam contra ele,
+  RULE-FREQ-05.4).~~ **FECHADO → RULE-JUST-14, item 4:** inelegíveis nesta
+  rodada. **Efeito adverso registrado, não escondido:** a falta continua
+  contando contra o aluno e ele não tem canal de abono. Abonar exigiria
+  **fabricar** um registro de presença para quem não estava matriculado; a
+  alternativa (tirar do denominador) mudaria RULE-FREQ-05.4, regra de uma
+  frente já implementada e fechada. **Tratar o caso é rodada própria, na
+  Frente 06.**
+- ~~Aluno com matrícula **trancada, formada ou evadida** pode pedir, e o que
+  acontece com pedidos **já na fila**.~~ **FECHADO → RULE-JUST-18, item 4:**
+  só matrícula `active` cria pedido; itens **já na fila continuam
+  decidíveis** — divergência deliberada de RULE-FREQ-08.2, porque lá o
+  objeto é alerta de risco futuro e aqui é fato acadêmico passado.
+- ~~**Desfazer** uma aprovação feita por engano.~~ **FECHADO →
+  RULE-JUST-17: revogação**, append-only, do professor da turma, com motivo
+  escrito obrigatório, estado terminal próprio `aprovação revogada`, mesmo
+  recálculo na mesma transação. **É ampliação real de escopo da frente,
+  assumida conscientemente** — e a parte mais destacável se o usuário quiser
+  cortar escopo.
+- ~~**Matéria removida da turma** com pedidos pendentes.~~ **FECHADO →
+  RULE-JUST-18, itens 1-3:** itens `em análise` são **encerrados sem
+  decisão**, em estado terminal próprio, distinto de rejeição — simetria com
+  RULE-FREQ-04, que marca o aviso da matéria removida como *resolvido*.
+- ~~**Limite de pedidos** por aluno por período.~~ **FECHADO →
+  RULE-JUST-16:** **sem cota numérica**; o controle é estrutural (um item em
+  análise por sessão, nada novo sobre sessão já aprovada). Cota penalizaria
+  exatamente o caso legítimo mais comum — doença prolongada.
+- ~~**Consequência conhecida e não decidida:** quando a aprovação faz o
+  aluno voltar acima do limite, o aviso de frequência é **apagado
+  fisicamente e some sem explicação**.~~ **FECHADO → RULE-JUST-21, item 5:**
+  **RULE-FREQ-04 permanece inalterada e a Frente 06 fica com diff zero.** O
+  aviso de justificativa passa a carregar o número ("sua frequência passou
+  de 72% para 78%") — o aluno lê a **causa**, não a consequência.
+- ~~**Recálculo retroativo** da frequência quando a justificativa é aprovada
+  — gap antigo de RULE-JUST-03, continua aberto.~~ **FECHADO →
+  RULE-JUST-23:** recalcula-se a janela do período em que **a aula
+  ocorreu**, não a do dia da decisão. **Contradição factual descoberta pelo
+  Business Analyst:** `attendance-frequency-engine.service.ts:141-146` chama
+  `currentPeriodWindow(..., new Date())` e `reporting-period.util.ts:65-67`
+  devolve `null` fora do termo — logo, se a decisão do professor cai depois
+  da virada do período (possível, porque o pedido **nunca expira**), a
+  chamada obrigatória de `recalculateForSessionPerson` é um **no-op
+  silencioso**. Não é bug do Controle B; é uma **premissa que a Frente 07
+  quebra**, e o desenho é do Solution Architect.
+- **Prazo de retenção dos backups é desconhecido** — sem isso o
+  compromisso de eliminação em 30 dias é **inverificável**. **Sinalizar ao
+  DevOps Agent.** (Continua aberto.)
+
+**Regras novas produzidas na passagem do Business Analyst (2026-09-08):**
+RULE-JUST-13 a RULE-JUST-23, todas em
+`business-rules/references/absence-justification-rules.md`. Além das que
+fecham os gaps acima, três nasceram da análise e **não estavam na lista**:
+
+- **RULE-JUST-15** — o prazo de 15 dias conta da **consolidação da falta**,
+  não da data da aula, e vale o que vier primeiro (15 dias, fim do período
+  de apuração ou `term_end_date`). Motivo: pendência de chamada **não
+  expira** (RULE-ATT-11), então contar da data da aula faria o aluno perder
+  o direito por inércia de terceiro.
+- **RULE-JUST-19** — o relógio dos 30 dias do anexo é **do envio** e parte
+  do **último item terminal**. RULE-JUST-09 dizia "30 dias após a decisão",
+  mas um envio produz **N decisões** (RULE-JUST-06) e um item encerrado sem
+  decisão humana nunca dispararia o relógio: o arquivo ficaria
+  indefinidamente. **Lacuna real de retenção de dado sensível, fechada.**
+- **RULE-JUST-20** — o **motivo escrito da rejeição** segue o mesmo corte de
+  privacidade da categoria (só aluno e professor da turma). Sem isso a
+  hierarquia recupera por texto livre o dado de saúde que RULE-JUST-08
+  fecha: "o atestado cobre o dia 12, a falta é do dia 14" já revela doença
+  em data específica.
+- **RULE-JUST-22** — ciclo de vida do aviso de justificativa, escrito **do
+  zero** (nada herdado do aviso de frequência, conforme o addendum de
+  RULE-FREQ-04 de 2026-09-08): lista única rotulada por tipo, contagem única
+  de não lidos, um aviso por (envio, matéria), **não some ao ser lido**,
+  deixa de ser exibido após 30 dias ou por dispensa do aluno, **nunca
+  apagado fisicamente**.
+
+**PENDÊNCIAS DESCOBERTAS pelo Business Analyst — nenhuma bloqueante de
+negócio, mas nenhuma inventada por ele. Atualizado após a passagem do
+Solution Architect em 2026-09-08:**
+
+1. **Escopo do acesso ao anexo: turma inteira x (turma, matéria) — ainda
+   aberto, agora delimitado.** RULE-JUST-08/11.7 dão anexo e categoria ao
+   "professor da turma", com permissão escopada à **turma**. Mas
+   RULE-INST-05 mantém o professor vinculado à turma inteira, não por
+   matéria, e RULE-INST-14 dá **várias matérias** por turma — numa turma
+   com dois professores de matérias diferentes, **ambos** veriam categoria
+   de saúde e atestado de matérias que não lecionam. O Solution Architect
+   confirmou: **(turma, matéria) não é tecnicamente verificável hoje** —
+   não existe relação professor↔matéria no schema, só professor↔turma e
+   turma↔matéria separadas — e
+   `LeadershipScopeService.hasAuthorityOverClassGroup` não serve de base
+   (sobe a cadeia de liderança, que RULE-JUST-08 exclui do acesso ao
+   anexo). Precisa de uma verificação nova e mais estreita, reaplicada
+   igualmente a anexo/categoria/motivo de rejeição. **Decisão de política
+   (aceitar turma inteira ou exigir o aperto) é da segunda passagem do
+   Security Agent**; se exigir o aperto, o Database Agent modela a relação
+   antes do Backend.
+2. **O papel "administração/DPO da instituição" NÃO EXISTE no modelo.**
+   Verificado: `permission.enum.ts` tem 10 códigos, nenhum aplicável; a
+   cadeia semeada em `tenant-bootstrap.service.ts` é Professor →
+   Coordenador → Direção/Reitoria; e o "administrador técnico da
+   instituição" (RULE-RET-04) é **outra coisa** — criado para dado bruto de
+   dispositivo e explicitamente separado da hierarquia pedagógica. **Lacuna
+   de ator**, que bloqueia apenas o fluxo de consulta ao log de acesso.
+3. ~~`architecture-overview.md:1769` afirma "nenhum branching por
+   `institutionType` em nenhum ponto do Portal"~~ **RESOLVIDO em
+   2026-09-08:** texto corrigido pelo Solution Architect, seção "4. Gap
+   faculdade/escola" — reusa o gate já em produção de
+   `ExamAvailabilityService.assertExamAreaEnabled()` (RULE-EXAM-02), não é
+   padrão novo. Nota de robustez sobre `tenant.institution_type` sem CHECK
+   preservada no texto, sinalizada ao Database Agent fora desta frente.
+4. ~~**Como** a primitiva de recálculo passa a operar sobre a janela da
+   aula (RULE-JUST-23)~~ **RESOLVIDO em 2026-09-08** — ver o addendum do
+   Solution Architect sob RULE-JUST-23 em
+   `absence-justification-rules.md`: `recalculate()` ganha `referenceDate`
+   explícito; achou e evitou um bug que a correção ingênua introduziria em
+   `AttendanceWarningService.closeIfPeriodTurnedOver`.
+
+**Atenção de atribuição:** RULE-JUST-13 a RULE-JUST-23 são **elaboração do
+Business Analyst**; o addendum de RULE-JUST-23 e a correção de
+`architecture-overview.md` são **elaboração do Solution Architect**, ambas
+derivadas das regras já confirmadas pelo usuário e da verificação factual
+no código. **Não são texto confirmado pelo usuário** — cada regra declara o
+seu grau de confiança no próprio corpo.
+
+**Source of confirmation:** Levantamento consolidado em 2026-09-08; seção
+atualizada no mesmo dia após a análise de requisitos do Business Analyst.
+
+Nenhum destes itens foi respondido pelo usuário.
+
 ## Resolvido — Ambiguidades A2, A3 e A4 do bloco HANDOFF formalizadas como addenda (2026-09-02)
 
 As três ambiguidades levantadas e **já respondidas pelo usuário** durante a
@@ -2247,10 +2538,81 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
    **Source of confirmation:** código verificável no repositório (2026-09-04);
    decisões documentadas em `project-knowledge/references/architecture-overview.md`
    (3 seções de Frente 06) e em `business-rules/references/attendance-frequency-rules.md`.
-7. **Justificativa de faltas (RULE-JUST-01..04)** — depende da 06 (ver
-   resolução da ambiguidade A4 abaixo). Não existe infraestrutura de
-   upload. Atestado é dado sensível de saúde sob LGPD — passagem
-   obrigatória pelo Security Agent.
+7. **Justificativa de faltas (~~RULE-JUST-01..04~~ RULE-JUST-01..11)** —
+   ~~depende da 06 (ver resolução da ambiguidade A4 abaixo). Não existe
+   infraestrutura de upload. Atestado é dado sensível de saúde sob LGPD —
+   passagem obrigatória pelo Security Agent.~~
+
+   **REGRAS DE NEGÓCIO FECHADAS (2026-09-08):** 16 decisões de produto
+   confirmadas pelo usuário (forma do pedido por **intervalo de datas** e
+   todas as matérias, desdobramento em **um item por aula** com decisão
+   parcial por professor, anexo **sempre obrigatório**, prazo de **15 dias
+   corridos** limitado pelo fechamento do período, veto a justificar aula
+   **pendente de revisão**, cancelar sim/editar não, falta abonada que
+   **conta como presença e permanece distinguível**, motivo obrigatório na
+   rejeição, pedido que **nunca expira**, aviso do resultado na área de
+   avisos da home, **professor decide e abre o atestado** enquanto a
+   liderança vê só a decisão, **apagamento do anexo 30 dias após a
+   decisão**, e **apenas faculdade nesta rodada**). Mais **9 requisitos de
+   segurança** definidos pelo Security Agent como **exigência legal** —
+   ver "Resolvido — Regras de negócio da Frente 07 (Justificativa de
+   Faltas) fechadas (2026-09-08)" acima nesta skill e
+   `business-rules/references/absence-justification-rules.md`.
+
+   **O que continua valendo desta descrição original:** a frente **depende
+   da 06** (concluída em 2026-09-04), **não existe infraestrutura de
+   upload** no projeto, e o atestado **é dado sensível de saúde sob a
+   LGPD**. A passagem pelo **Security Agent ocorreu** (2026-09-08) e
+   produziu RULE-JUST-11.
+
+   **O que falta:** **arquitetura, tecnologia, modelo de dados e código —
+   nada aprovado.** ~~E há um gap BLOQUEANTE ainda não respondido: a base
+   legal do tratamento (Art. 11 da LGPD)~~ — **resolvido em 2026-09-08
+   (obrigação legal/regulatória, Art. 11, II, "a")**, restando gaps não
+   bloqueantes (formatos/tamanho do anexo, IP/user-agent no log, quem
+   consulta o log, casos-limite de elegibilidade, desfazer aprovação,
+   limite de pedidos, recálculo retroativo, prazo de retenção dos backups
+   — este último **a sinalizar ao DevOps**). Ver a seção "GAPS da Frente
+   07 que continuam EM ABERTO (2026-09-08)" acima. ~~**Não iniciar
+   implementação antes de resolver a base legal.**~~ **Desbloqueado em
+   2026-09-08 — a frente pode seguir para o Business Analyst.** Cadeia
+   prevista:
+   ~~Product Definition~~ (feito) → ~~Security~~ (feito) → ~~Business
+   Analyst~~ (feito, 2026-09-08) → ~~Solution Architect~~ (feito,
+   2026-09-08) → **Security — segunda passagem (PRÓXIMO)** → Tech Decision
+   → Database → Backend → Frontend → Testing → QA → Project Guardian.
+
+   **Passagem do Business Analyst concluída em 2026-09-08.** Produziu
+   RULE-JUST-13 a RULE-JUST-23 em
+   `business-rules/references/absence-justification-rules.md`, fechando
+   **todos** os casos-limite de elegibilidade e de fila, o ciclo de vida do
+   aviso de justificativa e o recálculo retroativo, mais 42 critérios de
+   aceite no formato Dado/Quando/Então. **São elaboração do agente, não
+   texto confirmado pelo usuário.**
+
+   **Passagem do Solution Architect concluída em 2026-09-08.** Resolveu dois
+   dos três pontos e delimitou o terceiro:
+   (a) **RESOLVIDO** — desenho de como `recalculateForSessionPerson` passa a
+   operar sobre a janela da aula em vez de "hoje" (RULE-JUST-23), incluindo
+   um bug que a correção ingênua introduziria em
+   `AttendanceWarningService.closeIfPeriodTurnedOver` (fecharia como
+   `period_closed`, ou recriaria, o aviso do período **errado**) — evitado
+   sem tocar `AttendanceWarningService`. Ver o addendum sob RULE-JUST-23.
+   (b) **RESOLVIDO** — texto de `architecture-overview.md` corrigido: o gate
+   de RULE-JUST-10 reusa o mecanismo já em produção de
+   `ExamAvailabilityService.assertExamAreaEnabled()` (RULE-EXAM-02), não é
+   padrão novo.
+   (c) **DELIMITADO, não resolvido** — o escopo do acesso ao anexo, turma x
+   (turma, matéria): confirmado que **(turma, matéria) não é tecnicamente
+   verificável hoje** (falta a relação professor↔matéria no schema) e que
+   `LeadershipScopeService.hasAuthorityOverClassGroup` não serve de base
+   (sobe a cadeia de liderança, que RULE-JUST-08 exclui do acesso ao
+   anexo) — é preciso uma verificação nova e mais estreita, reaplicada
+   igualmente a anexo/categoria/motivo de rejeição. **Decisão de política
+   fica para esta segunda passagem do Security Agent**; se exigir o
+   aperto, o Database Agent modela a relação nova antes do Backend.
+   **Fora do caminho crítico:** o papel de administração/DPO não existe no
+   modelo e bloqueia apenas o fluxo de consulta ao log de acesso.
 8. **Segurança de Intrusão: fechar a primeira rodada** — depende da
    resolução da ambiguidade A2 abaixo (câmera ao vivo). Contagem de
    entrada/saída (RULE-SEC-05) com os 4 gaps já registrados na seção

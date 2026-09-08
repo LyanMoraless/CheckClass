@@ -74,12 +74,29 @@ silenciosamente no código.
 > que os dados de chamada cobertos por RULE-RET-01/02. Nenhuma regra deste
 > arquivo cobre esse tipo de dado hoje (quem pode abrir o anexo, prazo de
 > retenção, se é excluído após a decisão do professor, se entra ou não no
-> ciclo de 60 dias + fechamento mensal). **Não presumir** que o ciclo de
-> RULE-RET-01 se aplica ao anexo. Reconciliação obrigatória com o
+> ciclo de 60 dias + fechamento mensal). ~~**Não presumir** que o ciclo de
+> RULE-RET-01 se aplica ao anexo.~~ Reconciliação obrigatória com o
 > **Security Agent** antes de qualquer implementação — ponto de risco real,
 > registrado em `project-knowledge/references/pending-decisions.md`.
 > **Source of confirmation:** Feature confirmada pelo usuário em
-> 2026-09-02; as regras de retenção do anexo continuam **em aberto**.
+> 2026-09-02; ~~as regras de retenção do anexo continuam **em aberto**~~.
+>
+> **RESOLVIDO, no sentido NEGATIVO (2026-09-08):** o ciclo de
+> RULE-RET-01/RULE-RET-02 **NÃO se aplica ao anexo**. O anexo **fica fora**
+> do fechamento mensal que a instituição copia para **mídia física
+> própria** — incluí-lo **exportaria dado de saúde para fora de qualquer
+> controle técnico**. O fechamento carrega, no máximo, a informação de que
+> **houve justificativa aprovada**, nunca o arquivo. O anexo tem ciclo
+> próprio: **apagado 30 dias após a decisão**, enquanto a decisão (quem,
+> quando, resultado, motivo) sobrevive e vai para o histórico acadêmico.
+> Ver **RULE-JUST-09** e **RULE-JUST-11** em
+> `business-rules/references/absence-justification-rules.md`.
+> **Gap remanescente:** o **prazo de retenção dos backups** é desconhecido
+> — sem isso o compromisso de eliminação em 30 dias é **inverificável**.
+> Sinalizado ao **DevOps Agent**.
+> **Source of confirmation:** Security Agent, 2026-09-08 (consequência
+> legal direta, não escolha do usuário); decisão de retenção de 30 dias
+> confirmada pelo usuário em 2026-09-08.
 
 ### RULE-RET-04: Papel de administrador técnico da instituição
 

@@ -1765,16 +1765,49 @@ Direção podem compartilhar o mesmo componente de apresentação,
 parametrizado por escopo, já que o backend os trata uniformemente (item 2
 acima). Login reaproveita a tela já existente, sem mudança.
 
-**4. Gap faculdade/escola — tratamento agnóstico de tipo de instituição.**
-Nenhum branching por `institutionType` em nenhum ponto do Portal.
-`/v1/me/context` e `coordinated-class-groups` são queries puras sobre
-`leadership_assignment` — para um tenant escola (que hoje tem zero linhas
-nessa tabela, confirmado em `tenant-bootstrap.service.ts`), os campos
-`coordinating`/`isDirection` naturalmente vêm vazios/falsos, e os grupos de
-navegação correspondentes simplesmente não aparecem, sem nenhum código
-condicional. Fica pronto para quando (e se) a hierarquia de escola for
-modelada no futuro (ver "Gap — Papéis administrativos internos da
-instituição" em `pending-decisions.md`), sem trabalho extra agora.
+**4. Gap faculdade/escola — tratamento majoritariamente agnóstico de tipo
+de instituição, com uma exceção pontual a partir da Frente 07.**
+Como canal, o Portal continua **inteiramente agnóstico** de
+`institutionType`: `/v1/me/context` e `coordinated-class-groups` são
+queries puras sobre `leadership_assignment` — para um tenant escola (que
+hoje tem zero linhas nessa tabela, confirmado em
+`tenant-bootstrap.service.ts`), os campos `coordinating`/`isDirection`
+naturalmente vêm vazios/falsos, e os grupos de navegação correspondentes
+simplesmente não aparecem, sem nenhum código condicional. Fica pronto para
+quando (e se) a hierarquia de escola for modelada no futuro (ver "Gap —
+Papéis administrativos internos da instituição" em `pending-decisions.md`),
+sem trabalho extra agora.
+
+> **Addendum do Solution Architect (2026-09-08) — Frente 07 introduz a
+> primeira exceção pontual dentro do Portal.** A área do aluno "justificar
+> faltas" (RULE-JUST-10) fica disponível apenas para tenants `faculdade`,
+> não `escola`. Isso **não é um padrão arquitetural novo** — reusa o mesmo
+> mecanismo já em produção em
+> `ExamAvailabilityService.assertExamAreaEnabled()` (RULE-EXAM-02): um gate
+> de feature que lê `tenant.institutionType` contra uma lista fixa e nega
+> acesso fora dela, aplicado na entrada dos endpoints da feature. O que
+> muda em relação a todo gate anterior é o corte em si: é a primeira vez
+> que `faculdade` e `escola` ficam de lados diferentes da checagem — até
+> aqui todo gate de `institutionType` (Área de Provas, App Mobile para
+> Faculdade quanto ao escopo do próprio Portal) tratava as duas juntas,
+> contra `empresa` (já desqualificada globalmente). O restante do Portal
+> permanece sem nenhum branch — esta é uma exceção de uma feature
+> específica, não uma mudança na política geral do canal.
+>
+> **Nota de robustez, fora do escopo da Frente 07:** `tenant.institution_type`
+> é `varchar(50) NOT NULL` **sem CHECK constraint** (migration `InitSchema`).
+> O valor canônico só é garantido pela validação `@IsIn(INSTITUTION_TYPES)`
+> do DTO de onboarding público; `TenantBootstrapService.createTenant()` em
+> si aceita `institutionType: string` sem validar. Caminhos fora de
+> produção já usam valores fora do vocabulário canônico (`'school'` em
+> helpers de teste, `'SCHOOL'` em spec) — nenhum é produção, mas provam que
+> o dado não é protegido no nível em que deveria estar. Um gate por
+> `institutionType` escrito por comparação exata de string (como
+> RULE-EXAM-02 já faz e RULE-JUST-10 vai exigir) falha silenciosamente para
+> um tenant com valor fora do vocabulário — nega acesso sem indicar que a
+> causa é sujeira de dado, não exclusão de negócio. Gravidade baixa (o
+> caminho de produção está validado), mas recomendado ao Database Agent
+> avaliar CHECK constraint/normalização, independente desta frente.
 
 **5. Novo escopo aprovado nesta sessão — CRUD administrativo mínimo para
 atribuir Coordenador de Curso.** O Solution Architect identificou, durante

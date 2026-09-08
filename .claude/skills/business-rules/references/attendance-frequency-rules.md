@@ -227,6 +227,9 @@ não questionado — descrito literalmente pelo usuário).
 > nem o Coordenador de Curso/Direção recebem essa notificação ou têm
 > acesso a ela. Não confundir com o acesso do professor às solicitações de
 > justificativa de falta (RULE-JUST-03), que é um fluxo diferente.
+> **Ponteiro (2026-09-08):** continua verdadeiro quanto ao *destinatário*
+> do aviso de frequência, mas a área de avisos deixou de ser exclusiva de
+> frequência — ver addendum de 2026-09-08 abaixo.
 > **Source of confirmation:** Usuário, 2026-09-03.
 
 > **Addendum (2026-09-03) — remoção da matéria da turma encerra o aviso
@@ -273,6 +276,37 @@ não questionado — descrito literalmente pelo usuário).
 > nova completa**, a ser desenhada do zero pelo Solution
 > Architect/Backend/Frontend na rodada futura de implementação. Registrado
 > aqui para que nenhum agente presuma reaproveitamento de algo existente.
+
+> **Addendum (2026-09-08) — a área de avisos da home deixa de ser
+> exclusiva de frequência: passa a receber também o resultado da
+> justificativa de falta (Frente 07):** reconcilia o conflito levantado
+> pelo Product Definition ao fechar as regras da Frente 07. O usuário
+> decidiu que **a área de avisos não é mais exclusiva para avisos de
+> frequência** — o aviso de decisão sobre um pedido de justificativa
+> (RULE-JUST-05/06/07) é entregue ao aluno **na mesma área**, e não em um
+> canal novo. Consequências registradas:
+>
+> 1. A área de avisos passa a ser um **canal de avisos do aluno**, não um
+>    componente do Controle B. O que RULE-FREQ-03/04 define continua
+>    valendo **para o aviso de frequência**, não para a área inteira.
+> 2. As regras de ciclo de vida do aviso de frequência (some quando a
+>    frequência sobe, é marcado resolvido quando a matéria sai da turma,
+>    persiste indefinidamente na ausência de marco de finalização) são
+>    **específicas do aviso de frequência** e **não** se aplicam
+>    automaticamente ao aviso de justificativa — nenhum agente deve
+>    presumir herança.
+> 3. O addendum de exclusividade do **destinatário** continua válido: o
+>    aviso *de frequência* segue exclusivo do aluno. O que mudou foi o
+>    **tipo de conteúdo** que a área comporta, não quem lê o aviso de
+>    frequência.
+>
+> **Gaps que continuam em aberto (registrar, não presumir):** se os dois
+> tipos aparecem misturados numa lista única ou separados por seção; se o
+> aviso de justificativa some após ser lido, persiste, ou é encerrado por
+> algum evento; se existe contagem/badge por tipo. A definir quando o
+> módulo de notificação for desenhado (ele não existe ainda — ver
+> "Implicação técnica conhecida" acima).
+> **Source of confirmation:** Usuário, 2026-09-08.
 
 ### RULE-FREQ-05: Composição do numerador e do denominador do acumulado — sessões pending, denominador zero, arredondamento e matrícula tardia
 
