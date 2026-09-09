@@ -2073,6 +2073,24 @@ está no fim desta seção:
 - **Prazo de retenção dos backups é desconhecido** — sem isso o
   compromisso de eliminação em 30 dias é **inverificável**. **Sinalizar ao
   DevOps Agent.** (Continua aberto.)
+- **INCONSISTÊNCIA DOCUMENTAL, achada pelo Project Guardian em
+  2026-09-09 — texto do AC-10 contradiz a regra que ele mesmo cita como
+  base.** `business-rules/references/absence-justification-requirements-analysis.md`,
+  AC-10 (linha ~259), descreve **cancelamento parcial** de um envio pelo
+  aluno — "o item decidido é preservado e apenas os itens ainda em análise
+  são cancelados". Isso contradiz a própria RULE-JUST-05.4 em
+  `business-rules/references/absence-justification-rules.md` (linhas
+  ~281-284): o cancelamento só é possível **enquanto nenhum item foi
+  decidido** — um único item decidido bloqueia o cancelamento do envio
+  **inteiro**, sem cancelamento parcial. **A implementação segue
+  RULE-JUST-05.4** (tudo-ou-nada) e está correta; é o texto do AC-10 que
+  está desalinhado com a regra que cita como base. **Pendência para o
+  Business Analyst:** revisar e corrigir o texto de AC-10 para refletir o
+  cancelamento tudo-ou-nada — ou, se a intenção de produto original era
+  mesmo cancelamento parcial, reescrever RULE-JUST-05.4 e avaliar o
+  impacto na implementação já entregue. **Decisão de qual caminho tomar é
+  do Business Analyst**, não presumida aqui. Não bloqueia o fechamento da
+  Frente 07 (ver item 7 abaixo nesta skill, "FRENTE 07 CONCLUÍDA").
 
 **Regras novas produzidas na passagem do Business Analyst (2026-09-08):**
 RULE-JUST-13 a RULE-JUST-23, todas em
@@ -2105,38 +2123,51 @@ fecham os gaps acima, três nasceram da análise e **não estavam na lista**:
 negócio, mas nenhuma inventada por ele. Atualizado após a passagem do
 Solution Architect em 2026-09-08:**
 
-1. **Escopo do acesso ao anexo: turma inteira x (turma, matéria) — ainda
-   aberto, agora delimitado.** RULE-JUST-08/11.7 dão anexo e categoria ao
-   "professor da turma", com permissão escopada à **turma**. Mas
-   RULE-INST-05 mantém o professor vinculado à turma inteira, não por
-   matéria, e RULE-INST-14 dá **várias matérias** por turma — numa turma
-   com dois professores de matérias diferentes, **ambos** veriam categoria
-   de saúde e atestado de matérias que não lecionam. O Solution Architect
-   confirmou: **(turma, matéria) não é tecnicamente verificável hoje** —
-   não existe relação professor↔matéria no schema, só professor↔turma e
-   turma↔matéria separadas — e
+1. ~~**Escopo do acesso ao anexo: turma inteira x (turma, matéria) — ainda
+   aberto, agora delimitado.**~~ **RESOLVIDO em 2026-09-08 → RULE-JUST-24**
+   (segunda passagem do Security Agent, pedida pelo Business Analyst e pelo
+   Solution Architect): o escopo é **(turma, matéria)**, não turma
+   inteira, para os três pontos que compartilham o corte de privacidade
+   (anexo, categoria legal, motivo de rejeição/observação). Mitigação
+   alternativa (aviso de tela sem controle técnico) foi avaliada e
+   **rejeitada** — mesmo princípio de RULE-JUST-11.3. **Continua
+   bloqueante, sem mudança:** não existe relação professor↔matéria no
+   schema hoje (só professor↔turma via `class_group_enrollment` e
+   turma↔matéria via `class_group_subject`), e
    `LeadershipScopeService.hasAuthorityOverClassGroup` não serve de base
-   (sobe a cadeia de liderança, que RULE-JUST-08 exclui do acesso ao
-   anexo). Precisa de uma verificação nova e mais estreita, reaplicada
-   igualmente a anexo/categoria/motivo de rejeição. **Decisão de política
-   (aceitar turma inteira ou exigir o aperto) é da segunda passagem do
-   Security Agent**; se exigir o aperto, o Database Agent modela a relação
-   antes do Backend.
-2. **O papel "administração/DPO da instituição" NÃO EXISTE no modelo.**
+   (sobe cadeia de liderança, que RULE-JUST-08/24 excluem). **O Database
+   Agent precisa modelar essa relação antes de o Backend Agent implementar
+   os três gates**, para qualquer tenant com turma multi-matéria e
+   múltiplos professores — cenário já real (Frente 05/06 entregues).
+2. **Não existe fluxo para atribuir um professor a uma matéria específica
+   dentro de uma turma — gap não-bloqueante, registrado em 2026-09-08.**
+   RULE-INST-05 só cobre atribuição de professor à **turma inteira**
+   (com co-docência); RULE-INST-14 deu várias matérias por turma, mas
+   nenhuma decisão de arquitetura cobre "quem atribui professor a qual
+   matéria". A nova tabela `class_group_subject_teacher` que o Database
+   Agent modelou para RULE-JUST-24 fica **vazia até alguém a popular** —
+   nesta rodada isso é aceito como população manual/script, sem tela
+   dedicada. **Decisão do usuário, 2026-09-08:** tratar como gap
+   não-bloqueante, não expandir o escopo da Frente 07 para desenhar essa
+   tela agora — o desenho de um fluxo de atribuição professor↔matéria,
+   se necessário, é rodada futura separada (Business Analyst/Solution
+   Architect), possivelmente dentro da própria Frente 05/Gerenciamento da
+   Instituição.
+3. **O papel "administração/DPO da instituição" NÃO EXISTE no modelo.**
    Verificado: `permission.enum.ts` tem 10 códigos, nenhum aplicável; a
    cadeia semeada em `tenant-bootstrap.service.ts` é Professor →
    Coordenador → Direção/Reitoria; e o "administrador técnico da
    instituição" (RULE-RET-04) é **outra coisa** — criado para dado bruto de
    dispositivo e explicitamente separado da hierarquia pedagógica. **Lacuna
    de ator**, que bloqueia apenas o fluxo de consulta ao log de acesso.
-3. ~~`architecture-overview.md:1769` afirma "nenhum branching por
+4. ~~`architecture-overview.md:1769` afirma "nenhum branching por
    `institutionType` em nenhum ponto do Portal"~~ **RESOLVIDO em
    2026-09-08:** texto corrigido pelo Solution Architect, seção "4. Gap
    faculdade/escola" — reusa o gate já em produção de
    `ExamAvailabilityService.assertExamAreaEnabled()` (RULE-EXAM-02), não é
    padrão novo. Nota de robustez sobre `tenant.institution_type` sem CHECK
    preservada no texto, sinalizada ao Database Agent fora desta frente.
-4. ~~**Como** a primitiva de recálculo passa a operar sobre a janela da
+5. ~~**Como** a primitiva de recálculo passa a operar sobre a janela da
    aula (RULE-JUST-23)~~ **RESOLVIDO em 2026-09-08** — ver o addendum do
    Solution Architect sob RULE-JUST-23 em
    `absence-justification-rules.md`: `recalculate()` ganha `referenceDate`
@@ -2144,16 +2175,72 @@ Solution Architect em 2026-09-08:**
    `AttendanceWarningService.closeIfPeriodTurnedOver`.
 
 **Atenção de atribuição:** RULE-JUST-13 a RULE-JUST-23 são **elaboração do
-Business Analyst**; o addendum de RULE-JUST-23 e a correção de
-`architecture-overview.md` são **elaboração do Solution Architect**, ambas
-derivadas das regras já confirmadas pelo usuário e da verificação factual
-no código. **Não são texto confirmado pelo usuário** — cada regra declara o
-seu grau de confiança no próprio corpo.
+Business Analyst**; o addendum de RULE-JUST-23, a correção de
+`architecture-overview.md` e RULE-JUST-24 são **elaboração do Solution
+Architect e do Security Agent**, ambas derivadas das regras já confirmadas
+pelo usuário e da verificação factual no código. **Não são texto
+confirmado pelo usuário** — cada regra declara o seu grau de confiança no
+próprio corpo.
 
 **Source of confirmation:** Levantamento consolidado em 2026-09-08; seção
 atualizada no mesmo dia após a análise de requisitos do Business Analyst.
 
-Nenhum destes itens foi respondido pelo usuário.
+Restam, sem resposta do usuário: item 2 (papel administração/DPO) e o
+prazo de retenção de backups (sinalizado ao DevOps). O item 1 foi fechado
+por RULE-JUST-24 acima.
+
+### Proposta pendente — Tecnologia de armazenamento do anexo, Frente 07 (2026-09-08)
+
+O Tech Decision Agent avaliou a tecnologia de armazenamento do anexo
+(RULE-JUST-09/11/19 em `absence-justification-rules.md`) — hoje não existe
+nenhuma infraestrutura de upload/storage no backend. Quatro alternativas
+comparadas: filesystem local + multer, MinIO auto-hospedado, object
+storage gerenciado compatível com S3, e blob criptografado dentro do
+Postgres já aprovado.
+
+**Recomendação:** categoria de tecnologia **object storage gerenciado,
+compatível com S3** — bucket privado, sem acesso público em nenhuma
+hipótese; criptografia em repouso com chave gerenciada em **KMS do
+provedor**, fora do processo da aplicação; backend busca o arquivo com
+credencial própria e transmite ao usuário autorizado após reverificação no
+servidor a cada abertura — **nunca** URL assinada, temporária ou
+permanente. Exclusão automática do ciclo de fechamento mensal
+(RULE-RET-01/02) é estrutural (sistema separado do Postgres), não depende
+de disciplina operacional.
+
+**Alternativas descartadas e por quê:**
+- Filesystem + multer: "chave fora do processo da app" e exclusão do
+  backup/fechamento mensal viram disciplina operacional (lembrar de excluir
+  uma pasta), não garantia estrutural — risco alto para dado de saúde.
+- MinIO auto-hospedado: satisfaria os requisitos, mas exige manter serviço
+  novo **mais** um KMS externo (ex. Vault) — mais superfície operacional
+  nova do que qualquer outra decisão já tomada neste projeto, sem ganho de
+  segurança sobre a opção gerenciada.
+- Blob no Postgres: reaproveitaria tecnologia já aprovada, mas contradiz
+  diretamente RULE-JUST-11.1 (o anexo tem de ficar fora do que é copiado no
+  fechamento mensal) — manter isso correto viraria disciplina de script de
+  exportação sobre dado de saúde, não estrutural.
+
+**Fornecedor concreto (AWS S3 ou outro compatível) fica em aberto**
+deliberadamente — não existe hoje nenhuma decisão de hosting/cloud
+registrada para o backend, e fixar um fornecedor aqui decidiria essa
+questão maior por uma porta lateral. Referência de maturidade assumida:
+AWS S3 (SSE-KMS + Block Public Access + lifecycle rules por objeto).
+
+**Dependências não resolvidas por esta proposta:** prazo de retenção de
+backups (DevOps Agent, gap já sinalizado); modelagem de dados de como a
+decisão sobrevive à eliminação do arquivo (Database Agent).
+
+**Status: APROVADA pelo usuário em 2026-09-08.** Categoria de tecnologia —
+object storage gerenciado compatível com S3, bucket privado, SSE com chave
+em KMS externo ao processo da aplicação, sem URL pública/assinada em
+nenhuma hipótese — confirmada. **Fornecedor concreto continua em aberto**,
+por decisão deliberada do Tech Decision Agent (depende de uma decisão de
+hosting/cloud para o backend que ainda não existe) — não presumir que
+"aprovado" resolveu esse ponto também. Esta é a **primeira dependência de
+provedor de nuvem externo** do projeto.
+**Source of confirmation:** Tech Decision Agent, 2026-09-08 (recomendação);
+Usuário, 2026-09-08 (aprovação, "Sim").
 
 ## Resolvido — Ambiguidades A2, A3 e A4 do bloco HANDOFF formalizadas como addenda (2026-09-02)
 
@@ -2575,12 +2662,15 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
    — este último **a sinalizar ao DevOps**). Ver a seção "GAPS da Frente
    07 que continuam EM ABERTO (2026-09-08)" acima. ~~**Não iniciar
    implementação antes de resolver a base legal.**~~ **Desbloqueado em
-   2026-09-08 — a frente pode seguir para o Business Analyst.** Cadeia
-   prevista:
-   ~~Product Definition~~ (feito) → ~~Security~~ (feito) → ~~Business
-   Analyst~~ (feito, 2026-09-08) → ~~Solution Architect~~ (feito,
-   2026-09-08) → **Security — segunda passagem (PRÓXIMO)** → Tech Decision
-   → Database → Backend → Frontend → Testing → QA → Project Guardian.
+   2026-09-08 — a frente pode seguir para o Business Analyst.**
+   ~~Cadeia prevista: Product Definition (feito) → Security (feito) →
+   Business Analyst (feito, 2026-09-08) → Solution Architect (feito,
+   2026-09-08) → Security — segunda passagem (PRÓXIMO) → Tech Decision →
+   Database → Backend → Frontend → Testing → QA → Project Guardian.~~
+   **Superada — ver "FRENTE 07 CONCLUÍDA (2026-09-09)" abaixo: a cadeia
+   completa (incluindo a segunda passagem do Security Agent, Tech
+   Decision, Database, Backend, Frontend, Testing, QA e Project Guardian)
+   já rodou por inteiro.**
 
    **Passagem do Business Analyst concluída em 2026-09-08.** Produziu
    RULE-JUST-13 a RULE-JUST-23 em
@@ -2602,17 +2692,94 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
    de RULE-JUST-10 reusa o mecanismo já em produção de
    `ExamAvailabilityService.assertExamAreaEnabled()` (RULE-EXAM-02), não é
    padrão novo.
-   (c) **DELIMITADO, não resolvido** — o escopo do acesso ao anexo, turma x
+   (c) ~~**DELIMITADO, não resolvido** — o escopo do acesso ao anexo, turma x
    (turma, matéria): confirmado que **(turma, matéria) não é tecnicamente
    verificável hoje** (falta a relação professor↔matéria no schema) e que
    `LeadershipScopeService.hasAuthorityOverClassGroup` não serve de base
    (sobe a cadeia de liderança, que RULE-JUST-08 exclui do acesso ao
    anexo) — é preciso uma verificação nova e mais estreita, reaplicada
-   igualmente a anexo/categoria/motivo de rejeição. **Decisão de política
-   fica para esta segunda passagem do Security Agent**; se exigir o
-   aperto, o Database Agent modela a relação nova antes do Backend.
-   **Fora do caminho crítico:** o papel de administração/DPO não existe no
-   modelo e bloqueia apenas o fluxo de consulta ao log de acesso.
+   igualmente a anexo/categoria/motivo de rejeição. Decisão de política
+   fica para esta segunda passagem do Security Agent; se exigir o
+   aperto, o Database Agent modela a relação nova antes do Backend.~~
+   **RESOLVIDO em 2026-09-08 → RULE-JUST-24, ver "RESOLVIDO em 2026-09-08 →
+   RULE-JUST-24" acima nesta skill** — a segunda passagem do Security Agent
+   ocorreu e decidiu o escopo (turma, matéria); o Database Agent modelou a
+   tabela `class_group_subject_teacher` antes do Backend.
+   ~~**Fora do caminho crítico:** o papel de administração/DPO não existe no
+   modelo e bloqueia apenas o fluxo de consulta ao log de acesso.~~
+   **Continua verdadeiro, não bloqueou a Frente 07** — o papel de
+   administração/DPO segue não existindo no modelo (ver item 3 da lista de
+   pendências descobertas pelo Business Analyst, acima) e bloqueia apenas o
+   fluxo de consulta ao log de acesso, que não fazia parte do escopo
+   implementado nesta frente.
+
+   **FRENTE 07 CONCLUÍDA (2026-09-09).** A segunda passagem do Security
+   Agent **ocorreu** em 2026-09-08 e produziu RULE-JUST-24 (ver "RESOLVIDO
+   em 2026-09-08 → RULE-JUST-24" acima nesta skill) — a cadeia prevista
+   acima está **completa**, não há passagem pendente. Implementação
+   concluída em 2026-09-09: módulo `absence-justification` (Backend) —
+   submissão de pedido com anexo obrigatório via multipart
+   (`absence-justification-submission.service.ts`), elegibilidade de
+   sessões (RULE-JUST-01/14,
+   `absence-justification-eligibility.service.ts`), decisão do professor —
+   aprovar/rejeitar/revogar (RULE-JUST-03/06/08/17/24,
+   `absence-justification-decision.service.ts`), retenção e eliminação do
+   anexo em 30 dias (RULE-JUST-19,
+   `absence-justification-attachment.service.ts` +
+   `absence-justification-attachment-storage.service.ts`), avisos ao aluno
+   (RULE-JUST-21/22, `absence-justification-notice.service.ts` +
+   `absence-justification-notice-read.service.ts`), escopo do professor por
+   (turma, matéria) — RULE-JUST-24 —
+   (`teacher-subject-scope.service.ts`), e RLS por tenant/pessoa
+   (`absence-justification-rls-context.service.ts` +
+   `absence-justification-person-scope.interceptor.ts`). Frontend:
+   `portal-student-justifications` (criar pedido, listar, detalhe) e
+   `portal-teacher-justifications` (fila de decisão, revogação). Testes:
+   suíte completa do backend fechou em **844 testes** (baseline antes desta
+   frente: 782), **zero regressão**; frontend sem framework de teste
+   automatizado no projeto (build/typecheck limpo).
+
+   **Duas rodadas na cadeia de QA:** a primeira rodada de Testing (5 specs
+   novos + 3 estendidos) achou e, depois de correção do Backend, fechou um
+   bug real — `AbsenceJustificationDecisionService.revoke()` não respeitava
+   a exceção da RULE-JUST-17 (sem revogação após anexo eliminado,
+   RULE-JUST-19). A primeira rodada de QA achou um segundo problema,
+   bloqueante: **RULE-JUST-10 nunca tinha sido implementada** — a feature
+   deveria valer só para tenants `faculdade`, e não havia nenhum gate. Uma
+   segunda rodada de Backend + Frontend + Testing + QA fechou o gap:
+   `AbsenceJustificationAreaGateService` +
+   `AbsenceJustificationAreaGateInterceptor` (mesmo mecanismo de
+   `ExamAvailabilityService.assertExamAreaEnabled()`, comparando só contra
+   `'faculdade'`, não a lista de dois valores), aplicado nos três
+   controllers do módulo; `institutionType` exposto em `GET
+   /v1/me/context` (`me-context.service.ts`); navegação escondida no
+   `app-shell.tsx` para tenants não-faculdade. A segunda rodada de QA
+   aprovou.
+
+   **Cadeia de agentes:** Product Definition → Security (1ª passagem) →
+   Business Analyst → Solution Architect → Security (2ª passagem) → Tech
+   Decision → Database → Backend → Frontend → Testing → QA (1ª rodada,
+   achado bloqueante) → Backend → Frontend → Testing → QA (2ª rodada,
+   aprovado) → Project Guardian.
+   **Verificação:** módulo completo em
+   `backend/src/modules/absence-justification/` (28 arquivos, incluindo 12
+   specs); `frontend/src/features/portal-student-justifications/` e
+   `frontend/src/features/portal-teacher-justifications/`; gate de
+   RULE-JUST-10 em
+   `absence-justification-area-gate.service.ts`/`.interceptor.ts`;
+   `institutionType` em `me-context.service.ts`.
+   **Project Guardian:** veredito **Consistente** em 2026-09-09 — frente
+   encerrada. Apontou uma nota de refactor futuro, não-bloqueante: a
+   leitura de `TenantEntity.institutionType` por tenantId corrente está
+   **triplicada sem helper compartilhado** — em
+   `exam-availability.service.ts`, em
+   `absence-justification-area-gate.service.ts` e em
+   `me-context.service.ts`. Registrado aqui como observação para uma futura
+   rodada de Refactoring; não é item de pendência formal.
+   **Source of confirmation:** código verificável no repositório
+   (2026-09-09); decisões documentadas em
+   `business-rules/references/absence-justification-rules.md` e nas seções
+   desta skill referenciadas acima.
 8. **Segurança de Intrusão: fechar a primeira rodada** — depende da
    resolução da ambiguidade A2 abaixo (câmera ao vivo). Contagem de
    entrada/saída (RULE-SEC-05) com os 4 gaps já registrados na seção
