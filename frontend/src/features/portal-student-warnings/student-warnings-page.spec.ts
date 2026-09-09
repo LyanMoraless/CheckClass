@@ -1,12 +1,16 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StudentWarningsPage } from './student-warnings-page';
 import * as warningsApi from './student-warnings-api';
+import * as noticesApi from '../portal-student-justifications/absence-justification-notice-api';
+import * as scheduleApi from '../portal-student/student-schedule-api';
 
-// Test page component for student warnings (RULE-FREQ-04 items 1/2, RULE-FREQ-08.3).
-// This page is the "área de avisos" shown exclusively to students — the only
-// surface in the system where attendance frequency warnings appear.
+// Test page component for student warnings (RULE-FREQ-04 items 1/2, RULE-FREQ-08.3)
+// and, since Frente 07, the RULE-JUST-21/22 justification-notice merge into
+// the SAME list (RULE-JUST-22.6). This page is the "área de avisos" shown
+// exclusively to students — the only surface in the system where either
+// attendance frequency warnings or justification notices appear.
 describe('StudentWarningsPage', () => {
   let queryClient: QueryClient;
 
@@ -17,6 +21,11 @@ describe('StudentWarningsPage', () => {
       },
     });
     vi.clearAllMocks();
+    // Every existing test below predates the notices merge and only mocks
+    // listMyWarnings — this default keeps them green without touching each
+    // one individually; tests that care about notices override it below.
+    vi.spyOn(noticesApi, 'listMyJustificationNotices').mockResolvedValue([]);
+    vi.spyOn(scheduleApi, 'listMySchedule').mockResolvedValue([]);
   });
 
   function renderPage() {
@@ -451,6 +460,145 @@ describe('StudentWarningsPage', () => {
         // below_minimum should come first in the rendered list
         const belowCard = cards[0];
         expect(belowCard).toHaveTextContent('Cálculo I');
+      });
+    });
+  });
+
+  // ============================================================================
+  // Justification Notices Merge (RULE-JUST-21/22, single list per RULE-JUST-22.6)
+  // ============================================================================
+  describe('justification notices merge', () => {
+    it('test_studentWarningsPage_decisionResultNotice_rendersApprovedRejectedCountsAndFrequencyChange', async () => {
+      vi.spyOn(warningsApi, 'listMyWarnings').mockResolvedValue([]);
+      vi.spyOn(noticesApi, 'listMyJustificationNotices').mockResolvedValue([
+        {
+          id: 'notice-1',
+          personId: 'person-1',
+          submissionId: 'submission-1',
+          subjectId: 'subject-1',
+          noticeType: 'decision_result',
+          details: {
+            approvedCount: 1,
+            rejectedCount: 0,
+            items: [{ classSessionId: 'session-1', status: 'approved', note: null, decidedByPersonId: 'teacher-1', decidedAt: '2026-09-05T10:00:00Z' }],
+            frequencyBeforePercentage: 72,
+            frequencyAfterPercentage: 78,
+            resendMayStillBeEligible: false,
+          },
+          seenAt: null,
+          dismissedAt: null,
+          createdAt: '2026-09-05T10:00:00Z',
+        },
+      ]);
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Resultado de justificativa')).toBeInTheDocument();
+        expect(screen.getByText(/1 aula abonada/)).toBeInTheDocument();
+        expect(screen.getByText(/passou de 72% para 78%/)).toBeInTheDocument();
+      });
+    });
+
+    it('test_studentWarningsPage_approvalRevokedNotice_rendersMotivo', async () => {
+      vi.spyOn(warningsApi, 'listMyWarnings').mockResolvedValue([]);
+      vi.spyOn(noticesApi, 'listMyJustificationNotices').mockResolvedValue([
+        {
+          id: 'notice-2',
+          personId: 'person-1',
+          submissionId: 'submission-1',
+          subjectId: 'subject-1',
+          noticeType: 'approval_revoked',
+          details: { revocations: [{ classSessionId: 'session-1', note: 'Aprovado por engano', revokedAt: '2026-09-06T10:00:00Z' }] },
+          seenAt: null,
+          dismissedAt: null,
+          createdAt: '2026-09-06T10:00:00Z',
+        },
+      ]);
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Revogação de aprovação')).toBeInTheDocument();
+        expect(screen.getByText(/Aprovado por engano/)).toBeInTheDocument();
+      });
+    });
+
+    it('test_studentWarningsPage_warningsAndNotices_renderInOneMergedList', async () => {
+      vi.spyOn(warningsApi, 'listMyWarnings').mockResolvedValue([
+        {
+          id: 'warning-1',
+          classGroupId: 'class-group-1',
+          classGroupName: 'Turma A',
+          subjectId: 'subject-1',
+          subjectName: 'Cálculo I',
+          warningType: 'below_minimum',
+          warningTypeSince: new Date('2026-09-01'),
+          frequencyPercentage: 68,
+          presentCount: 27,
+          consideredCount: 40,
+          minPercentageApplied: 75,
+          periodStartDate: '2026-08-01',
+          periodEndDate: '2026-09-30',
+          seenAt: null,
+        },
+      ]);
+      vi.spyOn(noticesApi, 'listMyJustificationNotices').mockResolvedValue([
+        {
+          id: 'notice-1',
+          personId: 'person-1',
+          submissionId: 'submission-1',
+          subjectId: 'subject-1',
+          noticeType: 'decision_result',
+          details: {
+            approvedCount: 0,
+            rejectedCount: 1,
+            items: [{ classSessionId: 'session-1', status: 'rejected', note: 'Atestado ilegível', decidedByPersonId: 'teacher-1', decidedAt: '2026-09-05T10:00:00Z' }],
+            frequencyBeforePercentage: null,
+            frequencyAfterPercentage: null,
+            resendMayStillBeEligible: true,
+          },
+          seenAt: null,
+          dismissedAt: null,
+          createdAt: '2026-09-05T10:00:00Z',
+        },
+      ]);
+
+      renderPage();
+
+      await waitFor(() => {
+        const cards = screen.getAllByRole('listitem');
+        expect(cards.length).toBe(2);
+      });
+    });
+
+    it('test_studentWarningsPage_dismissNotice_callsDismissAndRemovesFromList', async () => {
+      vi.spyOn(warningsApi, 'listMyWarnings').mockResolvedValue([]);
+      const mockDismiss = vi.fn().mockResolvedValue({ noticeId: 'notice-1', dismissed: true });
+      vi.spyOn(noticesApi, 'listMyJustificationNotices')
+        .mockResolvedValueOnce([
+          {
+            id: 'notice-1',
+            personId: 'person-1',
+            submissionId: 'submission-1',
+            subjectId: 'subject-1',
+            noticeType: 'approval_revoked',
+            details: { revocations: [{ classSessionId: 'session-1', note: 'Engano', revokedAt: '2026-09-06T10:00:00Z' }] },
+            seenAt: null,
+            dismissedAt: null,
+            createdAt: '2026-09-06T10:00:00Z',
+          },
+        ])
+        .mockResolvedValueOnce([]);
+      vi.spyOn(noticesApi, 'dismissJustificationNotice').mockImplementation(mockDismiss);
+
+      renderPage();
+
+      const dismissButton = await screen.findByRole('button', { name: /dispensar/i });
+      fireEvent.click(dismissButton);
+
+      await waitFor(() => {
+        expect(mockDismiss).toHaveBeenCalledWith('notice-1');
       });
     });
   });

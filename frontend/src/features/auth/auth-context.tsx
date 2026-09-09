@@ -9,8 +9,17 @@ type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 // Every flag false / every list empty — the safe default while roleContext
 // hasn't loaded yet (or for a person with no self-service role at all), so
 // every nav group driven by it simply stays hidden instead of every
-// consumer having to null-check roleContext itself.
-const EMPTY_ROLE_CONTEXT: RoleContext = { isStudent: false, teaching: [], coordinating: [], isDirection: false };
+// consumer having to null-check roleContext itself. institutionType: '' is
+// the same idea applied to RULE-JUST-10's gate — an empty string never
+// strictly equals 'faculdade', so the justification nav items stay hidden
+// by default until the real value loads, same as every other flag here.
+const EMPTY_ROLE_CONTEXT: RoleContext = {
+  isStudent: false,
+  teaching: [],
+  coordinating: [],
+  isDirection: false,
+  institutionType: '',
+};
 
 interface AuthContextValue {
   status: AuthStatus;

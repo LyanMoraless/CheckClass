@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsString, MinLength, validateSync } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, MinLength, validateSync } from 'class-validator';
 
 class EnvVariables {
   @IsInt()
@@ -47,6 +47,53 @@ class EnvVariables {
   @IsString()
   @IsNotEmpty()
   CORS_ORIGIN: string;
+
+  // Frente 07 — absence-justification attachments (RULE-JUST-09/11/19).
+  // Approved technology decision: object storage gerenciado, compatível com
+  // S3 (pending-decisions.md, "Proposta pendente — Tecnologia de
+  // armazenamento do anexo, Frente 07", APROVADA 2026-09-08) — CATEGORY
+  // approved, concrete PROVIDER deliberately left open. These variables are
+  // the only place a provider is chosen, and they choose nothing by
+  // themselves: point them at any S3-compatible endpoint (a managed service,
+  // or a local MinIO for dev) with no code change.
+  @IsString()
+  @IsOptional()
+  // Unset = the SDK's own default endpoint resolution (real AWS S3). Most
+  // other S3-compatible providers require this to be set explicitly.
+  STORAGE_S3_ENDPOINT?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_S3_REGION: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_S3_BUCKET: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_S3_ACCESS_KEY_ID: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_S3_SECRET_ACCESS_KEY: string;
+
+  // Path-style addressing (bucket.example.com/key vs. example.com/bucket/key)
+  // is required by most non-AWS S3-compatible providers (MinIO included) —
+  // defaults to true (see AbsenceJustificationAttachmentStorageService);
+  // set to the literal string "false" to disable for a provider that needs
+  // virtual-hosted-style addressing.
+  @IsString()
+  @IsOptional()
+  STORAGE_S3_FORCE_PATH_STYLE?: string;
+
+  // RULE-JUST-11.6: encryption at rest, key managed OUTSIDE the app process.
+  // Optional and provider-specific on purpose — see
+  // AbsenceJustificationAttachmentStorageService's header for why this code
+  // does not hardcode an SSE algorithm.
+  @IsString()
+  @IsOptional()
+  STORAGE_S3_SSE_ALGORITHM?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvVariables {

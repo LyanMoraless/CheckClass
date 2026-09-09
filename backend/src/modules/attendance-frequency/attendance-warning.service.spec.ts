@@ -1,4 +1,3 @@
-import { Repository } from 'typeorm';
 import { AttendanceFrequencyWarningEntity, ClassGroupEnrollmentEntity } from '../../database/entities';
 import {
   createMockEntityManager,
@@ -7,7 +6,6 @@ import {
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
 import { AttendanceWarningService, type ApplyCalculationInput } from './attendance-warning.service';
-import { FREQUENCY_WARNING_MARGIN_POINTS } from './frequency-warning.constants';
 
 // State machine of Controle B warnings (RULE-FREQ-03/04/07/08): the six
 // branches of applyCalculation. Each suite tests one branch in isolation, and
@@ -99,7 +97,7 @@ describe('AttendanceWarningService', () => {
       await service.applyCalculation(input);
 
       // Should have called resolveWarning (via update) with enrollment_inactive reason
-      const [criteria, values] = warningRepository.update.mock.calls[0] as [unknown, unknown];
+      const [, values] = warningRepository.update.mock.calls[0] as [unknown, unknown];
       expect(values).toEqual({
         status: 'resolved',
         resolvedAt: expect.any(Date),
@@ -323,7 +321,7 @@ describe('AttendanceWarningService', () => {
       });
       await service.applyCalculation(input);
 
-      const [criteria, updates] = warningRepository.update.mock.calls[0] as [unknown, unknown];
+      const [, updates] = warningRepository.update.mock.calls[0] as [unknown, unknown];
       expect(updates).toEqual({
         frequencyPercentage: 75,
         presentCount: 30,

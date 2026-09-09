@@ -10,6 +10,8 @@ import {
   ClipboardList,
   Cpu,
   DoorOpen,
+  FileCheck2,
+  FileSearch,
   FileText,
   GraduationCap,
   Landmark,
@@ -128,6 +130,13 @@ const NAV_GROUPS: NavGroup[] = [
 function buildRoleNavGroups(roleContext: RoleContext): NavGroup[] {
   const groups: NavGroup[] = [];
 
+  // RULE-JUST-10: Justificativa de Faltas is faculdade-only this round (the
+  // anexo carries a minor's health data, reinforced-LGPD regime) — the
+  // backend now rejects every Absence Justification route for any other
+  // institutionType with a 403, so these two entries must never appear for
+  // an escola tenant in the first place, not just fail once clicked.
+  const isFaculdade = roleContext.institutionType === 'faculdade';
+
   if (roleContext.isStudent) {
     groups.push({
       title: 'Aluno',
@@ -135,6 +144,7 @@ function buildRoleNavGroups(roleContext: RoleContext): NavGroup[] {
       items: [
         { to: '/student/schedule', label: 'Meu cronograma', icon: CalendarClock },
         { to: '/student/attendance', label: 'Minhas faltas', icon: Backpack },
+        ...(isFaculdade ? [{ to: '/student/justifications', label: 'Justificar faltas', icon: FileCheck2 }] : []),
         { to: '/student/warnings', label: 'Meus avisos', icon: BellRing },
         { to: '/student/exams', label: 'Minhas provas', icon: FileText },
       ],
@@ -148,6 +158,7 @@ function buildRoleNavGroups(roleContext: RoleContext): NavGroup[] {
       items: [
         { to: '/teacher/class-groups', label: 'Minhas turmas', icon: Presentation },
         { to: '/portal/pending-reviews', label: 'Revisões pendentes', icon: ClipboardList },
+        ...(isFaculdade ? [{ to: '/teacher/justifications', label: 'Justificativas de falta', icon: FileSearch }] : []),
       ],
     });
   }

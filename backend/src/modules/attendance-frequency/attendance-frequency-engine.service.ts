@@ -4,7 +4,7 @@ import { TenantContextService } from '../../database/tenant-context.service';
 import { addUtcDays } from '../../common/utc-date.util';
 import { ResolvedAttendanceConfig, TenantConfigService } from '../config/tenant-config.service';
 import { AttendanceWarningService } from './attendance-warning.service';
-import { currentPeriodWindow, ReportingPeriodWindow } from './reporting-period.util';
+import { currentPeriodWindow, ReportingPeriodWindow, sameWindow } from './reporting-period.util';
 
 // The result of one accumulated-frequency calculation, as a DISCRIMINATED
 // UNION rather than `number | null` (approved addendum, section B4). This is
@@ -72,17 +72,17 @@ export class AttendanceFrequencyEngineService {
   // THE single entry primitive of Controle B (RULE-FREQ-06). Every call site
   // that turns a session_attendance_consolidation row definitive calls this,
   // in the same transaction, AFTER its own update — calling it before would
-  // read the pre-resolution state. Today: PendingReviewService.resolve() and
-  // the session-evaluate CLI script.
+  // read the pre-resolution state. Today: PendingReviewService.resolve(),
+  // the session-evaluate CLI script, and Frente 07's approve()/revoke() in
+  // AbsenceJustificationDecisionService.
   //
-  // CONTRACT FOR FRENTE 07 (Justificativa de Falta, not implemented yet):
-  // approving a justification calls THIS SAME method, in the same
-  // transaction, right after the update that turns the falta into a presença
-  // — a fourth call site of the same shape. Re-evaluating the warning is
-  // already inside this primitive, so there is nothing else to call: no
-  // second method, no event, no "notify" step. No parallel recompute
-  // mechanism is to be invented, including for a hypothetical batch approval
-  // (that is N calls of this method, not a batch path).
+  // RULE-JUST-23 (Solution Architect addendum, 2026-09-08): the recalculation
+  // is driven by the SESSION'S OWN reporting-period window
+  // (session.scheduledStart), not by "now" — a Frente 07 decision can land
+  // after the period has turned over, because a pedido never expires
+  // (RULE-JUST-15.4). Signature is UNCHANGED: recalculate() below resolves
+  // referenceDate = session.scheduledStart internally, exactly as this
+  // method already had the session loaded to read subjectId from.
   async recalculateForSessionPerson(classSessionId: string, personId: string): Promise<FrequencyCalculation> {
     const manager = this.tenantContext.getManager();
 
@@ -92,7 +92,36 @@ export class AttendanceFrequencyEngineService {
     }
 
     const context = await this.loadClassGroupContext(session.classGroupId);
-    return this.recalculate(context, session.subjectId, personId);
+    return this.recalculate(context, session.subjectId, personId, session.scheduledStart);
+  }
+
+  // RULE-JUST-21 item 4 / RULE-JUST-23 addendum: Frente 07's approval flow
+  // needs the frequency percentage BEFORE the consolidation row flips to
+  // 'absent_justified' (to word the notice as "de 72% para 78%"), read
+  // WITHOUT writing anything — recalculateForSessionPerson always writes
+  // (RULE-FREQ-06's "no second method, no event" is about avoiding a second
+  // WRITE primitive; this performs none, so it does not violate that
+  // contract). Same session/window resolution as recalculateForSessionPerson,
+  // minus the call to AttendanceWarningService.applyCalculation.
+  async previewForSessionPerson(classSessionId: string, personId: string): Promise<FrequencyCalculation> {
+    const manager = this.tenantContext.getManager();
+
+    const session = await manager.getRepository(ClassSessionEntity).findOneBy({ id: classSessionId });
+    if (!session) {
+      throw new NotFoundException(`class_session ${classSessionId} not found`);
+    }
+
+    const context = await this.loadClassGroupContext(session.classGroupId);
+    const window = currentPeriodWindow(
+      context.classGroup.termStartDate,
+      context.classGroup.termEndDate,
+      context.config.accumulatedFrequencyPeriod,
+      session.scheduledStart,
+    );
+
+    return window
+      ? this.countInWindow(context.classGroup.id, session.subjectId, personId, window)
+      : { calculable: false, reason: 'no_period_window' };
   }
 
   // Lazy reconciliation for one student, used by GET /v1/me/warnings — see
@@ -129,34 +158,78 @@ export class AttendanceFrequencyEngineService {
         context = await this.loadClassGroupContext(pair.class_group_id);
         contextsByClassGroup.set(pair.class_group_id, context);
       }
-      await this.recalculate(context, pair.subject_id, personId);
+      // Unchanged behaviour: "now" was always the reference date here, and
+      // still is — RULE-JUST-23's addendum only changes
+      // recalculateForSessionPerson's caller.
+      await this.recalculate(context, pair.subject_id, personId, new Date());
     }
   }
 
+  // referenceDate (RULE-JUST-23 addendum): the window this recalculation
+  // measures is sliced from referenceDate, not always "now" — callers pass
+  // session.scheduledStart (Frente 07 approvals/revocations, and every
+  // ordinary Controle A call site, where the session just became definitive)
+  // or literally `new Date()` (reconcileForPerson's lazy read-path
+  // reconciliation, unchanged).
+  //
+  // shouldApplyCalculation GUARD (Solution Architect addendum): a HISTORICAL
+  // non-null window — one that does not match what "now" resolves to — must
+  // never reach AttendanceWarningService.applyCalculation. This is possible
+  // only because a Frente 07 pedido never expires (RULE-JUST-15.4) and may
+  // be decided after its own period has already turned over:
+  // closeIfPeriodTurnedOver would compare that stale window against the
+  // active (current-period) warning, see a mismatch, and wrongly resolve the
+  // CORRECT active warning as period_closed (or insert a warning for an
+  // already-closed period, exactly what RULE-JUST-23 item 4 forbids). A NULL
+  // window is a DIFFERENT, pre-existing case (RULE-FREQ-08 approved answer
+  // 6's "freeze" — e.g. no term dates yet) and is NOT guarded: it always
+  // reaches applyCalculation, exactly as before this addendum. The caller
+  // still gets the correct FrequencyCalculation back either way — only the
+  // persisted warning row is left untouched for a historical window.
   private async recalculate(
     context: ClassGroupContext,
     subjectId: string,
     personId: string,
+    referenceDate: Date,
   ): Promise<FrequencyCalculation> {
     const window = currentPeriodWindow(
       context.classGroup.termStartDate,
       context.classGroup.termEndDate,
       context.config.accumulatedFrequencyPeriod,
-      new Date(),
+      referenceDate,
     );
 
     const calculation = window
       ? await this.countInWindow(context.classGroup.id, subjectId, personId, window)
       : ({ calculable: false, reason: 'no_period_window' } as const);
 
-    await this.warningService.applyCalculation({
-      personId,
-      classGroupId: context.classGroup.id,
-      subjectId,
-      window,
-      minPercentage: context.config.minAccumulatedFrequencyPercentage,
-      calculation,
-    });
+    // window === null is the PRE-EXISTING "freeze" case (RULE-FREQ-08
+    // approved answer 6 — e.g. a turma with no term dates yet) and must
+    // still reach applyCalculation exactly as before RULE-JUST-23: that is
+    // what lets AttendanceWarningService decide to freeze an already-issued
+    // warning instead of silently retracting it. The guard below is ONLY
+    // about a non-null window that is HISTORICAL — i.e. does not match the
+    // window "now" resolves to (RULE-JUST-23's actual target: a Frente 07
+    // decision landing after its own período de apuração already turned
+    // over, or after the term itself ended).
+    const currentWindow = currentPeriodWindow(
+      context.classGroup.termStartDate,
+      context.classGroup.termEndDate,
+      context.config.accumulatedFrequencyPeriod,
+      new Date(),
+    );
+    const shouldApplyCalculation = window === null || (currentWindow !== null && sameWindow(window, currentWindow));
+
+    if (shouldApplyCalculation) {
+      await this.warningService.applyCalculation({
+        personId,
+        classGroupId: context.classGroup.id,
+        subjectId,
+        window,
+        minPercentage: context.config.minAccumulatedFrequencyPercentage,
+        calculation,
+      });
+    }
 
     return calculation;
   }
@@ -171,11 +244,22 @@ export class AttendanceFrequencyEngineService {
   // the student would not be charged for them — the exact opposite of the
   // rule.
   //
-  // Denominator: sessions where this person's row is present/absent, OR the
-  // person has no row AND the session has already been evaluated.
-  // Numerator:   sessions where this person's row is present.
+  // Denominator: sessions where this person's row is present/absent/
+  // absent_justified, OR the person has no row AND the session has already
+  // been evaluated.
+  // Numerator:   sessions where this person's row is present OR
+  //              absent_justified.
   // Out:         `pending` sessions (RULE-FREQ-05.1) and sessions not
   //              evaluated yet.
+  //
+  // RULE-JUST-07/RULE-JUST-03 addendum (2026-09-02): an approved
+  // justification flips a session_attendance_consolidation row to
+  // 'absent_justified', a 4th, distinguishable status added by Frente 07
+  // (AddAbsenceJustificationToAttendanceConsolidation migration) — never a
+  // rewrite to 'present', which would erase the fact that the student did
+  // not actually attend. It counts as presença in THIS query's numerator
+  // (33/40, never 32/39) while staying out of Controle A's/every other
+  // consumer's notion of 'present'.
   //
   // "Already evaluated" is an EXISTS of ANY consolidation row for that
   // session, for any person (approved answer 4). It is not a clock guess:
@@ -199,7 +283,7 @@ export class AttendanceFrequencyEngineService {
       `
       SELECT
         COUNT(*) AS considered_count,
-        COUNT(*) FILTER (WHERE c.status = 'present') AS present_count
+        COUNT(*) FILTER (WHERE c.status IN ('present', 'absent_justified')) AS present_count
       FROM class_session cs
       LEFT JOIN session_attendance_consolidation c
         ON c.tenant_id = cs.tenant_id
@@ -211,7 +295,7 @@ export class AttendanceFrequencyEngineService {
         AND cs.scheduled_start >= $5
         AND cs.scheduled_start < $6
         AND (
-          c.status IN ('present', 'absent')
+          c.status IN ('present', 'absent', 'absent_justified')
           OR (
             c.id IS NULL
             AND EXISTS (

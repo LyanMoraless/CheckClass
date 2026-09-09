@@ -1,4 +1,3 @@
-import { AccumulatedFrequencyPeriod } from '../config/accumulated-frequency-period.enum';
 import { currentPeriodWindow, sameWindow } from './reporting-period.util';
 
 // Period slicing for Controle B (RULE-FREQ-02): dividing a term into equal

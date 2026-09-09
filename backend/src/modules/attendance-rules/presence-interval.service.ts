@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IdentificationCheckinEntity, PresenceIntervalEntity } from '../../database/entities';
+import { PresenceIntervalEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 
 export interface PresenceIntervalResult {

@@ -1,0 +1,169 @@
+/* Shared by every screen in this feature (new request, my requests list,
+   request detail) — one module, same precedent already used by
+   pending-reviews-page.module.css across its two sibling pages. */
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.backLink:hover {
+  color: var(--color-primary);
+}
+
+.empty {
+  color: var(--color-text-muted);
+}
+
+.hintNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: var(--color-info-soft);
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.hintIcon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* Cards for "Meus pedidos" — one card per envio (RULE-JUST-06: the envio
+   itself has no aggregate status column, so the card only shows what the
+   submission-level data actually has; per-item status lives in the detail
+   page). */
+.cardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cardDates {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cardMeta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.cardDescription {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+/* Item list inside the detail page. */
+.itemList {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.itemMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.itemNote {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* Excluded-sessions warning list, shown both right after a create (partial
+   or total exclusion, RULE-JUST-14) and nowhere else. */
+.excludedList {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.excludedItem {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.accessLogList {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.accessLogItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fileHint {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.8rem;
+}

@@ -39,6 +39,11 @@ export interface RoleContext {
   teaching: RoleContextTeachingEntry[];
   coordinating: RoleContextCoordinatingEntry[];
   isDirection: boolean;
+  // RULE-JUST-10: Justificativa de Faltas is faculdade-only this round (the
+  // anexo carries a minor's health data, reinforced-LGPD regime) — the exact
+  // tenant.institutionType literal (e.g. 'faculdade', 'escola'), compared
+  // against 'faculdade' exactly, never a list, wherever that gate applies.
+  institutionType: string;
 }
 
 export async function fetchMyRoleContext(): Promise<RoleContext> {

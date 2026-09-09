@@ -5,7 +5,6 @@ import {
   createMockTenantContext,
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
-import { LeadershipScopeService } from '../leadership-scope/leadership-scope.service';
 import { PendingReviewService } from './pending-review.service';
 
 // RULE-ATT-11 (a resolved review stays resolved — no re-review workflow) and

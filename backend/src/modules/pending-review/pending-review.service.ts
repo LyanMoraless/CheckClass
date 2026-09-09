@@ -5,7 +5,6 @@ import {
   ClassGroupEntity,
   ClassSessionEntity,
   SessionAttendanceConsolidationEntity,
-  SubjectEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { AttendanceFrequencyEngineService } from '../attendance-frequency/attendance-frequency-engine.service';

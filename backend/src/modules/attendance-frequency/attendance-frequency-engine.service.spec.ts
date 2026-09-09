@@ -25,6 +25,12 @@ describe('AttendanceFrequencyEngineService', () => {
           id: 'session-1',
           classGroupId: 'class-group-1',
           subjectId: 'subject-1',
+          // RULE-JUST-23 addendum: recalculateForSessionPerson now resolves
+          // its window from session.scheduledStart instead of always `new
+          // Date()` — a default inside the default classGroup's term
+          // (2026-08-01..2026-12-31) below keeps every existing scenario
+          // that doesn't care about this field behaving exactly as before.
+          scheduledStart: new Date('2026-09-01'),
           ...scenario.session,
         } as ClassSessionEntity),
     });
@@ -146,7 +152,7 @@ describe('AttendanceFrequencyEngineService', () => {
     });
 
     test('test_countInWindow_lateEnrollment_studentRowAbsentButSessionIncludedInDenominator', async () => {
-      const { service, manager } = buildService({
+      const { service } = buildService({
         // Simulate 3 sessions total in the period, 2 with consolidation rows for this person, 1 without
         // But another person has a row for the third session (proving the session was evaluated)
         frequencyCountRows: [{ considered_count: '3', present_count: '2' }],
@@ -183,7 +189,7 @@ describe('AttendanceFrequencyEngineService', () => {
     });
 
     test('test_countInWindow_nonEvaluatedSessions_excludedFromDenominator', async () => {
-      const { service, manager } = buildService({
+      const { service } = buildService({
         // Sessions with no consolidation row for anyone still count if they're past scheduled_end
         // Let's simulate 40 sessions, but only 35 have any consolidation row (evaluated)
         frequencyCountRows: [{ considered_count: '35', present_count: '28' }],

@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ClassGroupEntity, ExamEntity, SubjectEntity } from '../../database/entities';
+import { ClassGroupEntity, ExamEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { LeadershipScopeService } from '../leadership-scope/leadership-scope.service';
 import { ExamRlsContextService } from './exam-rls-context.service';

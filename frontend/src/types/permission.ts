@@ -11,7 +11,12 @@ export type Permission =
   | 'fullscreen_camera'
   | 'access_camera_recordings'
   | 'administer_camera_devices'
-  | 'manage_security_incidents';
+  | 'manage_security_incidents'
+  // RULE-JUST-11.7's dedicated permission for opening a Frente 07
+  // absence-justification attachment — by itself only marks a role as
+  // ELIGIBLE (typically Professor); RULE-JUST-24's narrow subject-teacher
+  // check is enforced server-side on top of this, never inferred here.
+  | 'view_absence_justification_attachment';
 
 export const PERMISSIONS: Permission[] = [
   'manage_users',
@@ -24,6 +29,7 @@ export const PERMISSIONS: Permission[] = [
   'access_camera_recordings',
   'administer_camera_devices',
   'manage_security_incidents',
+  'view_absence_justification_attachment',
 ];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -37,4 +43,5 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   access_camera_recordings: 'Acessar gravações de câmera',
   administer_camera_devices: 'Administrar dispositivos de câmera',
   manage_security_incidents: 'Gerenciar incidentes de segurança',
+  view_absence_justification_attachment: 'Ver anexo de justificativa de falta',
 };

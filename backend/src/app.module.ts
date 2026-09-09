@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv } from './config/env-validation';
 import { DatabaseModule } from './database/database.module';
+import { AbsenceJustificationModule } from './modules/absence-justification/absence-justification.module';
 import { AppCheckinModule } from './modules/app-checkin/app-checkin.module';
 import { AreaAuthorizationModule } from './modules/area-authorization/area-authorization.module';
 import { AreaModule } from './modules/area/area.module';
@@ -95,6 +96,12 @@ import { QueueModule } from './queue/queue.module';
     // Área de Provas (Frente 04) — synchronous bounded context, no queue
     // involvement at all (approved architecture, 2026-09-02).
     ExamModule,
+    // Justificativa de Faltas (Frente 07) — depends on
+    // AttendanceFrequencyModule (Controle B) already imported above, and on
+    // class_group_subject_teacher (RULE-JUST-24), populated manually/by
+    // script this round (no admin UI yet, out of scope by the user's own
+    // decision — see pending-decisions.md).
+    AbsenceJustificationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

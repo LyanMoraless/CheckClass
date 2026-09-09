@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { createMockEntityManager, createMockTenantContext, MockEntityManager } from '../../../test/unit/support/mock-entity-manager';
+import { createMockEntityManager, createMockTenantContext } from '../../../test/unit/support/mock-entity-manager';
 import { ScheduleConflictCandidate, ScheduleConflictDetectionService } from './schedule-conflict-detection.service';
 
 // RULE-INST-10: [same room OR shared teacher] AND [exact time overlap, no

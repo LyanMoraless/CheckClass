@@ -8,7 +8,6 @@ import {
   ExamMonitoringEventTypeEntity,
   ExamQuestionEntity,
   ExamQuestionOptionEntity,
-  ExamSessionEntity,
   PersonEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';

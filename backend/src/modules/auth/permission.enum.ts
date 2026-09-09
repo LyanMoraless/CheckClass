@@ -20,4 +20,13 @@ export enum Permission {
   // RULE-SEC-07's closure authorization: any "Equipe de segurança" member,
   // flat (no leadership hierarchy) — confirmed 2026-08-23.
   MANAGE_SECURITY_INCIDENTS = 'manage_security_incidents',
+
+  // RULE-JUST-11.7's dedicated, new permission for opening a Frente 07
+  // absence-justification attachment. By itself this code only marks a role
+  // as ELIGIBLE (typically granted to Professor) — it is NOT sufficient
+  // authorization: RULE-JUST-24 additionally requires the narrow
+  // class_group_subject_teacher check (this professor teaches THIS matéria
+  // in THIS turma, no leadership-chain shortcut), re-verified server-side on
+  // every open, never cached, never a public/permanent URL (RULE-JUST-11.5).
+  VIEW_ABSENCE_JUSTIFICATION_ATTACHMENT = 'view_absence_justification_attachment',
 }

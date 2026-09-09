@@ -986,6 +986,119 @@ o gap antigo "recálculo retroativo" de RULE-JUST-03. Confiança média-alta.
 > **Source of confirmation:** Solution Architect, 2026-09-08 — desenho
 > técnico, não regra de negócio nova.
 
+### RULE-JUST-24: Escopo do acesso a anexo, categoria e motivo de rejeição é (turma, matéria) — não turma inteira
+
+**Statement:** O corte de privacidade já estabelecido em RULE-JUST-08
+(abertura do anexo), RULE-JUST-11.7 (permissão dedicada), RULE-JUST-12
+(categoria legal) e RULE-JUST-20 (motivo escrito de rejeição / observação
+de aprovação) é **por matéria**, não pela turma inteira. Concretamente:
+
+- Só o professor que leciona a **matéria específica** do item de
+  justificativa pode abrir o anexo, ver a categoria e ver o motivo/
+  observação daquele item.
+- Um professor da mesma turma que leciona **outra** matéria não tem
+  acesso a nenhum dos três, mesmo tendo, como qualquer professor da
+  turma, acesso a outros dados acadêmicos do aluno.
+
+**Motivo:** RULE-JUST-08 já decidiu excluir a liderança administrativa
+(Coordenador, Direção) do acesso ao conteúdo do anexo/categoria/motivo por
+serem dado pessoal sensível de saúde (LGPD Art. 11), mesmo a liderança
+tendo acesso legítimo a outros dados acadêmicos do mesmo aluno. O mesmo
+raciocínio de minimização se aplica, sem exceção, a um professor de outra
+matéria na mesma turma: compartilhar o contexto organizacional "turma" não
+é base de acesso a dado de saúde, da mesma forma que compartilhar a
+hierarquia não é. Manter o corte em turma-inteira enquanto se rejeita esse
+mesmo raciocínio para liderança seria uma inconsistência de política, não
+uma segunda decisão independente.
+
+**Dependência técnica bloqueante:** não existe hoje no schema uma relação
+professor↔matéria — só professor↔turma (`class_group_enrollment`) e
+turma↔matéria (`class_group_subject`). `LeadershipScopeService.hasAuthorityOverClassGroup`
+não serve de base (sobe cadeia de liderança, que esta regra e RULE-JUST-08
+excluem). O Database Agent precisa modelar a relação nova, e o Backend
+Agent implementar uma verificação única, nova e estreita ("é o professor
+responsável por esta matéria, nesta turma, sem subir cadeia"), **reaplicada
+identicamente** aos três pontos — antes de qualquer um dos três ir para
+produção em tenant com turma multi-matéria e múltiplos professores.
+
+**Mitigação alternativa avaliada e rejeitada:** um aviso de tela sem
+controle técnico de acesso não é substituto aceitável — mesmo princípio já
+registrado em RULE-JUST-11.3 ("convenção de código não é controle
+aceitável"). Pode existir como camada complementar de transparência, nunca
+no lugar do gate de autorização.
+
+**Applies to:** Autorização de abertura do anexo (RULE-JUST-08/11.7),
+visibilidade da categoria legal (RULE-JUST-12) e visibilidade do motivo
+escrito de rejeição / observação de aprovação (RULE-JUST-20).
+**Exceptions:** Nenhuma. Enquanto a relação professor↔matéria não existir
+no schema, os três pontos ficam bloqueados para o cenário (turma
+multi-matéria + múltiplos professores) — não devem ser liberados com
+escopo turma-inteira como atalho, salvo aceite de risco residual explícito
+e documentado do usuário, com prazo de remediação.
+**Source of confirmation:** Security Agent, 2026-09-08 — segunda passagem,
+pedida pelo Business Analyst e pelo Solution Architect para fechar a
+pendência registrada em "Pendências abertas", item 1. Mesma base de
+autoridade de registro que RULE-JUST-11 (consequência do corte de
+sensibilidade já adotado pelo produto, não escolha nova de implementação).
+
+> **Addendum do Security Agent (2026-09-08) — RLS obrigatório em
+> `submission`/`item`/`item_decision`/`attachment`, não apenas DTO
+> allow-list.** Pergunta técnica levantada pelo Database Agent durante a
+> modelagem: bastaria checagem de coluna na camada de aplicação (DTO
+> allow-list, padrão já usado no Exam Area para RULE-EXAM-17) para as
+> quatro tabelas do domínio, reservando RLS por titular só para o log de
+> acesso (onde RULE-JUST-11.3 já exige o mecanismo literalmente)?
+>
+> **Resposta: não é suficiente. RLS row-level (GUC-gated, mesmo padrão já
+> em produção no Exam Area) é exigido nas quatro tabelas, em complemento —
+> não em substituição — ao DTO allow-list.** Correção de premissa: o Exam
+> Area **já** usa RLS por liderança (`management_scope`, gated por
+> `app.exam_management_scope`, setado depois de `LeadershipScopeService`
+> autorizar) e por titular (`student_ownership`, gated por
+> `app.person_id`) em `exam_session`/`exam_answer`/`exam_answer_selected_option`/
+> `exam_session_event` — RULE-EXAM-17 é um mecanismo **diferente**, para um
+> problema diferente: mascarar coluna dentro de uma linha à qual o
+> solicitante **já tem direito legítimo** (o aluno é dono da própria sessão
+> de prova; só alguns campos daquela linha ficam escondidos). Aqui um
+> professor de outra matéria **não tem direito nenhum à linha inteira** —
+> é o mesmo problema estrutural de dois alunos não poderem ver a sessão de
+> prova um do outro, que o Exam Area já resolve com RLS de linha, não com
+> DTO.
+>
+> **Por tabela:**
+> - `absence_justification_item` e `absence_justification_item_decision`:
+>   policy `teacher_subject_scope` (EXISTS contra a relação
+>   professor↔matéria de RULE-JUST-24, comparando `subject_id`/
+>   `class_group_id` do item com `app.person_id`) OR `management_scope`
+>   (mesmo GUC-pattern do Exam Area, para Coordenação/Direção) OR
+>   `student_ownership`. DTO allow-list continua cortando `motivo`/
+>   observação da leitura de `management_scope` (RULE-JUST-20) — as duas
+>   camadas trabalham juntas: RLS decide **quem vê a linha**, DTO decide
+>   **quais colunas** daquela linha.
+> - `absence_justification_attachment`: policy `student_ownership` OR
+>   `teacher_subject_scope` — **sem** `management_scope` nesta tabela, de
+>   propósito, para que a liderança não tenha nem o `on` disponível como
+>   opção de configuração futura por engano. RULE-JUST-08 é textual e sem
+>   exceção ("liderança nunca abre o arquivo") — pede a garantia mais
+>   forte de "linha fisicamente inacessível", não a mais fraca de "o
+>   mapper do endpoint de liderança não inclui esse campo".
+> - `absence_justification_submission`: `teacher_subject_scope` (via
+>   EXISTS sobre os itens do envio) OR `student_ownership` OR
+>   `management_scope`, com DTO allow-list retendo só "justificado/não
+>   justificado" para a leitura de `management_scope`.
+>
+> **Motivo de fundo:** RULE-JUST-11 já estabeleceu, para esta mesma
+> família de dado, que convenção de código não é controle aceitável — e
+> estas quatro tabelas terão múltiplos caminhos de leitura ao longo do
+> tempo (fila do professor, tela de decisão, notificação de RULE-JUST-21,
+> ferramentas futuras de relatório/suporte). DTO allow-list só protege os
+> caminhos que passam pelo mapper certo; RLS falha fechado mesmo nos que
+> não passarem — a garantia que dado de saúde sob Art. 11 exige, com um
+> caso de exclusão absoluta (RULE-JUST-08).
+> **Source of confirmation:** Security Agent, 2026-09-08 — resposta a
+> pergunta técnica pontual do Database Agent durante a modelagem;
+> mecanismo, não política nova (a política é a mesma de RULE-JUST-24).
+
 ## Gaps ainda em aberto — estado após a passagem do Business Analyst (2026-09-08)
 
 > **Atualizado em 2026-09-08, após a análise de requisitos do Business
@@ -1073,35 +1186,15 @@ deve reabrir estes itens sem ler a regra correspondente.**
 
 ### Pendências abertas — o que realmente sobrou
 
-1. **Escopo do acesso ao anexo: turma inteira ou (turma, matéria)?**
-   RULE-JUST-08/11.7 dão o anexo e a categoria ao "professor da turma", com
-   permissão escopada à **turma**. Mas RULE-INST-05 mantém o professor
-   vinculado à turma inteira, não por matéria, e RULE-INST-14 dá **várias
-   matérias** por turma — logo, numa turma com dois professores de matérias
-   diferentes, **ambos** veriam categoria de saúde e atestado de itens de
-   matérias que não lecionam. **Encaminhamento:** escopar a
-   (turma, matéria do item). É um **aperto**, não um afrouxamento, do
-   requisito de RULE-JUST-11.7 — mas, por divergir da letra de uma regra
-   escrita pelo Security Agent, **precisa de nova passagem pelo Security
-   antes de virar regra**. Não bloqueia o desenho do fluxo principal.
-
-   > **Addendum do Solution Architect (2026-09-08):** `(turma, matéria)` **não
-   > é tecnicamente verificável hoje** — falta a relação professor↔matéria
-   > (só existem professor↔turma via `class_group_enrollment` e
-   > turma↔matéria via `class_group_subject`; nenhuma tabela cruza as três
-   > pontas). Se o Security Agent exigir o aperto, o Database Agent precisa
-   > modelar essa relação nova antes; sem ela, **turma inteira é a única
-   > opção tecnicamente possível**. Achado independente da escolha de
-   > escopo: `LeadershipScopeService.hasAuthorityOverClassGroup` (usado nos
-   > outros gates turma-escopados) **não serve de base** aqui — ele sobe a
-   > cadeia de liderança (Professor/Coordenador/Direção, RULE-ATT-12), e
-   > RULE-JUST-08 exclui deliberadamente a liderança do acesso ao conteúdo
-   > do anexo. É preciso uma verificação nova e mais estreita ("é
-   > `class_group_enrollment.role='teacher'` **nesta** turma, sem subir a
-   > cadeia"), a ser nomeada/implementada pelo Backend Agent, e reaplicada
-   > igualmente aos três pontos que compartilham o mesmo corte de
-   > privacidade: anexo (RULE-JUST-08/11), categoria (RULE-JUST-12) e motivo
-   > de rejeição (RULE-JUST-20).
+1. ~~**Escopo do acesso ao anexo: turma inteira ou (turma, matéria)?**~~
+   **RESOLVIDO em 2026-09-08 → RULE-JUST-24 (segunda passagem do Security
+   Agent):** o escopo é **(turma, matéria)**, não turma inteira, para os
+   três pontos (anexo, categoria, motivo de rejeição). **Continua
+   bloqueante a dependência técnica:** a relação professor↔matéria não
+   existe no schema hoje — o Database Agent precisa modelá-la antes de o
+   Backend Agent implementar os três gates, para qualquer tenant com turma
+   multi-matéria e múltiplos professores (cenário já real desde a Frente
+   05/06).
 2. **O papel "administração/DPO da instituição" não existe no modelo.**
    Verificado: `permission.enum.ts` tem 10 códigos, nenhum aplicável; a
    cadeia semeada em `tenant-bootstrap.service.ts` é Professor → Coordenador
@@ -1126,8 +1219,17 @@ deve reabrir estes itens sem ler a regra correspondente.**
    passa a data da aula, `reconcileForPerson` continua com "hoje";
    `applyCalculation` só é chamado quando a janela recalculada é a corrente.
 5. **Tecnologia de armazenamento do anexo** — não existe infraestrutura de
-   upload em lugar nenhum do backend. **Tech Decision**, depois do Solution
-   Architect.
+   upload em lugar nenhum do backend. **Proposta do Tech Decision Agent
+   registrada em 2026-09-08** (ver
+   `project-knowledge/references/pending-decisions.md`, "Proposta pendente
+   — Tecnologia de armazenamento do anexo, Frente 07"): object storage
+   gerenciado, compatível com S3, bucket privado, SSE com chave gerenciada
+   em KMS externo ao processo da aplicação, backend buscando e transmitindo
+   o arquivo por trás de reautorização a cada abertura — nunca URL
+   assinada/pública. **Categoria de tecnologia recomendada, fornecedor
+   concreto em aberto** (depende de decisão de hosting/cloud ainda não
+   tomada para o backend). **Nenhuma decisão de tecnologia é final até
+   aprovação explícita do usuário** — não presumir aprovação.
 6. **Prazo de retenção dos backups é desconhecido.** Sem essa informação, o
    compromisso de eliminação do anexo em 30 dias (RULE-JUST-09/19) é
    **inverificável**. **Sinalizar ao DevOps Agent.**

@@ -25,7 +25,11 @@ import { StudentExamsPage } from './features/portal-exams/student-exams-page';
 import { TakeExamPage } from './features/portal-exams/take-exam-page';
 import { StudentAttendancePage } from './features/portal-student/student-attendance-page';
 import { StudentSchedulePage } from './features/portal-student/student-schedule-page';
+import { JustificationDetailPage } from './features/portal-student-justifications/justification-detail-page';
+import { MyJustificationsPage } from './features/portal-student-justifications/my-justifications-page';
+import { NewJustificationPage } from './features/portal-student-justifications/new-justification-page';
 import { StudentWarningsPage } from './features/portal-student-warnings/student-warnings-page';
+import { JustificationQueuePage } from './features/portal-teacher-justifications/justification-queue-page';
 import { TeachingClassGroupsPage } from './features/portal-teacher/teaching-class-groups-page';
 import { RoomsPage } from './features/rooms/rooms-page';
 import { SecurityIncidentDetailPage } from './features/security-incidents/security-incident-detail-page';
@@ -80,7 +84,18 @@ export function App() {
         <Route path="student/warnings" element={<StudentWarningsPage />} />
         <Route path="student/exams" element={<StudentExamsPage />} />
         <Route path="student/exams/:examId" element={<TakeExamPage />} />
+        {/* Frente 07 — RULE-JUST-01 addendum/05/06: new request, "meus
+            pedidos" and its detail (items/status/cancel). react-router v7
+            ranks the static "new" segment above the dynamic
+            ":submissionId" one regardless of declaration order, so "new" is
+            never swallowed as a submission id. */}
+        <Route path="student/justifications" element={<MyJustificationsPage />} />
+        <Route path="student/justifications/new" element={<NewJustificationPage />} />
+        <Route path="student/justifications/:submissionId" element={<JustificationDetailPage />} />
         <Route path="teacher/class-groups" element={<TeachingClassGroupsPage />} />
+        {/* Frente 07 — RULE-JUST-06/08/24: the professor's decision queue
+            (decide + revoke, both inline on this one screen). */}
+        <Route path="teacher/justifications" element={<JustificationQueuePage />} />
 
         {/* Área de Provas, lado do professor (RULE-EXAM-16: uma prova sempre
             pertence a uma turma, então a lista é sempre escopada por turma —

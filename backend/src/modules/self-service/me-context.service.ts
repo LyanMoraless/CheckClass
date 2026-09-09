@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { TenantEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { LeadershipScopeService } from '../leadership-scope/leadership-scope.service';
 import { TeachingClassGroupEntry, TeachingClassGroupsService } from './teaching-class-groups.service';
@@ -13,6 +14,13 @@ export interface MeContext {
   teaching: TeachingClassGroupEntry[];
   coordinating: CoordinatingCourseEntry[];
   isDirection: boolean;
+  // RULE-JUST-10: the Portal itself stays agnostic of institutionType (see
+  // architecture-overview.md's addendum), but as of Frente 07 one feature
+  // (Justificativa de Faltas) is faculdade-only, so the frontend needs this
+  // value to decide whether to show that area's navigation at all — the
+  // gate itself is still enforced server-side by
+  // AbsenceJustificationAreaGateService, this is only for menu visibility.
+  institutionType: string;
 }
 
 // GET /v1/me/context (architecture-overview.md, "Decisão de arquitetura —
@@ -33,10 +41,11 @@ export class MeContextService {
   ) {}
 
   async getContext(personId: string): Promise<MeContext> {
-    const [isStudent, teaching, courseScope] = await Promise.all([
+    const [isStudent, teaching, courseScope, institutionType] = await Promise.all([
       this.isStudent(personId),
       this.teachingClassGroups.getTeachingClassGroups(personId),
       this.leadershipScope.getCourseScope(personId),
+      this.institutionType(),
     ]);
 
     const coordinating = await this.coordinatingCourses(courseScope.courseIds);
@@ -46,7 +55,26 @@ export class MeContextService {
       teaching,
       coordinating,
       isDirection: courseScope.allCourses,
+      institutionType,
     };
+  }
+
+  // Read straight from the tenant registry, same call shape
+  // ExamAvailabilityService.assertExamAreaEnabled() already uses for the
+  // same table (not RLS-scoped — it has no tenant_id column of its own, id
+  // IS the tenant). findOneByOrFail is safe here: a request never reaches
+  // this service without an already-authenticated JWT for a tenantId that
+  // exists. If that assumption were ever wrong, the raw EntityNotFoundError
+  // would propagate uncaught into a generic 500 (it is not a NestJS
+  // HttpException) — accepted deliberately, not caught defensively, same as
+  // findOneByOrFail's other structurally-guaranteed-valid-FK uses in this
+  // codebase; see
+  // test_getContext_tenantNotFound_propagatesEntityNotFoundErrorUncaught in
+  // me-context.service.spec.ts for the pinned-down behavior.
+  private async institutionType(): Promise<string> {
+    const tenantId = this.tenantContext.getTenantId();
+    const tenant = await this.tenantContext.getManager().getRepository(TenantEntity).findOneByOrFail({ id: tenantId });
+    return tenant.institutionType;
   }
 
   private async isStudent(personId: string): Promise<boolean> {

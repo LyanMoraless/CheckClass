@@ -15,6 +15,15 @@ export interface MockRepository {
   update: jest.Mock;
   delete: jest.Mock;
   count: jest.Mock;
+  // repository-level createQueryBuilder(alias) — as opposed to the
+  // manager-level one on MockEntityManager below. TypeORM exposes both, and
+  // both are genuinely used in this codebase (e.g.
+  // AbsenceJustificationNoticeReadService.listMine /
+  // AbsenceJustificationAttachmentService.sweepDueAttachments call the
+  // repository-level one). Not pre-wired to any builder by default — tests
+  // that need it call `.mockReturnValue(createMockSelectQueryBuilder(rows))`
+  // themselves, same posture as MockEntityManager.createQueryBuilder.
+  createQueryBuilder: jest.Mock;
 }
 
 export function createMockRepository(overrides: Partial<MockRepository> = {}): MockRepository {
@@ -35,6 +44,7 @@ export function createMockRepository(overrides: Partial<MockRepository> = {}): M
     update: jest.fn().mockResolvedValue(undefined),
     delete: jest.fn().mockResolvedValue(undefined),
     count: jest.fn().mockResolvedValue(0),
+    createQueryBuilder: jest.fn(),
     ...overrides,
   };
 }
@@ -91,6 +101,23 @@ export function createMockEntityManager(repositoriesByEntity: Map<unknown, MockR
     transaction: jest.fn((callback: (manager: MockEntityManager) => Promise<unknown>) => callback(manager)),
   };
   return manager;
+}
+
+// Chainable stand-in for manager.createQueryBuilder('alias').where(...)
+// .andWhere(...).orderBy(...).getMany() — the plain SELECT-filter-order
+// pattern (as opposed to createMockInsertQueryBuilder's insert/orIgnore
+// shape above). `rows` controls what getMany() resolves to; every chain
+// method returns `this` regardless of call count/order, so callers do not
+// need to know exactly how many `.andWhere(...)` calls the production code
+// makes.
+export function createMockSelectQueryBuilder(rows: unknown[] = []) {
+  const builder = {
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(rows),
+  };
+  return builder;
 }
 
 export interface MockTenantContext {
