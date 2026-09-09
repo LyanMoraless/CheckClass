@@ -256,7 +256,7 @@ Formalizado em RULE-JUST-21 e RULE-JUST-22.
 - **AC-07** — Dado um envio sem anexo, ou com anexo `.svg`/`.zip`/`.exe`/`.html`, ou com 2 arquivos, ou com arquivo > 10 MB, Quando é submetido, Então é **rejeitado** e nada é persistido.
 - **AC-08** — Dado um pedido sem categoria legal **ou** sem descrição escrita, Quando é submetido, Então é rejeitado (RULE-JUST-12).
 - **AC-09** — Dado um envio submetido, Quando o aluno tenta **editá-lo**, Então a operação é negada; Quando tenta **cancelá-lo** e nenhum item foi decidido, Então todos os itens vão para `cancelado pelo aluno` (RULE-JUST-05.4).
-- **AC-10** — Dado um envio com 1 item já decidido, Quando o aluno tenta cancelar o envio, Então o item decidido é preservado e apenas os itens ainda `em análise` são cancelados.
+- **AC-10** — Dado um envio com 1 item já decidido, Quando o aluno tenta cancelar o envio, Então o cancelamento é **negado para o envio inteiro** — os itens ainda `em análise` permanecem `em análise`, sem alteração —, porque a permissão de cancelar existe apenas **enquanto nenhum item tiver sido decidido** (RULE-JUST-05.4). Não há cancelamento parcial.
 - **AC-11** — Dada uma falta consolidada há 16 dias corridos, Quando o aluno tenta justificá-la, Então a sessão é inelegível; Dada a mesma falta há 15 dias, Então é elegível até 23:59:59 daquele dia.
 - **AC-12** — Dada uma falta cujo período de apuração já encerrou há 3 dias (menos de 15 dias após a falta), Quando o aluno tenta justificá-la, Então é inelegível (RULE-JUST-05.2 — vale o que vier primeiro).
 - **AC-13** — Dada uma sessão anterior ao início da matrícula do aluno na turma, Quando ele tenta justificá-la, Então é inelegível, com mensagem explícita.

@@ -2091,6 +2091,13 @@ está no fim desta seção:
   impacto na implementação já entregue. **Decisão de qual caminho tomar é
   do Business Analyst**, não presumida aqui. Não bloqueia o fechamento da
   Frente 07 (ver item 7 abaixo nesta skill, "FRENTE 07 CONCLUÍDA").
+  **RESOLVIDO (Business Analyst, 2026-09-09):** decisão pela hipótese (a) —
+  RULE-JUST-05.4 reflete a intenção de produto confirmada (tudo-ou-nada,
+  Usuário 2026-09-08) e é consistente com AC-09; o AC-10 foi corrigido em
+  `absence-justification-requirements-analysis.md` para descrever a
+  negação do cancelamento do envio inteiro quando qualquer item já foi
+  decidido. Nenhum impacto na implementação (já correta). Nenhum novo gap
+  aberto para Backend.
 
 **Regras novas produzidas na passagem do Business Analyst (2026-09-08):**
 RULE-JUST-13 a RULE-JUST-23, todas em
