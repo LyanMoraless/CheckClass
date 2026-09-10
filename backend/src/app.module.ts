@@ -21,6 +21,8 @@ import { TenantConfigModule } from './modules/config/tenant-config.module';
 import { CourseModule } from './modules/course/course.module';
 import { DeduplicationModule } from './modules/deduplication/deduplication.module';
 import { DeviceModule } from './modules/device/device.module';
+import { DeviceBindingModule } from './modules/device-binding/device-binding.module';
+import { DeviceIdentityModule } from './modules/device-identity/device-identity.module';
 import { ExamModule } from './modules/exam/exam.module';
 import { HealthModule } from './modules/health/health.module';
 import { HolidayModule } from './modules/holiday/holiday.module';
@@ -111,6 +113,13 @@ import { QueueModule } from './queue/queue.module';
     // container can resolve it for whichever module imports it — not because
     // any route lives here.
     AttendanceRetentionModule,
+    // Frente 12 — Vínculo de Dispositivo Institucional (RULE-DEV-01..18).
+    // DeviceIdentityModule before DeviceBindingModule reflects the real
+    // dependency direction (device-binding consumes DeviceCredentialService,
+    // never the reverse) — registration order in this array doesn't affect
+    // Nest's DI resolution, kept this way only for readability.
+    DeviceIdentityModule,
+    DeviceBindingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

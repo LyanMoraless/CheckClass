@@ -15,11 +15,15 @@ import {
   FileText,
   GraduationCap,
   Landmark,
+  Laptop,
   Layers,
+  Link2,
   LogOut,
+  Monitor,
   Presentation,
   ShieldCheck,
   SlidersHorizontal,
+  Timer,
   UserCog,
   Users,
   UsersRound,
@@ -30,6 +34,8 @@ import {
 import { NavLink, Outlet } from 'react-router-dom';
 import type { RoleContext } from '../features/auth/auth-api';
 import { useAuth } from '../features/auth/auth-context';
+import { DeviceLinkPrompt } from '../features/device-binding/device-link-prompt';
+import { useDeviceBindingSession } from '../features/device-binding/use-device-binding-session';
 import styles from './app-shell.module.css';
 
 type NavArea = 'core' | 'registry' | 'settings' | 'security' | 'portal';
@@ -77,6 +83,10 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/register', label: 'Registro de presença', icon: ClipboardCheck },
       { to: '/pending-reviews', label: 'Revisões pendentes', icon: ClipboardList },
       { to: '/class-groups', label: 'Cronograma de aulas', icon: CalendarClock },
+      // RULE-DEV-02: BYOD self-service, open to any authenticated person —
+      // not role-gated like the "Configurações" items below, so it lives in
+      // the always-visible core group rather than settings.
+      { to: '/my-device', label: 'Meu dispositivo', icon: Laptop },
     ],
   },
   {
@@ -107,6 +117,12 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/users', label: 'Usuários', icon: UserCog },
       { to: '/rooms', label: 'Salas', icon: DoorOpen },
       { to: '/holidays', label: 'Feriados', icon: CalendarOff },
+      // Frente 12 — Vínculo de Dispositivo Institucional. All three gated
+      // INSIDE their own page (RoleHint/PermissionHint), same convention as
+      // every other item in this group.
+      { to: '/institutional-machines', label: 'Máquinas institucionais', icon: Monitor },
+      { to: '/device-bindings', label: 'Vínculos de dispositivo', icon: Link2 },
+      { to: '/device-bindings-config', label: 'Configuração de vínculo', icon: Timer },
     ],
   },
   {
@@ -192,6 +208,21 @@ export function AppShell() {
   const { logout, roleContext } = useAuth();
   const navGroups = [...NAV_GROUPS, ...buildRoleNavGroups(roleContext)];
 
+  // Mounted here, not inside a single route: AppShell's lifetime IS the
+  // authenticated session's lifetime (it wraps every route via <Outlet/> and
+  // never remounts between them), which is exactly what Tech Decision C's
+  // "logo após o login" capability check and Tech Decision B's checkout
+  // timers both need — see use-device-binding-session.ts's header comment.
+  const deviceBindingSession = useDeviceBindingSession();
+
+  // Gatilho 1 (RULE-DEV-06): best-effort checkout BEFORE the client-side
+  // session is torn down — logout() itself clears the token synchronously,
+  // so the checkout call has to go out first while the token is still valid.
+  async function handleLogout() {
+    await deviceBindingSession.checkoutBeforeLogout();
+    logout();
+  }
+
   return (
     <div className={styles.layout}>
       <nav className={styles.nav}>
@@ -219,12 +250,13 @@ export function AppShell() {
             </div>
           ))}
         </div>
-        <button type="button" className={`secondary ${styles.logoutButton}`} onClick={logout}>
+        <button type="button" className={`secondary ${styles.logoutButton}`} onClick={() => void handleLogout()}>
           <LogOut size={16} />
           Sair
         </button>
       </nav>
       <main className={styles.content}>
+        <DeviceLinkPrompt {...deviceBindingSession} />
         <Outlet />
       </main>
     </div>

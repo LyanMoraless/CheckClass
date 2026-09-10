@@ -95,6 +95,22 @@ class EnvVariables {
   @IsOptional()
   STORAGE_S3_SSE_ALGORITHM?: string;
 
+  // Frente 12 — Vínculo de Dispositivo Institucional, Tech Decision A: RP ID
+  // is platform-wide (not per tenant — the CheckClass frontend has no
+  // per-institution subdomain), so this is a single value for every tenant.
+  // Must be a bare domain name (no scheme/port), matching whatever
+  // CORS_ORIGIN's browser origin(s) resolve to.
+  @IsString()
+  @IsNotEmpty()
+  WEBAUTHN_RP_ID: string;
+
+  // User-visible relying-party name shown by the browser's WebAuthn UI
+  // during matrícula (e.g. "CheckClass"). Cosmetic only — not a security
+  // boundary (RP ID is).
+  @IsString()
+  @IsNotEmpty()
+  WEBAUTHN_RP_NAME: string;
+
   // Frente 10 — attendance_closure_document artifacts (RULE-RET-01/02).
   // Approved technology decision item 1: SAME S3-compatible technology and
   // SAME region/credentials/endpoint/path-style/SSE settings as the Frente 07

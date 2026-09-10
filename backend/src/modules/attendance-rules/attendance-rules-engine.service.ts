@@ -7,6 +7,8 @@ import {
   SessionAttendanceConsolidationEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
+import { DEVICE_BINDING_FACTOR_CODE } from '../attendance-factor-codes';
+import { DeviceBindingService } from '../device-binding/device-binding.service';
 import { PresenceIntervalService } from './presence-interval.service';
 
 type PendingReason = 'missing_factor' | 'missing_exit';
@@ -42,6 +44,7 @@ export class AttendanceRulesEngineService {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly presenceIntervalService: PresenceIntervalService,
+    private readonly deviceBindingService: DeviceBindingService,
   ) {}
 
   async evaluateSession(classSessionId: string): Promise<void> {
@@ -124,8 +127,28 @@ export class AttendanceRulesEngineService {
     // which is more specific than the generic "factor never seen" case
     // (RULE-ATT-07) — an entry with no exit must never be reported as a
     // plain missing_factor, even though a naive satisfied-codes check would
-    // also technically call ROOM_EXIT "unsatisfied" here.
-    const missingFactorCodes = [...requiredCodes].filter((code) => code !== 'ROOM_EXIT' && !satisfiedCodes.has(code));
+    // also technically call ROOM_EXIT "unsatisfied" here. DEVICE_BINDING is
+    // excluded for a different reason (RULE-DEV-10): it never writes to
+    // identification_checkin at all, so satisfiedCodes can never contain it
+    // — evaluated separately below, via device-binding's own read primitive.
+    const missingFactorCodes = [...requiredCodes].filter(
+      (code) => code !== 'ROOM_EXIT' && code !== DEVICE_BINDING_FACTOR_CODE && !satisfiedCodes.has(code),
+    );
+
+    if (requiredCodes.has(DEVICE_BINDING_FACTOR_CODE)) {
+      // RULE-DEV-09: a THIRD state besides present/absent, unlike every
+      // other factor here. 'present' needs no action (already effectively
+      // satisfied, see the filter above). 'not_applicable' (room mismatch
+      // between an institutional machine and this session — or, for BYOD,
+      // never reached at all, RULE-DEV-09's emenda) is deliberately NEVER
+      // pushed into missingFactorCodes: it must NOT produce a missing_factor
+      // pending review, unlike the default RULE-ATT-07 behavior every other
+      // required-but-absent factor gets.
+      const deviceBindingState = await this.deviceBindingService.evaluateFactorForClassSession(personId, session);
+      if (deviceBindingState === 'absent') {
+        missingFactorCodes.push(DEVICE_BINDING_FACTOR_CODE);
+      }
+    }
 
     // Attempted regardless of whether entry/exit are required — if the
     // checkins exist, we use them; RULE-ATT-08 always sums whatever real

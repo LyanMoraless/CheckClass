@@ -29,4 +29,16 @@ export enum Permission {
   // in THIS turma, no leadership-chain shortcut), re-verified server-side on
   // every open, never cached, never a public/permanent URL (RULE-JUST-11.5).
   VIEW_ABSENCE_JUSTIFICATION_ATTACHMENT = 'view_absence_justification_attachment',
+
+  // RULE-DEV-13/RULE-ACC-08's dedicated code (Frente 12 — Vínculo de
+  // Dispositivo Institucional): "quem está/esteve em qual máquina" is
+  // person-tracking data, treated as its own code rather than folded into
+  // any existing permission — same reasoning RULE-ACC-07 already applied to
+  // the camera codes above. Titular padrão: coordenação + diretoria/reitoria
+  // (RULE-DEV-16), granted via permission_group like every other code here,
+  // not hardcoded. NOTE: RULE-ACC-08 also reserves a second code for Frente
+  // 13's break-glass flow — deliberately NOT added here, since that
+  // behavior isn't formalized yet (see access-control-rules.md's note on
+  // RULE-ACC-08).
+  VIEW_DEVICE_BINDINGS = 'view_device_bindings',
 }

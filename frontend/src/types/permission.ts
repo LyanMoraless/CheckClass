@@ -16,7 +16,13 @@ export type Permission =
   // absence-justification attachment — by itself only marks a role as
   // ELIGIBLE (typically Professor); RULE-JUST-24's narrow subject-teacher
   // check is enforced server-side on top of this, never inferred here.
-  | 'view_absence_justification_attachment';
+  | 'view_absence_justification_attachment'
+  // RULE-DEV-13/RULE-ACC-08's dedicated code (Frente 12 — Vínculo de
+  // Dispositivo Institucional): "quem está/esteve em qual máquina" is
+  // person-tracking data, its own code rather than folded into an existing
+  // permission — titular padrão coordenação + diretoria/reitoria
+  // (RULE-DEV-16), granted via permission_group like every other code here.
+  | 'view_device_bindings';
 
 export const PERMISSIONS: Permission[] = [
   'manage_users',
@@ -30,6 +36,7 @@ export const PERMISSIONS: Permission[] = [
   'administer_camera_devices',
   'manage_security_incidents',
   'view_absence_justification_attachment',
+  'view_device_bindings',
 ];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -44,4 +51,5 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   administer_camera_devices: 'Administrar dispositivos de câmera',
   manage_security_incidents: 'Gerenciar incidentes de segurança',
   view_absence_justification_attachment: 'Ver anexo de justificativa de falta',
+  view_device_bindings: 'Ver vínculos de dispositivo',
 };

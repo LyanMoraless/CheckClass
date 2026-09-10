@@ -10,6 +10,7 @@ import {
   createMockTenantContext,
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
+import { DeviceBindingFactorState, DeviceBindingService } from '../device-binding/device-binding.service';
 import { AttendanceRulesEngineService } from './attendance-rules-engine.service';
 import { PresenceIntervalService } from './presence-interval.service';
 
@@ -39,6 +40,10 @@ describe('AttendanceRulesEngineService', () => {
     presenceInterval: { closedIntervals: Array<{ entryAt: Date; exitAt: Date }>; hasOpenInterval: boolean };
     existingPendingReview?: { resolvedAt: Date | null } | null;
     existingConsolidation?: { id: string } | null;
+    // Defaults to 'absent' — irrelevant for scenarios whose requiredFactorRows
+    // never include DEVICE_BINDING, since evaluateFactorForClassSession is
+    // only ever called when that code is present.
+    deviceBindingFactorState?: DeviceBindingFactorState;
   }
 
   function buildService(scenario: Scenario) {
@@ -75,8 +80,12 @@ describe('AttendanceRulesEngineService', () => {
       rebuildForPerson: jest.fn().mockResolvedValue(scenario.presenceInterval),
     } as unknown as PresenceIntervalService;
 
-    const service = new AttendanceRulesEngineService(tenantContext as never, presenceIntervalService);
-    return { service, sessionRepo, pendingReviewRepo, consolidationRepo, presenceIntervalService };
+    const deviceBindingService = {
+      evaluateFactorForClassSession: jest.fn().mockResolvedValue(scenario.deviceBindingFactorState ?? 'absent'),
+    } as unknown as DeviceBindingService;
+
+    const service = new AttendanceRulesEngineService(tenantContext as never, presenceIntervalService, deviceBindingService);
+    return { service, sessionRepo, pendingReviewRepo, consolidationRepo, presenceIntervalService, deviceBindingService };
   }
 
   test('test_evaluateSession_sessionNotFound_throwsNotFoundException', async () => {
@@ -290,5 +299,71 @@ describe('AttendanceRulesEngineService', () => {
       expect.objectContaining({ status: 'present' }),
     );
     expect(consolidationRepo.save).not.toHaveBeenCalled();
+  });
+
+  // RULE-DEV-09/10 (Frente 12): DEVICE_BINDING is a required factor never
+  // satisfied via identification_checkin (satisfiedRows stays empty in every
+  // scenario below) and has a third possible state, 'not_applicable', that
+  // must NOT behave like every other required-but-absent factor.
+  describe('DEVICE_BINDING factor (RULE-DEV-09/10)', () => {
+    const deviceBindingRequired = [{ attendance_factor_type_id: 'factor-device-binding', code: 'DEVICE_BINDING' }];
+
+    test('test_evaluateSession_deviceBindingPresent_countsAsSatisfiedFactor', async () => {
+      const { service, deviceBindingService, consolidationRepo, pendingReviewRepo } = buildService({
+        requiredFactorRows: deviceBindingRequired,
+        satisfiedRows: [],
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+        deviceBindingFactorState: 'present',
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(deviceBindingService.evaluateFactorForClassSession).toHaveBeenCalledWith('person-1', pastSession);
+      expect(pendingReviewRepo.save).not.toHaveBeenCalled();
+      expect(consolidationRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'present' }));
+    });
+
+    test('test_evaluateSession_deviceBindingAbsent_recordsPendingWithMissingFactorReason', async () => {
+      const { service, pendingReviewRepo, consolidationRepo } = buildService({
+        requiredFactorRows: deviceBindingRequired,
+        satisfiedRows: [],
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+        deviceBindingFactorState: 'absent',
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(pendingReviewRepo.save).toHaveBeenCalledWith(expect.objectContaining({ reason: 'missing_factor' }));
+      expect(consolidationRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending' }));
+    });
+
+    test('test_evaluateSession_deviceBindingNotApplicable_neitherPendingNorMissingFactor', async () => {
+      // RULE-DEV-09: room divergence between an institutional machine and
+      // this session — diverges deliberately from RULE-ATT-07's default
+      // behavior for every other required-but-absent factor.
+      const { service, pendingReviewRepo, consolidationRepo } = buildService({
+        requiredFactorRows: deviceBindingRequired,
+        satisfiedRows: [],
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+        deviceBindingFactorState: 'not_applicable',
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(pendingReviewRepo.save).not.toHaveBeenCalled();
+      expect(consolidationRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'present' }));
+    });
+
+    test('test_evaluateSession_deviceBindingNotRequired_neverCallsEvaluateFactorForClassSession', async () => {
+      const { service, deviceBindingService } = buildService({
+        requiredFactorRows: [{ attendance_factor_type_id: 'factor-tag', code: 'TAG_CHECKIN' }],
+        satisfiedRows: [{ code: 'TAG_CHECKIN' }],
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(deviceBindingService.evaluateFactorForClassSession).not.toHaveBeenCalled();
+    });
   });
 });

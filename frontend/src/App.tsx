@@ -14,6 +14,10 @@ import { ExamEditorPage } from './features/exams/exam-editor-page';
 import { ExamPanelPage } from './features/exams/exam-panel-page';
 import { ExamsPage } from './features/exams/exams-page';
 import { DevicesPage } from './features/devices/devices-page';
+import { InstitutionalMachinesPage } from './features/device-identity/institutional-machines-page';
+import { MyPersonalDevicePage } from './features/device-identity/my-personal-device-page';
+import { ActiveBindingsPage } from './features/device-binding/active-bindings-page';
+import { DeviceBindingConfigPage } from './features/device-binding/device-binding-config-page';
 import { HolidaysPage } from './features/holidays/holidays-page';
 import { InstitutionOnboardingPage } from './features/institution-onboarding/institution-onboarding-page';
 import { MyPendingReviewsPage } from './features/pending-reviews/my-pending-reviews-page';
@@ -60,6 +64,17 @@ export function App() {
         <Route path="class-groups/:classGroupId" element={<ClassGroupDetailPage />} />
         <Route path="students" element={<StudentsPage />} />
         <Route path="devices" element={<DevicesPage />} />
+        {/* Frente 12 — Vínculo de Dispositivo Institucional. institutional-machines
+            and device-bindings-config are Direção/Reitoria-gated INSIDE the page
+            (roleContext.isDirection, no dedicated Permission code — RULE-DEV-15/
+            RULE-ACC-08); device-bindings is VIEW_DEVICE_BINDINGS-gated inside the
+            page (RULE-DEV-13); my-device is open to any authenticated person
+            (RULE-DEV-02) — same "route always reachable, page gates its own
+            content" convention as every other screen in this app. */}
+        <Route path="institutional-machines" element={<InstitutionalMachinesPage />} />
+        <Route path="my-device" element={<MyPersonalDevicePage />} />
+        <Route path="device-bindings" element={<ActiveBindingsPage />} />
+        <Route path="device-bindings-config" element={<DeviceBindingConfigPage />} />
         <Route path="attendance-config" element={<AttendanceConfigPage />} />
         <Route path="register" element={<AttendanceRegisterPage />} />
         <Route path="pending-reviews" element={<PendingReviewsPage />} />
