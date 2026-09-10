@@ -20,6 +20,36 @@ export function extractUtcYmd(date: Date): { year: number; month: number; day: n
   return { year: date.getUTCFullYear(), month: date.getUTCMonth(), day: date.getUTCDate() };
 }
 
+// Normalizes a value read off a `type: 'date'` column (class_group.term_start_
+// date/term_end_date, the only two in this codebase read back through
+// TypeORM before being handed to the UTC helpers above) into a real `Date`
+// instance, while preserving null/undefined AS null instead of collapsing
+// them into the Unix epoch. This distinction is load-bearing: `new
+// Date(null)` is `1970-01-01T00:00:00.000Z` — truthy, not null — which would
+// silently defeat every "no term dates yet" freeze/guard check downstream
+// (reporting-period.util.ts's currentPeriodWindow, RULE-FREQ-08 approved
+// answer 6) if a caller ever blindly wrapped with `new Date(...)` instead of
+// this.
+//
+// The reason this exists at all (Testing Agent finding, confirmed against a
+// real Postgres instance): a raw `manager.query()` SELECT on a `date` column
+// returns a genuine `Date`, but `repository.findOneBy()`/`manager.
+// getRepository(...)` on that SAME column returns a plain STRING
+// ("2026-08-01") — a real driver-level inconsistency, not something this
+// project's own code controls. Every call site that reads
+// classGroup.termStartDate/termEndDate off a repository-loaded
+// ClassGroupEntity and feeds it to extractUtcYmd/utcMidnight/
+// currentPeriodWindow must go through this first (or, for a context where
+// the value is already guaranteed non-null by an earlier guard, `new
+// Date(...)` directly is equivalent and reads a little lighter — see e.g.
+// ScheduleRegenerationService.regenerateFutureSessions).
+export function hydrateNullableDate(value: Date | string | null | undefined): Date | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  return value instanceof Date ? value : new Date(value);
+}
+
 export function dateKey(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }

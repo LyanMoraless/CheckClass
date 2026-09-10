@@ -102,9 +102,18 @@ export class ScheduleRegenerationService {
     // not-yet-occurred cutoff at millisecond precision is `strictlyAfter:
     // now` below, since "today" can still contain a slot time earlier than
     // this exact moment.
+    // classGroup.termStartDate/termEndDate are guaranteed non-null by the
+    // guard above, but TypeORM hands a `type: 'date'` column back as a plain
+    // STRING when read through this repository (see hydrateNullableDate's
+    // own comment) — both are wrapped in `new Date(...)` before any UTC
+    // getter touches them, exactly like AttendanceWarningService.storedWindow
+    // already does for the same underlying column type.
+    const termStartDate = new Date(classGroup.termStartDate);
+    const termEndDate = new Date(classGroup.termEndDate);
+
     const { year, month, day } = extractUtcYmd(now);
     const todayUtc = new Date(Date.UTC(year, month, day));
-    const termStartYmd = extractUtcYmd(classGroup.termStartDate);
+    const termStartYmd = extractUtcYmd(termStartDate);
     const termStartUtc = new Date(Date.UTC(termStartYmd.year, termStartYmd.month, termStartYmd.day));
     const rangeStartDate = todayUtc.getTime() > termStartUtc.getTime() ? todayUtc : termStartUtc;
 
@@ -112,7 +121,7 @@ export class ScheduleRegenerationService {
       classGroup,
       slots,
       rangeStartDate,
-      rangeEndDate: classGroup.termEndDate,
+      rangeEndDate: termEndDate,
       // RULE-INST-04 item #5: a pontually edited/cancelled session must never
       // be duplicated by regeneration — unlike
       // ClassScheduleService.generateSessions' own documented choice for the

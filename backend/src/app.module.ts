@@ -10,6 +10,7 @@ import { AreaAuthorizationModule } from './modules/area-authorization/area-autho
 import { AreaModule } from './modules/area/area.module';
 import { AttendanceFrequencyModule } from './modules/attendance-frequency/attendance-frequency.module';
 import { AttendanceRegisterModule } from './modules/attendance-register/attendance-register.module';
+import { AttendanceRetentionModule } from './modules/attendance-retention/attendance-retention.module';
 import { AttendanceRulesModule } from './modules/attendance-rules/attendance-rules.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CameraModule } from './modules/camera/camera.module';
@@ -102,6 +103,14 @@ import { QueueModule } from './queue/queue.module';
     // script this round (no admin UI yet, out of scope by the user's own
     // decision — see pending-decisions.md).
     AbsenceJustificationModule,
+    // Conformidade LGPD e retenção (Frente 10) — RULE-RET-01/02. No
+    // controller: this round's actors are the unattended CLI scripts
+    // (attendance-retention:close-month/:consolidate-annual) and
+    // SelfServiceModule's read of AttendanceRetentionArchiveLookupService
+    // (see that module's own header). Registered here purely so Nest's DI
+    // container can resolve it for whichever module imports it — not because
+    // any route lives here.
+    AttendanceRetentionModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

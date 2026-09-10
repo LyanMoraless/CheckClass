@@ -13,6 +13,7 @@ import {
   SessionAttendanceConsolidationEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
+import { AttendanceFrequencyEngineService } from '../attendance-frequency/attendance-frequency-engine.service';
 import { AttendanceWarningService } from '../attendance-frequency/attendance-warning.service';
 
 // RULE-INST-13: cascading a Turma deletion (whether requested directly, or
@@ -41,6 +42,7 @@ export class ClassGroupDeletionOrchestrator {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly warningService: AttendanceWarningService,
+    private readonly frequencyEngine: AttendanceFrequencyEngineService,
   ) {}
 
   // Throws ConflictException, deletes nothing, if this one class_group has
@@ -101,6 +103,11 @@ export class ClassGroupDeletionOrchestrator {
     // ceased to exist, so there is nothing left for a warning to be a fact
     // about.
     await this.warningService.deleteWarningsForClassGroup(manager, classGroupId);
+    // Frente 10's durable per-period aggregate — same FK-driven necessity as
+    // the warnings delete immediately above (see the engine method's own
+    // comment for why RULE-INST-13 passing does not, by itself, guarantee
+    // zero aggregate rows).
+    await this.frequencyEngine.deleteAggregatesForClassGroup(manager, classGroupId);
     await manager.getRepository(ClassGroupEntity).delete({ id: classGroupId });
   }
 

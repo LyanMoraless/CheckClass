@@ -1,11 +1,11 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { TenantContextInterceptor } from '../../database/tenant-context.interceptor';
 import { FrequencyWarningReadService } from '../attendance-frequency/frequency-warning-read.service';
-import { AttendanceRegisterService } from '../attendance-register/attendance-register.service';
 import { AuthenticatedRequest, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CoordinatedClassGroupsService } from './coordinated-class-groups.service';
 import { MeClassGroupAttendanceService } from './me-class-group-attendance.service';
 import { MeContextService } from './me-context.service';
+import { MePersonAttendanceService } from './me-person-attendance.service';
 import { MyScheduleService } from './my-schedule.service';
 import { TeachingClassGroupsService } from './teaching-class-groups.service';
 
@@ -42,7 +42,7 @@ import { TeachingClassGroupsService } from './teaching-class-groups.service';
 @UseInterceptors(TenantContextInterceptor)
 export class MeController {
   constructor(
-    private readonly registerService: AttendanceRegisterService,
+    private readonly personAttendanceService: MePersonAttendanceService,
     private readonly scheduleService: MyScheduleService,
     private readonly contextService: MeContextService,
     private readonly teachingClassGroupsService: TeachingClassGroupsService,
@@ -51,9 +51,23 @@ export class MeController {
     private readonly warningReadService: FrequencyWarningReadService,
   ) {}
 
+  // Frente 10 (RULE-RET-01 mobile-app note, confirmed 2026-08-22): a session
+  // older than the 60-day live window reads as `archived: true`, never as if
+  // it had simply never happened — see MePersonAttendanceService for how
+  // that distinction is made.
+  //
+  // CURRENTLY UNREACHABLE (Project Guardian, 2026-09-10): `archived: true`
+  // never fires today — attendance_closure_document has no interactive RLS
+  // read policy yet (only the unattended retention job's GUC can see it),
+  // so AttendanceRetentionArchiveLookupService always resolves "not found"
+  // and this endpoint falls back to the pre-existing silent-absent shape.
+  // Safe, self-documented degradation, not a bug — see that service's own
+  // header. Resolves itself automatically once Open Question 4 ("quem pode
+  // ler/baixar o documento de fechamento", architecture-overview.md, Frente
+  // 10) gets an interactive RLS policy; no code change needed here then.
   @Get('attendance')
   getMyAttendance(@Req() request: AuthenticatedRequest, @Query('classGroupId') classGroupId?: string) {
-    return this.registerService.getPersonHistory(request.personId, classGroupId);
+    return this.personAttendanceService.getMyAttendanceHistory(request.personId, classGroupId);
   }
 
   @Get('schedule')

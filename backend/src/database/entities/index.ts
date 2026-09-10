@@ -53,3 +53,5 @@ export * from './absence-justification-item-decision.entity';
 export * from './absence-justification-attachment.entity';
 export * from './absence-justification-attachment-access-log.entity';
 export * from './absence-justification-notice.entity';
+export * from './attendance-closure-document.entity';
+export * from './attendance-frequency-period-aggregate.entity';

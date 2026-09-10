@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { addUtcDays, utcMidnight } from '../../common/utc-date.util';
+import { addUtcDays, hydrateNullableDate, utcMidnight } from '../../common/utc-date.util';
 import { ClassGroupEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { currentPeriodWindow } from '../attendance-frequency/reporting-period.util';
@@ -219,9 +219,14 @@ export class AbsenceJustificationEligibilityService {
       ABSENCE_JUSTIFICATION_SUBMISSION_DEADLINE_DAYS + 1,
     );
 
+    // classGroup.termStartDate/termEndDate: TypeORM hands a `type: 'date'`
+    // column back as a plain STRING when read through this repository (see
+    // hydrateNullableDate's own comment in utc-date.util.ts) — hydrated here,
+    // preserving null so currentPeriodWindow's own "no term dates" branch
+    // below still fires correctly instead of a coerced Unix-epoch Date.
     const window = currentPeriodWindow(
-      classGroup.termStartDate,
-      classGroup.termEndDate,
+      hydrateNullableDate(classGroup.termStartDate),
+      hydrateNullableDate(classGroup.termEndDate),
       config.accumulatedFrequencyPeriod,
       sessionScheduledStart,
     );

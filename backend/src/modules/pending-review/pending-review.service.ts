@@ -7,7 +7,7 @@ import {
   SessionAttendanceConsolidationEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
-import { AttendanceFrequencyEngineService } from '../attendance-frequency/attendance-frequency-engine.service';
+import { AttendanceFrequencyEngineService, ConsolidationStatus } from '../attendance-frequency/attendance-frequency-engine.service';
 import { LeadershipScopeService } from '../leadership-scope/leadership-scope.service';
 
 export type PendingReviewDecision = 'present' | 'absent';
@@ -121,6 +121,21 @@ export class PendingReviewService {
       );
     }
 
+    // Frente 10: the status this row had BEFORE the update below, captured
+    // here — recalculateForSessionPerson's incremental aggregate (Frente 10)
+    // needs this to correct the durable per-period aggregate by the exact
+    // DIFFERENCE this resolution makes, not by a blind "+1". In practice
+    // this is always 'pending': AttendanceRulesEngineService only ever
+    // creates an attendance_pending_review row alongside a 'pending'
+    // consolidation row (recordPending), and this is the only path that
+    // resolves it away from 'pending' — read explicitly anyway rather than
+    // assumed, since a stale assumption here would silently mis-count the
+    // aggregate.
+    const existingConsolidation = await manager
+      .getRepository(SessionAttendanceConsolidationEntity)
+      .findOneBy({ classSessionId: pending.classSessionId, personId: pending.personId });
+    const previousStatus = existingConsolidation?.status as ConsolidationStatus | undefined;
+
     const resolvedAt = new Date();
     await manager
       .getRepository(AttendancePendingReviewEntity)
@@ -140,10 +155,10 @@ export class PendingReviewService {
     // definitive rows (RULE-FREQ-05.1).
     //
     // ORDER MATTERS: this call has to come AFTER the consolidation update,
-    // never before. The recompute is query-driven, not incremental — it
-    // re-reads the consolidation rows itself — so calling it first would read
-    // the pre-resolution state and write a warning based on the pending row
+    // never before. The recompute reads the row's NEW status itself
+    // (single-row lookup, Frente 10) — calling this first would read the
+    // pre-resolution state and write a warning based on the pending row
     // this method just decided.
-    await this.frequencyEngine.recalculateForSessionPerson(pending.classSessionId, pending.personId);
+    await this.frequencyEngine.recalculateForSessionPerson(pending.classSessionId, pending.personId, previousStatus ?? null);
   }
 }

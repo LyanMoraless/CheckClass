@@ -111,7 +111,10 @@ describe('AbsenceJustificationDecisionService', () => {
         { status: 'absent_justified', justifiedByItemId: 'item-1' },
       );
       expect(frequencyEngine.previewForSessionPerson).toHaveBeenCalledWith('session-1', 'student-1');
-      expect(frequencyEngine.recalculateForSessionPerson).toHaveBeenCalledWith('session-1', 'student-1');
+      // previousStatus is 'absent' — guaranteed by the conditional UPDATE
+      // above, which Controle B's Frente 10 incremental aggregate relies on
+      // to correct itself by this session's own delta (see the service).
+      expect(frequencyEngine.recalculateForSessionPerson).toHaveBeenCalledWith('session-1', 'student-1', 'absent');
       expect(noticeService.maybeEmitDecisionResultNotice).toHaveBeenCalled();
     });
 
@@ -241,8 +244,30 @@ describe('AbsenceJustificationDecisionService', () => {
           { classSessionId: 'session-1', personId: 'student-1', status: 'absent_justified' },
           { status: 'absent' },
         );
-        expect(frequencyEngine.recalculateForSessionPerson).toHaveBeenCalledWith('session-1', 'student-1');
+        // previousStatus is 'absent_justified' — guaranteed by the
+        // conditional UPDATE above, same reasoning as the approve branch.
+        expect(frequencyEngine.recalculateForSessionPerson).toHaveBeenCalledWith('session-1', 'student-1', 'absent_justified');
         expect(noticeService.recordRevocation).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    // Testing Agent finding: revoke() must mirror decide()'s approve branch
+    // (test_decide_approve_consolidationNoLongerAbsent_throwsBadRequest) —
+    // if the conditional UPDATE (WHERE status = 'absent_justified') matches
+    // zero rows, previousStatus = 'absent_justified' passed to
+    // recalculateForSessionPerson right after would be an unverified
+    // assumption, silently corrupting Frente 10's incremental aggregate by
+    // the wrong diff. Must throw instead of proceeding.
+    test('test_revoke_consolidationNoLongerAbsentJustified_throwsBadRequest', async () => {
+      const { service, consolidationRepo, frequencyEngine } = buildService({ item: { status: 'approved' } });
+      consolidationRepo.update.mockResolvedValue({ affected: 0 });
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] }).setSystemTime(new Date('2026-09-05T00:00:00.000Z'));
+
+      try {
+        await expect(service.revoke('item-1', 'teacher-1', 'Aprovado por engano')).rejects.toThrow(BadRequestException);
+        expect(frequencyEngine.recalculateForSessionPerson).not.toHaveBeenCalled();
       } finally {
         jest.useRealTimers();
       }

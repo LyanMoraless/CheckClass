@@ -7,6 +7,7 @@ import {
   ClassSessionEntity,
   SessionAttendanceConsolidationEntity,
 } from '../../database/entities';
+import { hydrateNullableDate } from '../../common/utc-date.util';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { AttendanceFrequencyEngineService, FrequencyCalculation } from '../attendance-frequency/attendance-frequency-engine.service';
 import { currentPeriodWindow, sameWindow } from '../attendance-frequency/reporting-period.util';
@@ -214,8 +215,12 @@ export class AbsenceJustificationDecisionService {
       }
 
       // RULE-FREQ-06 / RULE-JUST-23: same transaction, right after the
-      // consolidation update.
-      frequencyAfter = await this.frequencyEngine.recalculateForSessionPerson(item.classSessionId, item.personId);
+      // consolidation update. previousStatus is 'absent', not assumed but
+      // GUARANTEED by the conditional UPDATE above: it only ever affects a
+      // row (updateResult.affected > 0) whose predicate was `status =
+      // 'absent'` — Frente 10's incremental aggregate needs exactly that
+      // "before" value to correct itself by this session's own delta.
+      frequencyAfter = await this.frequencyEngine.recalculateForSessionPerson(item.classSessionId, item.personId, 'absent');
     }
 
     const decidedItem = await manager.getRepository(AbsenceJustificationItemEntity).findOneByOrFail({ id: item.id });
@@ -269,15 +274,22 @@ export class AbsenceJustificationDecisionService {
     const config = await this.tenantConfig.resolveEffectiveConfig(item.classGroupId);
     const session = await manager.getRepository(ClassSessionEntity).findOneByOrFail({ id: item.classSessionId });
 
+    // classGroup.termStartDate/termEndDate: TypeORM hands a `type: 'date'`
+    // column back as a plain STRING when read through this repository (see
+    // hydrateNullableDate's own comment in utc-date.util.ts) — hydrated here,
+    // preserving null (a turma with no term dates yet must still reach
+    // currentPeriodWindow's own null branch, not a coerced Unix-epoch Date).
+    const termStartDate = hydrateNullableDate(classGroup.termStartDate);
+    const termEndDate = hydrateNullableDate(classGroup.termEndDate);
     const sessionWindow = currentPeriodWindow(
-      classGroup.termStartDate,
-      classGroup.termEndDate,
+      termStartDate,
+      termEndDate,
       config.accumulatedFrequencyPeriod,
       session.scheduledStart,
     );
     const currentWindow = currentPeriodWindow(
-      classGroup.termStartDate,
-      classGroup.termEndDate,
+      termStartDate,
+      termEndDate,
       config.accumulatedFrequencyPeriod,
       new Date(),
     );
@@ -312,12 +324,31 @@ export class AbsenceJustificationDecisionService {
 
     // RULE-JUST-17.4: devolve o registro ao estado absent — NÃO anula
     // justified_by_item_id (see the entity's header comment).
-    await manager
+    //
+    // Testing Agent finding: approve()'s equivalent conditional UPDATE above
+    // already checks `affected === 0` before trusting its own previousStatus
+    // literal — this branch must do the same. Without it, an
+    // 'absent_justified' -> 'absent' UPDATE that actually matched zero rows
+    // (the consolidation row was, for whatever reason, no longer
+    // 'absent_justified' at this exact moment) would still fall through to
+    // recalculateForSessionPerson below claiming previousStatus was
+    // 'absent_justified' — an unverified assumption the aggregate would
+    // silently apply the wrong diff from.
+    const updateResult = await manager
       .getRepository(SessionAttendanceConsolidationEntity)
       .update({ classSessionId: item.classSessionId, personId: item.personId, status: 'absent_justified' }, { status: 'absent' });
+    if (updateResult.affected === 0) {
+      throw new BadRequestException(
+        `session_attendance_consolidation for session ${item.classSessionId}/person ${item.personId} is no longer 'absent_justified' — cannot revoke`,
+      );
+    }
 
     // RULE-JUST-17.4: mesmo recálculo, mesma transação, logo após o update.
-    await this.frequencyEngine.recalculateForSessionPerson(item.classSessionId, item.personId);
+    // previousStatus is 'absent_justified' — GUARANTEED by the conditional
+    // UPDATE above, same reasoning as decide()'s approve branch: Frente 10's
+    // incremental aggregate needs it to undo exactly this session's earlier
+    // absent -> absent_justified delta, not re-derive it from scratch.
+    await this.frequencyEngine.recalculateForSessionPerson(item.classSessionId, item.personId, 'absent_justified');
 
     const revokedItem = await manager.getRepository(AbsenceJustificationItemEntity).findOneByOrFail({ id: item.id });
     await this.noticeService.recordRevocation(revokedItem, trimmedNote);

@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { AttendanceFrequencyModule } from '../attendance-frequency/attendance-frequency.module';
 import { AttendanceRegisterModule } from '../attendance-register/attendance-register.module';
+import { AttendanceRetentionModule } from '../attendance-retention/attendance-retention.module';
 import { AuthModule } from '../auth/auth.module';
 import { LeadershipScopeModule } from '../leadership-scope/leadership-scope.module';
 import { CoordinatedClassGroupsService } from './coordinated-class-groups.service';
 import { MeClassGroupAttendanceService } from './me-class-group-attendance.service';
 import { MeContextService } from './me-context.service';
 import { MeController } from './me.controller';
+import { MePersonAttendanceService } from './me-person-attendance.service';
 import { MyScheduleService } from './my-schedule.service';
 import { TeachingClassGroupsService } from './teaching-class-groups.service';
 
@@ -27,7 +29,7 @@ import { TeachingClassGroupsService } from './teaching-class-groups.service';
 // addendum b): this import adds NO leadership-scoped surface, and Controle B
 // deliberately has no dependency on LeadershipScopeService.
 @Module({
-  imports: [AuthModule, AttendanceRegisterModule, LeadershipScopeModule, AttendanceFrequencyModule],
+  imports: [AuthModule, AttendanceRegisterModule, LeadershipScopeModule, AttendanceFrequencyModule, AttendanceRetentionModule],
   controllers: [MeController],
   providers: [
     MyScheduleService,
@@ -35,6 +37,11 @@ import { TeachingClassGroupsService } from './teaching-class-groups.service';
     TeachingClassGroupsService,
     CoordinatedClassGroupsService,
     MeClassGroupAttendanceService,
+    // Frente 10 (RULE-RET-01 mobile-app note): wraps AttendanceRegisterService.
+    // getPersonHistory with AttendanceRetentionModule's archive indicator, for
+    // GET /v1/me/attendance only — see the service's own header for why this
+    // is not a change to getPersonHistory itself.
+    MePersonAttendanceService,
   ],
 })
 export class SelfServiceModule {}

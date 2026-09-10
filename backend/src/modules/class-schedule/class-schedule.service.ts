@@ -146,11 +146,16 @@ export class ClassScheduleService {
 
     const slots = await manager.getRepository(ClassGroupScheduleSlotEntity).findBy({ classGroupId });
 
+    // termStartDate/termEndDate are guaranteed non-null by the guard above,
+    // but TypeORM hands a `type: 'date'` column back as a plain STRING when
+    // read through this repository (see hydrateNullableDate's own comment in
+    // utc-date.util.ts) — wrapped in `new Date(...)` before reaching
+    // SessionGenerationService, which eventually calls extractUtcYmd on both.
     return this.sessionGeneration.generateForRange({
       classGroup,
       slots,
-      rangeStartDate: classGroup.termStartDate,
-      rangeEndDate: classGroup.termEndDate,
+      rangeStartDate: new Date(classGroup.termStartDate),
+      rangeEndDate: new Date(classGroup.termEndDate),
       dedupeStatuses: ['scheduled', 'edited'],
       authenticatedPersonId,
     });

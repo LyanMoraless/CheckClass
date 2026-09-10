@@ -88,6 +88,10 @@ export async function cleanupTenants(superuser: Client, tenantIds: string[]): Pr
     return;
   }
   const tenantScopedTablesInDeleteOrder = [
+    // Frente 10 — attendance_closure_document has a real FK to tenant (no
+    // dependents of its own among the tables below), first hit by
+    // attendance-retention-purge-pending-review-gate.integration.spec.ts.
+    'attendance_closure_document',
     'attendance_pending_review',
     'session_attendance_consolidation',
     'presence_interval',
@@ -113,7 +117,20 @@ export async function cleanupTenants(superuser: Client, tenantIds: string[]): Pr
     // RULE-INST-14: both reference class_group and must go before it.
     'class_group_schedule_slot',
     'class_group_subject',
+    // Frente 06/10 — Controle B accumulated-frequency tables
+    // (attendance_frequency_warning.entity's own header, and the
+    // AddAttendanceRetention migration's NOTE for whoever next touches
+    // ClassGroupDeletionOrchestratorService): both carry real, NOT NULL FKs
+    // to class_group_id/subject_id/person_id, so both must be gone before
+    // class_group and subject are deleted below — a gap no prior integration
+    // spec hit, since none of them touched class_group/subject before.
+    'attendance_frequency_warning',
+    'attendance_frequency_period_aggregate',
     'class_group',
+    // RULE-INST-03: subject has its own FK to course, and is referenced by
+    // class_session/class_group_schedule_slot/class_group_subject/the two
+    // Controle B tables above — all already gone by this point in the list.
+    'subject',
     'course',
     'room',
     // area is self-referencing (parent_area_id) and referenced by room.area_id

@@ -61,11 +61,18 @@ describe('ClassGroupDeletionOrchestrator', () => {
       closeWarningsForClassGroupSubject: jest.fn().mockResolvedValue(undefined),
       deleteWarningsForClassGroup: jest.fn().mockResolvedValue(undefined),
     };
-    const orchestrator = new ClassGroupDeletionOrchestrator(tenantContext as never, warningService as never);
+    // Frente 10's durable per-period aggregate cleanup — a collaborator seam
+    // here, same posture as warningService above (this suite is about
+    // RULE-INST-13's block conditions, not the aggregate's own logic).
+    const frequencyEngine = {
+      deleteAggregatesForClassGroup: jest.fn().mockResolvedValue(undefined),
+    };
+    const orchestrator = new ClassGroupDeletionOrchestrator(tenantContext as never, warningService as never, frequencyEngine as never);
     return {
       orchestrator,
       manager,
       warningService,
+      frequencyEngine,
       sessionRepo,
       consolidationRepo,
       pendingReviewRepo,
@@ -182,6 +189,20 @@ describe('ClassGroupDeletionOrchestrator', () => {
 
       expect(requiredFactorRepo.delete).not.toHaveBeenCalled();
       expect(classGroupRepo.delete).toHaveBeenCalledWith({ id: 'class-group-1' });
+    });
+
+    // Frente 10: attendance_frequency_period_aggregate has a real FK to
+    // class_group (AddAttendanceRetention migration) — left behind, it would
+    // block the classGroupRepo.delete below on the constraint.
+    test('test_deleteClassGroup_deletesFrente10PeriodAggregatesBeforeTheFinalClassGroupDelete', async () => {
+      const { orchestrator, frequencyEngine, classGroupRepo } = buildOrchestrator();
+
+      await orchestrator.deleteClassGroup('class-group-1');
+
+      expect(frequencyEngine.deleteAggregatesForClassGroup).toHaveBeenCalledWith(expect.anything(), 'class-group-1');
+      expect(classGroupRepo.delete.mock.invocationCallOrder[0]).toBeGreaterThan(
+        frequencyEngine.deleteAggregatesForClassGroup.mock.invocationCallOrder[0],
+      );
     });
   });
 

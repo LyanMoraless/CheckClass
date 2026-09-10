@@ -94,6 +94,19 @@ class EnvVariables {
   @IsString()
   @IsOptional()
   STORAGE_S3_SSE_ALGORITHM?: string;
+
+  // Frente 10 — attendance_closure_document artifacts (RULE-RET-01/02).
+  // Approved technology decision item 1: SAME S3-compatible technology and
+  // SAME region/credentials/endpoint/path-style/SSE settings as the Frente 07
+  // attachment bucket above (no security reason found to require a separate
+  // account) — only the BUCKET is new and separate
+  // (checkclass-attendance-retention-documents), because this bucket's
+  // lifecycle differs (rows survive until the annual consolidation erases
+  // only their content, never the row itself; the Frente 07 bucket's objects
+  // are erased outright 30 days after their decision).
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_S3_RETENTION_BUCKET: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvVariables {
