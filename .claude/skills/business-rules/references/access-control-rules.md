@@ -150,6 +150,93 @@ visualização/fechamento de incidentes de intrusão
 Câmeras e gestão de incidentes são preocupações distintas mesmo estando
 ambas dentro do módulo de segurança.
 
+### RULE-ACC-08: Códigos de permissão do vínculo de dispositivo institucional (Frente 12)
+
+**Statement:** A Frente 12 (vínculo de dispositivo institucional,
+`business-rules/references/institutional-device-binding-rules.md`,
+RULE-DEV-13) confirma dois códigos novos no enum `Permission`, marcados
+pelo usuário na mesma rodada (F1), sem dependência entre si — mesmo
+precedente de independência já usado nos códigos de câmera de
+RULE-ACC-07:
+- código para **ver vínculos ativos e histórico de uso** de máquina
+  institucional (quem está/esteve em qual máquina) — tratado como código
+  próprio por ser dado de rastreamento de pessoa, não uma extensão de
+  `view_camera`/`view_sector_cameras` nem de nenhuma permissão existente;
+- código para **usar o break-glass** (acesso de emergência que permite
+  login sem verificação facial, sempre auditado).
+
+**Nomes técnicos concretos do enum ainda não foram escolhidos aqui** —
+apenas a existência e o propósito de cada código foram confirmados pelo
+usuário; a nomenclatura exata é escopo do Solution Architect/Backend,
+seguindo o padrão já usado para os códigos de câmera.
+
+**Applies to:** Controle de acesso ao dado de vínculo de dispositivo
+institucional e ao caminho de break-glass.
+**Exceptions:** Nenhuma.
+**Nota (escopo do segundo código — break-glass):** o break-glass em si
+(fluxo de acesso de emergência sem facial, B5) é conceito da **Frente
+13** (verificação facial), ainda não formalizada. O código de permissão
+é reservado agora porque foi decidido junto com o primeiro na mesma
+rodada (F1), mas o comportamento que ele governa só existe quando a
+Frente 13 for formalizada — não implementar o break-glass em si a partir
+desta regra isoladamente.
+~~**Ainda sem decisão, não presumir (F2):** dois códigos adicionais
+apresentados ao usuário — "administrar o inventário de máquinas" e
+"gerenciar o cadastro biométrico" — **não foram marcados**. Não presumir
+que penduram em permissões já existentes. Ver GAP-05 em
+`project-knowledge/references/pending-decisions.md`.~~ (texto original de
+2026-09-10 — GAP-05 fechado parcialmente para a Frente 12 em 2026-09-10,
+ver nota de atualização abaixo; "gerenciar cadastro biométrico" segue sem
+decisão, pertence à Frente 13)
+**Source of confirmation:** Usuário, 2026-09-10 (Bloco F, decisão F1).
+
+**Nota de atualização (2026-09-10 — GAP-05 fechado para titular de
+leitura e para administração de inventário, Frente 12 apenas):** numa
+sessão de fechamento de gaps na mesma data, o usuário confirmou dois
+titulares, formalizados em
+`business-rules/references/institutional-device-binding-rules.md`:
+
+1. **Titular padrão do código de "ver vínculos ativos e histórico"**
+   (primeiro código desta regra): coordenação e diretoria/reitoria
+   (RULE-DEV-16). Continua sendo um código dedicado do enum `Permission`
+   — isso já estava decidido em F1/RULE-DEV-13; só o titular padrão
+   estava em aberto.
+2. **Administração do inventário de máquinas** (cadastrar, editar, dar
+   baixa — RULE-DEV-04): Direção/Reitoria (RULE-DEV-15).
+
+**Decisão deste agente sobre se a administração de inventário precisa de
+um código de permissão dedicado — não perguntada ao usuário, baseada em
+padrão já existente no projeto:** não, nesta rodada. A administração de
+inventário é atribuída inteiramente ao papel de Direção/Reitoria, sem
+subdivisão por grupo nem combinação granular de capacidades — o mesmo
+formato já usado por RULE-ATT-12
+(`business-rules/references/attendance-rules.md`), onde a resolução de
+pendência de chamada é autorizada por posição na cadeia de liderança
+direta, verificada diretamente pelo papel/hierarquia da pessoa, **sem**
+um código dedicado no enum `Permission`. Isto contrasta com o padrão de
+RULE-ACC-07 e do primeiro código desta própria regra, usados quando uma
+capacidade precisa ser concedida granularmente a diferentes perfis/grupos
+de permissão (ex.: alguém que não é Direção/Reitoria mas precisa ver
+câmeras específicas). Como "administrar inventário" nesta rodada é uma
+função tão ampla quanto o próprio topo da hierarquia institucional, sem
+nenhuma menção a delegação para outro perfil, o padrão de RULE-ATT-12 é o
+que se aplica — checagem de papel/hierarquia, não checagem de código de
+permissão dedicado. Se no futuro a instituição quiser delegar essa
+administração a um perfil técnico mais granular (possibilidade que o
+próprio usuário mencionou em RULE-DEV-16, "se for uma equipe técnica no
+futuro"), isso exigiria um código dedicado novo — não presumido aqui,
+fica para quando essa decisão for tomada.
+
+**"Gerenciar o cadastro biométrico" (segundo item de F2) permanece
+totalmente sem decisão** — pertence à Frente 13 (verificação facial),
+ainda não formalizada. Não tocado nesta atualização.
+
+**Source of confirmation (desta nota):** Usuário, 2026-09-10 (fechamento
+de GAP-05, respostas de administração de inventário e titular de
+visualização); leitura de padrão de projeto (código dedicado vs.
+hierarquia de papel) feita por este agente, sem pergunta adicional ao
+usuário, por analogia explícita a RULE-ATT-12 já confirmada.
+
 > **Correção de contagem (2026-09-02) — reconciliação da Frente 01:** o
 > texto acima dizia "um 7º código relacionado", contagem que ainda refletia
 > o conjunto original de **seis** códigos de câmera (5 de câmera + 1 = 6º,

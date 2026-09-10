@@ -3394,3 +3394,652 @@ janela rolante vs. ano-calendário para os 12 fechamentos, dimensionamento
 do job em lote para tenants de alto volume, detalhamento do papel de
 RULE-RET-04) seguem em aberto para Business Analyst/Security/DevOps, sem
 bloquear o desenho de schema.
+
+## Escopo confirmado (arquitetura ainda pendente) — Frente 12: Vínculo de dispositivo institucional (2026-09-10)
+
+> **Produto fechado, arquitetura NÃO decidida.** As regras de negócio da
+> Frente 12 (vínculo de dispositivo institucional — RULE-DEV-01 a 14,
+> `business-rules/references/institutional-device-binding-rules.md`)
+> foram formalizadas pelo Product Definition Agent a partir de 23
+> perguntas respondidas pelo usuário em 2026-09-10 (registro bruto em
+> `project-knowledge/references/pending-decisions.md`). Esta seção apenas
+> **sinaliza** os dois pontos de arquitetura que essas regras já
+> pressupõem, para que fiquem no radar do Solution Architect e do Tech
+> Decision Agent — **nenhuma decisão de arquitetura/tecnologia é tomada
+> aqui**, isso não é escopo do Product Definition Agent.
+
+**Entidade nova de inventário de máquina, distinta de `device`
+(RULE-DEV-03).** O núcleo do CheckClass já tem uma tabela `device`
+(`## Modelagem de dados — Núcleo do CheckClass` acima), exclusiva dos
+equipamentos de borda que ingerem eventos via API key (Raspberry,
+leitores, barreira IR). A Frente 12 precisa de uma entidade **separada**
+para máquina institucional (estação de trabalho autenticada por
+WebAuthn, não por API key, e que não ingere eventos) — reusar `device`
+com um `device_type` novo foi explicitamente rejeitado pelo usuário.
+Pendente de Solution Architect: desenho real da(s) tabela(s) (máquina,
+vínculo pessoa↔máquina, dispositivo pessoal/BYOD), campos de RULE-DEV-04,
+e como o vínculo ativo se relaciona com `class_session` para os efeitos
+de RULE-DEV-08/09/12.
+
+**Mecanismo de autenticação: credencial WebAuthn apoiada em TPM
+(RULE-DEV-01), pendente de Tech Decision formal.** A regra de negócio
+fixa a *forma* (assinatura de desafio verificada pelo servidor, chave
+não-exportável, nenhum agente instalado), coerente com o padrão
+anti-spoofing já em vigor no projeto (`tenantId`/`deviceId` nunca aceitos
+no corpo do payload, sempre resolvidos a partir da credencial — mesmo
+princípio do contrato de ingestão IoT descrito acima em "Contrato de
+payload IoT e deduplicação"). A **escolha de biblioteca/serviço WebAuthn**
+concreta, o fluxo de matrícula de máquina e de BYOD (GAP-08 em
+`pending-decisions.md`), e a degradação para máquina sem TPM ou navegador
+sem WebAuthn (GAP-09) não foram decididos — ficam para Tech Decision.
+
+**Dependência compartilhada com a Frente 13 (não resolvida aqui):**
+RULE-DEV-14 (o vínculo só se cria dentro da rede da instituição) precisa
+de um mecanismo de detecção "requisição veio de dentro da rede" (GAP-10)
+— mesmo mecanismo do qual a exigência de facial da Frente 13 depende.
+Nenhuma decisão técnica foi tomada; registrado aqui só para que Solution
+Architect resolva uma vez, não duas.
+
+**Pronta para Solution Architect / Tech Decision.** Nenhuma pergunta de
+produto bloqueante restante nesta camada para a Frente 12 — GAP-08, GAP-09
+e GAP-10 (listados em `pending-decisions.md`) são gaps técnicos, não de
+negócio, e não impedem o desenho de arquitetura de começar.
+
+## Decisão de arquitetura — Vínculo de Dispositivo Institucional (Frente 12) (2026-09-10)
+
+> Desenho do Solution Architect Agent a partir de RULE-DEV-01..14
+> (`business-rules/references/institutional-device-binding-rules.md`) e da
+> análise do Business Analyst
+> (`business-rules/references/institutional-device-binding-requirements-analysis.md`).
+> Substitui/complementa a seção-stub acima ("Escopo confirmado (arquitetura
+> ainda pendente) — Frente 12"), que permanece como registro histórico do
+> que já estava sinalizado antes deste desenho. **Estrutura/componentes/
+> fronteiras, não tecnologia** — biblioteca WebAuthn, mecanismo dos
+> gatilhos de checkout baseados em tempo, e shape físico exato de tabela
+> seguem para o Tech Decision Agent e o Database Agent.
+
+### Contexto
+
+24 dos 28 critérios de aceite da Frente 12 estão prontos para desenho; 5
+dependem de gap ainda aberto (GAP-05, GAP-08, GAP-09, GAP-10, GAP-12) — este
+desenho não fecha nenhum deles, apenas localiza exatamente onde cada um
+deixa lacuna na arquitetura (ver "Onde cada gap bloqueado deixa lacuna
+concreta" abaixo). Encaixa-se no monólito modular NestJS síncrono já em
+uso — mesma leitura já aplicada ao Portal de Autoatendimento ("a borda
+aqui é um navegador autenticado, não um dispositivo IoT") se estende
+ponto a ponto: uma estação de trabalho fazendo login também é um navegador
+autenticado, não um dispositivo de borda.
+
+### Componentes afetados
+
+- **Motor de Regras de Presença** — ganha uma capacidade de leitura nova
+  (fator "vínculo de dispositivo") e uma **ramificação de avaliação real**,
+  não trivial: hoje todo fator só é presente/ausente; este fator introduz
+  um terceiro estado, **não aplicável** (RULE-DEV-09, divergência de
+  sala — não gera pendência). Diferente do precedente "zero alteração de
+  arquivo" já registrado para o Controle B (Frente 06), aqui a mudança de
+  comportamento é pequena mas real — não subestimar na implementação.
+- **Serviço de Configuração por Instituição** (`attendance_config` /
+  `attendance_config_required_factor` / `attendance_factor_type`) — ganha
+  um novo fator padrão de plataforma, "vínculo de dispositivo
+  institucional" (RULE-DEV-12), exatamente como um fator custom
+  (RULE-ATT-13) — nenhum mecanismo de configuração novo.
+- **`device` (tabela existente)** — **não é tocada**. Confirma RULE-DEV-03:
+  fica exclusiva dos equipamentos de borda autenticados por API key.
+- **Enum `Permission` / `PermissionCheckInterceptor`** — ganha o código de
+  RULE-ACC-08 ("ver vínculos ativos e histórico"), usando o mecanismo de
+  checagem já existente, sem alterar o interceptor.
+- **`JwtAuthGuard` / `TenantContextInterceptor`** — **não são alterados**.
+  Continuam exclusivamente o mecanismo de autenticação da pessoa (ver
+  decisão de fronteira abaixo).
+- **Gateway de Ingestão / `raw_identification_event` / Identificação e
+  Correlação / Dedup** — **não são tocados nem estendidos**. Esses
+  componentes resolvem "sinal físico ambíguo → identidade de pessoa"; no
+  login de máquina institucional a pessoa já é conhecida (JWT) e o
+  problema é o oposto (pessoa certa → identidade da máquina). Reusá-los
+  seria acoplamento sem propósito (ver alternativa rejeitada abaixo).
+
+### Estrutura proposta
+
+**1. Módulo `device-identity` (novo)** — inventário de máquina
+institucional + dispositivo pessoal (BYOD) + matrícula/verificação de
+credencial WebAuthn (capacidade compartilhada pelas duas entidades, nunca
+aceita ID de máquina declarado no corpo — mesmo idioma anti-spoofing do
+contrato IoT). **Decisão de desacoplamento interno, para conter o
+GAP-09:** cadastro de inventário (RULE-DEV-04) e matrícula de credencial
+são dois passos/estados separados, não uma transação única — uma máquina
+pode existir no inventário sem credencial matriculada (mesmo estado após
+reimagem, RULE-DEV-01 exceção). Isso isola o GAP-09 na segunda etapa
+(matrícula), sem travar a primeira (cadastro). Não responsável por:
+autorização de login por curso (RULE-DEV-05 é só metadado), autenticação
+da pessoa, ou decidir se um vínculo conta como fator (isso é do Motor de
+Regras via `device-binding`).
+
+**2. Módulo `device-binding` (novo)** — ciclo de vida do vínculo
+pessoa↔máquina: cria vínculo após verificação WebAuthn bem-sucedida,
+sempre amarrado a pessoa já autenticada via JWT; impõe um vínculo ativo
+por pessoa (RULE-DEV-07); executa checkout pelos três gatilhos
+(RULE-DEV-06, desenho abaixo); persiste histórico de uso (responsabilidade
+patrimonial, RULE-DEV-08); expõe leitura permissionada sob RULE-ACC-08; e
+expõe, só leitura, a primitiva que o Motor de Regras consome. Não escreve
+na tabela de evidência de fator dos outros mecanismos de check-in, não
+verifica credencial em si (delega a `device-identity`), não checa rede
+institucional em si (delega à primitiva do item 4).
+
+**3. Extensão do Motor de Regras (não é componente novo)** — ao avaliar
+RULE-ATT-07 para o fator "vínculo de dispositivo", consulta (leitura) o
+`device-binding`: "para esta pessoa e esta `class_session`, existe vínculo
+que sobrepõe essa janela **e** cuja sala da máquina bate com a sala da
+sessão?" — presente / ausente / **não aplicável** (RULE-DEV-09).
+
+**4. Primitiva compartilhada (stub) — verificação de rede institucional
+(RULE-DEV-14/GAP-10)** — ponto de extensão único, chamado por
+`device-binding` na criação de vínculo (nunca na consulta de dados já
+consolidados — RULE-ATT-15 fica fora do escopo de RULE-DEV-14).
+Desenhado **agnóstico de `device-identity`** de propósito: a Frente 13
+vai precisar do mesmo sinal a partir de qualquer navegador, não
+necessariamente um com vínculo matriculado. Hoje sem implementação — é
+onde o GAP-10 deixa a lacuna concreta.
+
+### Integrações
+
+**Decisão de fronteira central: autenticação de pessoa e prova de
+identidade de máquina são mecanismos paralelos, um não substitui o
+outro.** `JwtAuthGuard` continua sendo o único mecanismo que autentica a
+pessoa — não muda, e não é gateado pela credencial de máquina (RULE-DEV-02
+exige que login em máquina desconhecida continue funcionando). A
+cerimônia WebAuthn acontece **depois** da pessoa já autenticada, contra um
+endpoint novo guardado por `JwtAuthGuard` + `TenantContextInterceptor`
+(pessoa e tenant sempre do JWT, nunca do corpo). Se a máquina não tem
+credencial válida (BYOD não registrado, fora do inventário, sem
+TPM/WebAuthn), a tentativa simplesmente não produz vínculo — login da
+pessoa não é afetado em nenhum caso (AC-11).
+
+**Alternativa rejeitada:** gatear `POST /v1/auth/login` pela cerimônia
+WebAuthn (login único combinado) — contradiz RULE-DEV-02 diretamente e
+acoplaria autenticação de pessoa (estável) a uma feature opcional por
+instituição (RULE-DEV-12).
+
+**Decisão de fronteira: `device-binding` não escreve em
+`identification_checkin`, nem reusa o pipeline de Ingestão/
+Identificação/Dedup.** Alternativa considerada e rejeitada: sintetizar uma
+linha de `identification_checkin` com `factor_type = device_binding` a
+cada vínculo relevante. Rejeitada porque (a) contradiz o espírito de
+RULE-DEV-10 mesmo respeitando a letra; (b) duplicaria a lógica de
+casamento de sala (RULE-DEV-09) em dois lugares; (c) daria à tabela um
+segundo escritor síncrono, de domínio não relacionado, sem necessidade
+real. Decisão adotada: o Motor de Regras lê o histórico de
+`device-binding` diretamente — dependência de leitura, mão única, mesma
+forma já usada Motor de Regras → Serviço de Configuração.
+
+### Fluxo técnico do checkout — três gatilhos concorrentes
+
+Dos três gatilhos de RULE-DEV-06, só o logout explícito tem hoje um evento
+de domínio natural. Fim de sessão e inatividade **não têm evento
+equivalente no sistema atual** — mesma imprecisão já aceita alhures no
+projeto (`scheduled_end < now()` não é tratado como fato confiável de "a
+aula terminou", `session-evaluate.ts` é avaliador manual, não scheduler).
+Aqui a imprecisão é inofensiva porque RULE-DEV-11 já garante que o
+intervalo login→checkout nunca conta como permanência — um checkout
+"atrasado" não distorce cálculo de chamada, só adia quando RULE-DEV-07
+libera a pessoa. Gatilhos 2 e 3 são, por natureza, avaliações baseadas em
+tempo/threshold, não eventos empurrados — mecanismo exato (job agendado vs.
+leitura preguiçosa) é decisão do Tech Decision Agent.
+
+**Desenho anti-condição-de-corrida:** os três gatilhos convergem numa
+única operação idempotente `checkout(bindingId, reason, occurredAt)`,
+como transição de estado condicional (`UPDATE ... WHERE status =
+'active'`) — quem chegar primeiro no banco grava o checkout; qualquer
+gatilho posterior encontra o vínculo já `checked_out` e vira no-op
+silencioso. Sem lock distribuído nem fila — a própria condição de escrita
+serializa o resultado, mesmo raciocínio de simplicidade já usado no
+restante do núcleo.
+
+**Ponto de checagem RULE-DEV-14 (GAP-10):** a criação de vínculo (não o
+checkout) é onde a checagem de rede institucional se encaixaria —
+reservado, não implementado.
+
+### Padrão arquitetural aplicado
+
+Monólito modular NestJS síncrono, sem pipeline de eventos novo, sem
+deployável novo. A única leitura cross-módulo introduzida (Motor de Regras
+→ `device-binding`) segue o mesmo estilo de "primitiva mínima e explícita
+compartilhada" já usado entre o pipeline de Segurança e o núcleo de
+chamada (Serviço de Identidade por Pulseira).
+
+### Escalabilidade
+
+Volume de vínculos limitado ao número de logins simultâneos em máquinas
+institucionais/BYOD — ordem de grandeza de sessões humanas, não de
+eventos de sensor. Histórico de `device-binding` cresce indefinidamente
+sem retenção definida — mesma lacuna já registrada como GAP-02 em
+`pending-decisions.md` ("retenção... dos registros de vínculo"), não
+resolvida aqui. Avaliação por threshold dos gatilhos 2/3 escala com
+número de vínculos ativos simultâneos, não com o total histórico, desde
+que a implementação evite varrer todo o histórico a cada verificação.
+
+### Avaliação de acoplamento/coesão
+
+Novo acoplamento introduzido, único e explícito: Motor de Regras (leitor)
+→ `device-binding` (dono do dado), mão única — mesma forma que Motor de
+Regras → Serviço de Configuração. Acoplamento evitado deliberadamente:
+`device-identity`/`device-binding` não dependem do Gateway de Ingestão,
+`raw_identification_event`, Identificação ou Dedup. Coesão preservada: "o
+que conta como presença" continua inteiramente dentro do Motor de Regras;
+`device-identity`/`device-binding` não sabem nada sobre RULE-ATT-02/07 —
+só sobre credencial e ciclo de vida de vínculo.
+
+### Onde cada gap bloqueado deixa lacuna concreta (nenhum foi fechado)
+
+- **GAP-09** (máquina sem TPM/WebAuthn) — lacuna isolada na etapa de
+  matrícula de credencial dentro de `device-identity`, contida pelo
+  desacoplamento inventário/credencial. O CRUD de inventário não depende
+  disso.
+- **GAP-08** (passo a passo BYOD) — lacuna isolada no endpoint de
+  autorregistro de `device-identity` (fluxo, limite por pessoa, quem
+  revoga). Uma vez registrado, o dispositivo pessoal se comporta como
+  qualquer credencial válida dentro de `device-binding`.
+- **GAP-10** (detecção de rede institucional) — lacuna isolada na
+  primitiva do item 4 acima; sem ela, RULE-DEV-14 simplesmente não é
+  chamada/enforced na criação de vínculo. Nenhum outro fluxo depende dela.
+- **GAP-12** (efeito de expiração de token sobre o vínculo) — lacuna no
+  conjunto de gatilhos de checkout: nesta arquitetura, um token expirado
+  sem logout explícito **não** dispara checkout imediato — fica coberto,
+  com atraso, apenas pelo gatilho 3 (inatividade) como rede de segurança
+  implícita. Se essa não for a intenção do usuário, é o que GAP-12
+  precisa esclarecer — não decidido aqui.
+- **GAP-05** (titular da permissão de leitura + quem administra o
+  inventário) — lacuna dupla: (a) o endpoint de leitura de
+  `device-binding` tem mecanismo de checagem pronto mas ninguém tem o
+  código por padrão; (b) os endpoints de escrita de `device-identity`
+  (criar/editar/dar baixa de máquina) **não têm sequer um código de
+  permissão reservado** — o mais bloqueante dos cinco para começar a
+  implementar `device-identity`, porque não há nem nome de capacidade
+  definido.
+
+### Trade-offs
+
+Otimiza por reuso máximo do já existente (auth, config, permissões,
+padrão síncrono), contenção de cada gap dentro do menor componente
+possível, e fidelidade estrita a RULE-DEV-10. Custo: o Motor de Regras
+deixa de ser "zero-touch" para consumidores de fator (ganha um terceiro
+estado de avaliação), e dois módulos novos em vez de um único maior —
+decisão deliberada de coesão sobre simplicidade de contagem de módulos,
+com fronteira clara o suficiente para não gerar dúvida de onde cada
+responsabilidade mora.
+
+### Open questions para Tech Decision
+
+Biblioteca/serviço WebAuthn concreto; mecanismo técnico dos gatilhos 2/3
+(job agendado vs. leitura preguiçosa); onde vive o parâmetro configurável
+de inatividade (proposto conceitualmente como configuração própria de
+`device-binding`, tenant-scoped, não dentro de `attendance_config` —
+domínios diferentes: higiene de sessão vs. política de apuração — decisão
+final de schema é do Database Agent); shape exato de tabela para
+`InstitutionalMachine`/`PersonalDevice` (duas tabelas com FK polimórfica
+vs. tabela única com discriminador); e, quando os gaps forem resolvidos, a
+tecnologia de detecção de rede institucional (GAP-10) e a degradação sem
+TPM/WebAuthn (GAP-09).
+
+### Ambiguidade nova identificada neste desenho, não presente em documento anterior
+
+RULE-DEV-09 fala em "sala cadastrada da máquina institucional" divergindo
+da sala da sessão — mas dispositivo pessoal (BYOD) não tem campo de sala
+(RULE-DEV-04 é específica de máquina institucional). Isso sugere que um
+vínculo BYOD sempre conta como fator, independente da sala da sessão, por
+não ter sala para divergir — mas é uma **inferência deste agente**, não
+resposta explícita do usuário. Afeta o contrato exato da consulta que o
+Motor de Regras faz a `device-binding`. Não bloqueia o desenho geral, mas
+precisa de confirmação antes de Backend/Database fixarem essa consulta.
+
+**Source of confirmation:** Desenho do Solution Architect Agent,
+2026-09-10, a partir das regras e da análise de requisitos já fechadas —
+nenhuma decisão de produto nova foi tomada; decisões de tecnologia
+explicitamente deixadas para o Tech Decision Agent.
+
+### Addendum (2026-09-10) — gaps fechados pelo usuário, nota do Product Definition Agent
+
+> Nota curta apontando pra fora — o desenho acima (componentes,
+> estrutura, trade-offs) **não foi reescrito**. Detalhe completo da
+> sessão de fechamento de gaps em
+> `project-knowledge/references/pending-decisions.md`, seção "Resolvido —
+> Gaps da Frente 12 fechados pelo usuário (2026-09-10)", e regras
+> formalizadas em
+> `business-rules/references/institutional-device-binding-rules.md`
+> (RULE-DEV-02 com nota, RULE-DEV-06 emendada, RULE-DEV-09 emendada,
+> RULE-DEV-15 a RULE-DEV-18 novas).
+
+- **GAP-09 fechado** — máquina sem TPM/WebAuthn tratada como máquina
+  desconhecida (RULE-DEV-02). Não altera a estrutura de `device-identity`
+  já desenhada acima — o desacoplamento inventário/credencial continua
+  válido, só deixa de ter um caminho de comportamento indefinido.
+- **GAP-08 fechado para limite (um por pessoa, RULE-DEV-17) e revogação
+  (pessoa + administrador de inventário, RULE-DEV-18).** O passo a passo
+  técnico exato da cerimônia de autorregistro segue como "Open question
+  para Tech Decision" listada acima — sem mudança.
+- **GAP-12 fechado — muda o comportamento cogitado acima em "Fluxo
+  técnico do checkout" e em "Onde cada gap bloqueado deixa lacuna
+  concreta".** O usuário confirmou que a expiração de token encerra o
+  vínculo **imediatamente**, como um quarto gatilho de checkout — **não**
+  fica coberta apenas, com atraso, pelo gatilho de inatividade, como este
+  desenho havia cogitado provisoriamente (ver nota de GAP-12 acima, agora
+  superada). O desenho técnico real do quarto gatilho (evento empurrado
+  no momento da expiração de token vs. outro mecanismo) ainda não existe
+  — decisão do Tech Decision Agent.
+- **GAP-05 fechado** — titular padrão de leitura de vínculos: coordenação
+  e diretoria/reitoria (RULE-DEV-16). Administração de inventário:
+  Direção/Reitoria (RULE-DEV-15), **sem código de permissão dedicado** —
+  verificada por papel/hierarquia, mesmo padrão de RULE-ATT-12 (ver
+  addendum em `business-rules/references/access-control-rules.md`,
+  RULE-ACC-08). Isso desbloqueia o ponto (b) mais bloqueante listado
+  acima em "GAP-05 — lacuna dupla": os endpoints de escrita de
+  `device-identity` agora têm papel definido para a checagem
+  (Direção/Reitoria), mesmo sem código de permissão dedicado no enum.
+- **Ambiguidade BYOD × sala resolvida** — vínculo BYOD sempre conta como
+  fator, sem checagem de sala (emenda a RULE-DEV-09). O "contrato exato
+  da consulta que o Motor de Regras faz a `device-binding`", citado acima
+  como pendente de confirmação, está confirmado: para BYOD, a consulta
+  não compara sala.
+- **GAP-10 continua aberto, intencionalmente.** O usuário confirmou
+  explicitamente que quer deixar a detecção de rede institucional sem
+  nenhuma direção por ora — a primitiva-stub (item 4 da "Estrutura
+  proposta" acima) continua sem implementação e sem direção preferencial
+  de mecanismo. Nenhuma sugestão cogitada em rodadas anteriores da
+  conversa (ex.: faixa de IP por tenant) deve ser lida como direção
+  adotada.
+
+**Source of confirmation:** Usuário, 2026-09-10 (fechamento de
+GAP-05/08/09/12 e ambiguidade BYOD/sala, sessão separada da original);
+GAP-10 confirmado pelo usuário como intencionalmente em aberto na mesma
+data.
+
+## Decisão de tecnologia — Vínculo de Dispositivo Institucional (Frente 12) (2026-09-10)
+
+Proposta do Tech Decision Agent, aprovada pelo usuário sem nenhuma
+ressalva ou pedido de mudança. Preenche com tecnologia concreta os pontos
+deixados em aberto pela "Decisão de arquitetura — Vínculo de Dispositivo
+Institucional (Frente 12) (2026-09-10)" acima (e seu addendum de
+2026-09-10 sobre gaps fechados). Escopo: três decisões (A, B, C) cobrindo
+biblioteca WebAuthn/desenho de RP ID, mecanismo técnico dos gatilhos
+2/3/4 de checkout (RULE-DEV-06 emendada), e detecção no frontend de
+máquina sem TPM/WebAuthn (GAP-09). **GAP-10 (detecção de rede
+institucional) explicitamente fora desta rodada** — ver nota final
+abaixo.
+
+### Decisão A — Biblioteca WebAuthn no backend + desenho de RP ID
+
+**Problema:** `device-identity` precisa matricular credenciais WebAuthn e
+verificar assinaturas de desafio, usando o mesmo mecanismo para máquina
+institucional e BYOD (RULE-DEV-01/02). O backend NestJS não tinha nenhuma
+dependência WebAuthn.
+
+**Alternativas avaliadas:**
+- `@simplewebauthn/server` + `@simplewebauthn/browser` (par
+  backend/frontend) — ativa, v14.0.1, `engines.node >= 20`, TypeScript
+  nativo, ~2,9M downloads/semana, padrão de fato do ecossistema
+  Node.js/NestJS. **Escolhida.**
+- `fido2-lib` — rejeitada: adoção muito menor (~11,5k downloads/semana),
+  mais código manual exigido do consumidor.
+- `@passwordless-id/webauthn` — rejeitada: autor único, atrito relatado
+  no uso server-side.
+- Implementação própria — rejeitada sem alternativa real: parsing de
+  CBOR/attestation e verificação de assinatura são áreas propensas a
+  erro sutil quando feitas à mão.
+
+**Decisão:** `@simplewebauthn/server` (backend) + `@simplewebauthn/browser`
+(frontend), como par.
+
+**Justificativa:** única alternativa que atende maturidade, manutenção
+ativa, TypeScript nativo e cobertura idêntica para máquina institucional
+e BYOD sem bifurcar código — exatamente o que RULE-DEV-01 exige. Risco de
+mantenedor único mitigado pela adoção massiva (mesmo critério já usado no
+projeto para outras libs únicas bem estabelecidas, ex. `typeorm`,
+`pg-boss`).
+
+**RP ID único para toda a plataforma, não por tenant.** RP ID é amarrado
+a domínio/origem; o CheckClass resolve tenant via JWT após login
+(`tenant-context.interceptor.ts`), não por subdomínio/host — confirmado
+em código. RP ID por tenant exigiria subdomínio por instituição, mudança
+de arquitetura de acesso que ninguém pediu. Isolamento entre tenants
+continua garantido por `tenant_id` + RLS (mesmo padrão do resto do
+núcleo) e pela pessoa autenticada (JWT) sempre carregar seu próprio
+`tenant_id` verificado — uma credencial só é consultada dentro do escopo
+do tenant de quem a apresenta. Consistente com o padrão anti-spoofing já
+adotado no projeto (nunca confiar em identificador declarado pelo
+cliente).
+
+**Nota de mecanismo (não schema):** o backend não tem sessão/cache
+server-side (sem Redis, sem cache-manager). O desafio WebAuthn entre
+"opções" e "verificação" deve viajar dentro de um JWT de curtíssima
+duração, reaproveitando o `JwtModule` já configurado em `AuthModule` —
+evita infraestrutura nova (Redis). Desenho exato do endpoint fica para
+Backend.
+
+**Compatibilidade verificada:** nenhuma dependência WebAuthn existia no
+repositório; encaixa em `device-identity` (componente já definido pelo
+Solution Architect); não conflita com `JwtAuthGuard`/
+`TenantContextInterceptor`. Node ≥20 é requisito da lib — o backend não
+fixa `engines.node` hoje; checagem de versão em produção fica com DevOps
+(não bloqueante).
+
+### Decisão B — Mecanismo técnico dos gatilhos 2/3/4 de checkout (RULE-DEV-06 emendada)
+
+**Problema:** RULE-DEV-06 (emendada) tem 4 gatilhos de checkout — logout
+explícito (tem evento natural), fim de sessão de aula, inatividade
+configurável, expiração de token (GAP-12, "encerra imediatamente"). Os 3
+últimos não tinham evento de domínio equivalente.
+
+**Achados de código que embasam a decisão:** `class_session.scheduledEnd`
+existe mas pode ser editado depois do login
+(`edit-class-session.dto.ts`) — um timer fixado na criação do vínculo
+ficaria desatualizado para o gatilho de fim de aula. Login web emite JWT
+stateless HS256 com TTL fixo de 8h (`AuthController.login`,
+`JwtModule.registerAsync`), sem refresh/revogação server-side — o
+momento exato de expiração é conhecido e determinístico já na criação do
+vínculo. O projeto já rejeitou `pg-boss.schedule()` (job periódico
+orientado a tempo) **duas vezes** antes (Frente 10/LGPD e RULE-JUST-19),
+preferindo script CLI + cron do DevOps para casos que realmente
+precisam — aqui a cadência precisaria ser de minutos, não dias, o que
+tornaria um scheduler novo um mecanismo pesado demais para o problema.
+
+**Alternativas avaliadas:**
+- **(A) Job agendado** — rejeitada: reincide no padrão já rejeitado duas
+  vezes, e a cadência exigida (minutos) tornaria o mecanismo ainda mais
+  pesado.
+- **(B) Avaliação puramente preguiçosa (lazy) em cada leitura relevante**
+  — zero infra nova, mas um vínculo pode ficar "ativo" indefinidamente
+  se nada o ler; não atende à literalidade de "imediatamente" do
+  gatilho 4.
+- **(C) Híbrido** — timer explícito client-side para os gatilhos 3 e 4 (o
+  navegador já sabe o `exp` do próprio JWT e o limiar de inatividade
+  configurado) chamando o mesmo endpoint do gatilho 1 (logout, só muda o
+  `reason`), mais avaliação preguiçosa server-side como rede de
+  segurança para todos os gatilhos (inclusive o 2, que depende de dado
+  que pode mudar depois do login). **Escolhida.**
+
+**Decisão:** opção C, sem job/scheduler novo no servidor.
+- **Gatilhos 3/4** = timer client-side (`setTimeout` agendado na criação
+  do vínculo, dispara chamada ao endpoint de checkout já existente com
+  `reason: token_expired` / `inactivity_timeout`).
+- **Gatilho 2** = avaliação preguiçosa server-side
+  (`scheduledEnd < now()` computado na leitura, nunca timer fixo, por
+  causa da possibilidade de edição de horário).
+- **Rede de segurança preguiçosa** para os quatro gatilhos aplicada em
+  todo ponto de leitura relevante (nova tentativa de vínculo —
+  RULE-DEV-07; consulta do Motor de Regras; endpoint de "vínculos
+  ativos") usando a operação idempotente
+  `checkout(bindingId, reason, occurredAt)` já desenhada pelo Solution
+  Architect (`UPDATE ... WHERE status='active'`).
+
+**Nota de honestidade explícita (registrada tal como está, não
+suavizada):** "Imediatamente" nesta arquitetura sem scheduler de
+servidor nunca é instantâneo no sentido absoluto — depende do navegador
+continuar executando JavaScript até o timer disparar. É uma aproximação
+deliberada, não garantia formal de tempo real. O caso em que degrada
+(navegador fechado abruptamente) é coberto pela rede de segurança
+preguiçosa, com atraso residual que RULE-DEV-11 já torna inofensivo para
+o cálculo de permanência (intervalo login→checkout nunca conta como
+permanência). **O usuário aprovou esta nota de honestidade
+explicitamente ao aprovar a decisão** — está ciente de que
+"imediatamente" é uma aproximação best-effort, não uma garantia de tempo
+real, e aceitou essa condição ao aprovar.
+
+**Onde vive o parâmetro de inatividade:** sem mudança à proposta do
+Solution Architect (configuração própria de `device-binding`,
+tenant-scoped, fora de `attendance_config`) — compatível com este
+mecanismo, já que o frontend só precisa recebê-lo do backend na criação
+do vínculo. Shape exato de schema segue para o Database Agent.
+
+### Decisão C — Detecção no frontend de máquina sem TPM/WebAuthn (GAP-09)
+
+**Problema:** GAP-09 já fechado como regra de negócio (RULE-DEV-02/nota)
+— máquina sem TPM/WebAuthn é tratada como máquina desconhecida, nunca
+bloqueia login. Faltava a estratégia técnica de detecção.
+
+**Alternativas avaliadas:**
+- **(A) Checagem de capacidade prévia** via API padrão do navegador
+  (`PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()`)
+  — sinal correto, não-spoofável, mas pode ter falso positivo (API diz
+  que há autenticador, cerimônia real falha por outro motivo).
+- **(B) Tentar a cerimônia real e reagir a erro**, sem checagem prévia —
+  sempre correto no resultado final, mas oferece UI de "vincular
+  dispositivo" mesmo quando sabidamente inútil.
+- **(C) Sniffing de User-Agent no servidor** — rejeitada, não-confiável,
+  existe API padrão específica melhor.
+
+**Decisão:** A + B combinadas; C rejeitada. Logo após o login da pessoa
+(JWT emitido, nunca antes — mesma fronteira já fixada pelo Solution
+Architect), o frontend chama
+`isUserVerifyingPlatformAuthenticatorAvailable()` assíncrono e
+não-bloqueante. Se `true`: oferece UI de vínculo. Se `false` ou API
+inexistente: UI de vínculo simplesmente não aparece, sem erro, sem
+aviso — login segue normal. Qualquer chamada real a
+`navigator.credentials.create()`/`.get()` (via `@simplewebauthn/browser`)
+tem tratamento de erro que trata qualquer falha da mesma forma: nenhum
+vínculo criado, nenhum bloqueio, mesmo caminho de "máquina desconhecida".
+
+**Compatibilidade:** nenhum precedente equivalente de checagem de
+capacidade de hardware no frontend hoje — padrão novo mas baixo risco
+(API padrão do browser, sem dependência nova). Sem atrito com
+`frontend/src/lib/api-client.ts` (fetch puro) — a checagem não faz
+chamada de rede.
+
+### Nota final — GAP-10 continua fora de escopo
+
+Nenhuma das três decisões acima depende de RULE-DEV-14/GAP-10. A
+primitiva de verificação de rede institucional continua um stub
+separado, sem mecanismo e sem direção alguma — nada foi avaliado ou
+sugerido para ela nesta rodada, por instrução explícita do usuário
+(mesmo GAP-10 já registrado como "deliberadamente aberto" na rodada
+anterior, ver addendum de 2026-09-10 acima).
+
+**Source of confirmation:** Usuário, 2026-09-10 — as três decisões
+aprovadas exatamente como recomendadas pelo Tech Decision Agent, sem
+ressalva.
+
+## Implementação — Vínculo de Dispositivo Institucional (Frente 12) (2026-09-10)
+
+Sexta, sétima e oitava etapas da cadeia: Database, Backend e Frontend
+implementaram exatamente o desenho já aprovado nas duas seções acima —
+nenhuma decisão de arquitetura ou tecnologia nova foi tomada nesta
+rodada.
+
+### Database
+
+Seis entidades novas: `device_identity` (supertipo, herança de tabela de
+classe) com `institutional_machine`/`personal_device` como subtipos,
+`device_credential` (credencial WebAuthn), `device_binding` (ciclo de
+vida do vínculo) e `device_binding_config` (timeout de inatividade por
+tenant, com fallback de 30 min quando o tenant não configurou nada).
+Duas migrations: `1755870000000-AddDeviceBinding.ts` (schema) e
+`1755871000000-SeedDeviceBindingFactorType.ts` (seed do fator de
+chamada).
+
+### Backend
+
+Dois módulos novos: `device-identity` (inventário de máquina + BYOD +
+matrícula WebAuthn via `@simplewebauthn/server`) e `device-binding`
+(login WebAuthn, checkout idempotente, config, listagem permissionada).
+Novo código `VIEW_DEVICE_BINDINGS` em `permission.enum.ts`
+(RULE-DEV-13/RULE-ACC-08); `DEVICE_BINDING_FACTOR_CODE` em
+`attendance-factor-codes.ts` mais a extensão real do Motor de Regras
+(`attendance-rules-engine.service.ts`) para o terceiro estado de
+avaliação "não aplicável" (RULE-DEV-09, BYOD sempre conta sem checagem
+de sala). Checkout idempotente via
+`UPDATE ... WHERE status = 'active'` (sem lock/fila), cobrindo os
+quatro gatilhos de RULE-DEV-06, com sweep preguiçoso server-side em
+cada leitura como rede de segurança para o timer client-side (Decisão
+B). Verificação: suíte completa do backend — **924 testes / 94 suítes,
+0 regressão**; `npx nest build` limpo.
+
+### Frontend
+
+Duas features novas: `device-binding` (hook `useDeviceBindingSession` —
+oferta pós-login, timers de checkout dos gatilhos 1/3/4, reidratação
+após reload) e `device-identity` (inventário institucional, autosserviço
+BYOD). Novo componente `role-hint.tsx` (gating por papel/liderança,
+distinto do `PermissionHint` já existente, que é por código de
+permissão). `@simplewebauthn/browser` adicionado; `frontend/src/lib/jwt.ts`
+novo (leitura do `exp` do token só para agendar o timer do gatilho 4,
+sem verificação de assinatura). Verificação: `npx tsc --noEmit` limpo;
+`npx vite build` limpo ("2045 modules transformed... built in 797ms").
+
+### Itens sinalizados pelos agentes de implementação — não são decisões fechadas
+
+1. **Inventário de máquinas institucionais (list/get) foi gated a
+   Direção/Reitoria pelo próprio Backend Agent**, por conservadorismo:
+   GAP-05a só confirmou quem **administra** o inventário (cadastra,
+   edita, dá baixa), não quem apenas **lista/vê** — diferente do titular
+   de `VIEW_DEVICE_BINDINGS` (RULE-DEV-16), que é mais amplo (coordenação
+   + diretoria/reitoria). Vale revisão do usuário se coordenação também
+   precisar enxergar o inventário sem poder editá-lo.
+2. **RULE-DEV-18 (revogação administrativa de BYOD) não tem UI no
+   Frontend.** Não existe endpoint de busca de BYOD por `personId`, e a
+   listagem de vínculos só expõe `deviceIdentityId` cru, sem indicação
+   de subtipo — o Frontend Agent preferiu não desenhar essa tela sem
+   endpoint de apoio. Revogação administrativa continua possível só via
+   API direta; autosserviço (a própria pessoa revogar o próprio BYOD)
+   funciona normalmente pela tela "Meu dispositivo".
+3. **Duas convenções assumidas pelo Frontend Agent, sem confirmação
+   explícita do usuário:** "Meu dispositivo" ficou no grupo de navegação
+   sempre visível (não em "Configurações"); falhas da oferta ambiente
+   pós-login usam um `InfoBanner` neutro, falhas de uma cerimônia
+   deliberada (a pessoa clicou em "vincular") usam `ErrorBanner`.
+4. **Gap pré-existente, não introduzido por esta frente:** `vitest`/
+   `@testing-library/react` são referenciados por specs (incluindo os
+   dois novos desta frente, `jwt.spec.ts` e
+   `device-binding-config-page.spec.ts`) mas não estão instalados em
+   `frontend/package.json` — nenhum spec de frontend roda hoje, só
+   typecheck/build.
+
+GAP-10 continua **aberto, intocado**, como stub-only nos dois módulos —
+exatamente como confirmado na rodada de gaps registrada acima.
+
+### Cadeia pausada antes de Testing, a pedido explícito do usuário (2026-09-10)
+
+Database → Backend → Frontend concluídos e verificados nesta rodada
+(build, typecheck e a suíte de testes já existente — nenhum teste novo
+escrito por um Testing Agent formal ainda). O usuário pediu para
+finalizar e commitar esta rodada agora, e rodar os testes ele mesmo "em
+um segundo momento" — Testing, QA e Project Guardian ficam
+explicitamente **para depois**, não fazem parte desta entrada. Ver
+fechamento correspondente em `pending-decisions.md`.
+
+**Source of confirmation:** Backend Agent e Frontend Agent, 2026-09-10
+(implementação); verificação independente de build/typecheck/suíte de
+testes feita pela sessão principal no mesmo dia; decisão de pausar a
+cadeia antes de Testing — Usuário, 2026-09-10 ("Vou rodar o teste em um
+segundo momento").
+
+## Escopo NÃO formalizado — Frente 13 (verificação facial no login)
+
+A Frente 13 (Bloco B do registro de 2026-09-10 — cadastro biométrico,
+consentimento, liveness, match no backend, break-glass) **continua sem
+nenhum addendum formal** nesta data. Ela reverte a decisão de privacidade
+de 2026-08-21 descrita acima em "Contrato de payload IoT e deduplicação"
+(Colisão C1) e precisa de addendum em RULE-ACC-05 (Colisão C2) — nenhum
+dos dois foi escrito ainda. Próxima etapa da cadeia da Frente 13, quando
+ela começar: Product Definition → Business Analyst → Security → Solution
+Architect → Tech Decision → ... (ver
+`project-knowledge/references/pending-decisions.md`, seção "As duas
+frentes novas").

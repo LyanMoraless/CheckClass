@@ -3337,3 +3337,338 @@ não nascer duplicado.
 
 **Source of confirmation:** Usuário, 2026-09-10 — 23 perguntas respondidas
 explicitamente em cinco rodadas, mais uma rodada de consequências derivadas.
+
+### ~~Pendente~~ Resolvido — Frente 12 formalizada em regra de negócio (2026-09-10)
+
+A primeira etapa da Frente 12 (Product Definition — escrever os `RULE-*`
+novos e os addenda nas regras existentes, citada no aviso do topo desta
+seção) foi concluída **apenas para a Frente 12** (vínculo de dispositivo
+institucional — Blocos A, D, E, F1 quanto ao código de vínculo, e o item
+C-C do Bloco "escopo institucional e rede"). Nada deste registro original
+foi apagado — ele continua sendo a fonte de auditoria das 23 respostas.
+Arquivos criados/editados nesta formalização:
+
+- **Novo:** `business-rules/references/institutional-device-binding-rules.md`
+  — RULE-DEV-01 a RULE-DEV-14, cobrindo Blocos A, D, E, o código de
+  permissão de F1 referente a vínculo (não o de break-glass, que é
+  Frente 13), e RULE-DEV-14 (item C-C, compartilhado com a Frente 13).
+  Inclui uma "Nota de leitura" explícita sobre onde cada item do Bloco C
+  (C-A, C-B, C-C) foi entendido como pertencente — C-B ficou de fora por
+  ser exclusivamente biometria/consentimento de menor (Frente 13).
+- **Addendum:** `business-rules/references/attendance-rules.md` —
+  nota de referência cruzada junto a RULE-ATT-02, registrando o vínculo
+  de dispositivo institucional como novo fator de chamada configurável
+  (ver RULE-DEV-12).
+- **Addendum:** `business-rules/references/access-control-rules.md` —
+  RULE-ACC-08, os dois códigos novos do enum `Permission` confirmados em
+  F1 (vínculo de dispositivo; break-glass — este último com nota
+  explícita de que o comportamento que ele governa é da Frente 13).
+- **Addendum:** `project-knowledge/references/architecture-overview.md`
+  — nova seção "Escopo confirmado (arquitetura ainda pendente) — Frente
+  12", sinalizando a entidade de inventário de máquina (distinta de
+  `device`) e o mecanismo WebAuthn/TPM como decisão de produto fechada,
+  arquitetura/tecnologia ainda pendente de Solution Architect/Tech
+  Decision. Uma seção irmã curta, "Escopo NÃO formalizado — Frente 13",
+  deixa registrado que a facial continua sem addendum formal.
+
+**Não tocado nesta rodada, de propósito:** Bloco B (facial), item C-B
+(consentimento de menor), o segundo código de F1 quando ligado ao fluxo
+de break-glass em si, F2 (GAP-05, segue em aberto), e as colisões C1/C2
+da seção "Colisões com decisões já fechadas" (exclusivas da Frente 13).
+A Frente 13 segue como a próxima etapa da cadeia (Product Definition →
+Business Analyst → Security → ...), ainda não iniciada.
+**Source of confirmation:** Formalização feita pelo Product Definition
+Agent, 2026-09-10, a partir das respostas do usuário já registradas
+acima nesta mesma seção — nenhuma decisão nova foi tomada, apenas
+redigida em formato de regra de negócio fechada.
+
+### Resolvido — Frente 12 decomposta em requisitos pelo Business Analyst (2026-09-10)
+
+Segunda etapa da cadeia da Frente 12 concluída: o Business Analyst leu
+RULE-DEV-01..14 e produziu
+`business-rules/references/institutional-device-binding-requirements-analysis.md`
+— atores, 9 fluxos principais com exceções, matriz de impacto sobre
+RULE-ATT-02/07/11, e **28 critérios de aceite** (AC-01 a AC-28). 24 dos 28
+estão prontos sem bloqueio; 5 dependem de gap já listado (GAP-05, GAP-08,
+GAP-09, GAP-10, GAP-12) e ficam marcados como não-verificáveis até
+confirmação do usuário. **Duas ambiguidades novas**, não presentes no
+registro original das 23 perguntas, foram identificadas e sinalizadas —
+não presumidas: efeito do status da máquina (manutenção/baixado/roubado)
+sobre login/vínculo, e efeito de desligamento/mudança de status da pessoa
+sobre um vínculo ativo. Ver seções F e H do documento para o detalhe
+completo. Nenhum gap foi fechado por este agente — a etapa seguinte
+(Solution Architect) pode começar o desenho dos fluxos já fechados, com os
+pontos bloqueados marcados como tal.
+**Source of confirmation:** Análise feita pelo Business Analyst Agent,
+2026-09-10, a partir das regras já formalizadas na entrada acima —
+nenhuma decisão de negócio nova foi tomada.
+
+### Resolvido — Frente 12 com arquitetura desenhada pelo Solution Architect (2026-09-10)
+
+Terceira etapa da cadeia concluída: o Solution Architect leu as regras e a
+análise de requisitos e escreveu "Decisão de arquitetura — Vínculo de
+Dispositivo Institucional (Frente 12) (2026-09-10)" em
+`project-knowledge/references/architecture-overview.md` (logo após a
+seção-stub anterior). Define dois módulos novos (`device-identity` —
+inventário de máquina + BYOD + matrícula WebAuthn; `device-binding` —
+ciclo de vida do vínculo, checkout nos 3 gatilhos, leitura permissionada),
+uma extensão real (não trivial) no Motor de Regras de Presença (terceiro
+estado de avaliação "não aplicável", RULE-DEV-09), e uma primitiva-stub
+compartilhada com a Frente 13 para RULE-DEV-14/GAP-10. Decisão de
+fronteira central: a prova de identidade da máquina é um mecanismo
+paralelo e posterior à autenticação da pessoa (nunca a substitui), e o
+vínculo participa da chamada como leitura direta do Motor de Regras sobre
+`device-binding` — não como linha sintética em `identification_checkin`
+(decisão que protege RULE-DEV-10 estruturalmente, não só por convenção).
+
+**Nenhum gap foi fechado** — os cinco (GAP-05/08/09/10/12) ficam
+localizados dentro do menor componente possível, sem bloquear o resto do
+desenho. **Uma ambiguidade nova** foi identificada (não presente em
+nenhum documento anterior): RULE-DEV-09 fala em "sala da máquina
+institucional" divergindo da sessão, mas BYOD não tem campo de sala
+(RULE-DEV-04) — o Solution Architect infere que vínculo BYOD sempre conta
+como fator, mas isso não foi perguntado ao usuário; precisa confirmação
+antes de Backend/Database fixarem a consulta correspondente. Tecnologia
+(biblioteca WebAuthn, mecanismo dos gatilhos 2/3, shape físico de tabela)
+explicitamente não decidida — fica para o Tech Decision Agent, próxima
+etapa da cadeia.
+**Source of confirmation:** Desenho do Solution Architect Agent,
+2026-09-10, a partir das regras e da análise já fechadas — nenhuma
+decisão de produto nova foi tomada.
+
+### Resolvido — Gaps da Frente 12 fechados pelo usuário (2026-09-10)
+
+> Quarta etapa da cadeia da Frente 12: numa sessão de perguntas e
+> respostas separada da original (mesma data), o Product Definition Agent
+> apresentou ao usuário os cinco gaps bloqueados listados pelo Business
+> Analyst e pelo Solution Architect (GAP-05, GAP-08, GAP-09, GAP-10,
+> GAP-12) mais a ambiguidade BYOD × sala identificada pelo Solution
+> Architect. O usuário respondeu a todos, em linguagem simples, cada um
+> com sua justificativa quando dada. Respostas literais abaixo; a
+> formalização como regra de negócio fechada vive em
+> `business-rules/references/institutional-device-binding-rules.md`
+> (RULE-DEV-02 nota, RULE-DEV-06 emendada, RULE-DEV-09 emendada,
+> RULE-DEV-15 a RULE-DEV-18 novas) e
+> `business-rules/references/access-control-rules.md` (RULE-ACC-08,
+> nota de atualização).
+
+**GAP-05a — Quem administra o inventário de máquinas institucionais
+(cadastrar, editar, dar baixa):** "Direção/Reitoria". Ver RULE-DEV-15.
+
+**GAP-05b — Quem recebe por padrão a permissão de ver vínculos
+ativos/histórico:** resposta literal — *"Os mesmos que manejam o cadastro
+(coordenação e diretoria). Isso não é uma função técnica, é uma função de
+controle da instituição. Se for uma equipe técnica no futuro será mais
+uma subdivisão de usuário. Mas precisaria validar a hierarquia (coisa que
+precisamos simplificar por hora)."* Titular de visualização é **mais
+amplo** que o titular de administração (inclui coordenação, além da
+diretoria). A hierarquia exata (ex.: coordenação de qual curso vê vínculos
+de qual máquina/aluno) fica como **simplificação assumida
+conscientemente**, não como gap ainda aberto igual aos demais — o usuário
+pediu para simplificar por ora e sinalizou que precisará validar no
+futuro. Ver RULE-DEV-16.
+
+**GAP-09 — Máquina sem TPM ou navegador sem WebAuthn:** "Trata como
+máquina desconhecida (Recommended)" — mesmo comportamento de RULE-DEV-02
+(máquina fora do inventário): login segue normal, sem o fator de vínculo,
+nunca bloqueia. Ver nota em RULE-DEV-02.
+
+**GAP-10 — Como detectar "dentro da rede da instituição" (RULE-DEV-14,
+compartilhado com a Frente 13):** perguntado diretamente, o usuário
+respondeu **"Deixar totalmente em aberto por agora"**. **GAP-10 continua
+ABERTO** — nenhuma direção é fixada, nem mesmo a sugestão de faixa de IP
+por tenant cogitada em rodadas anteriores da conversa deve ser lida como
+direção preferencial. O Tech Decision Agent decide do zero quando chegar
+a vez. Diferente dos demais desta seção, esta resposta **não fecha** o
+gap — apenas confirma que a ausência de direção é uma escolha consciente
+do usuário nesta rodada, não um esquecimento. Ver nota em RULE-DEV-14.
+
+**GAP-08a — Limite de dispositivos pessoais (BYOD) por pessoa:** "Um por
+pessoa (Recommended)". Ver RULE-DEV-17.
+
+**GAP-08b — Quem pode revogar um BYOD já registrado:** "A própria pessoa
+e o administrador (Recommended)" — ambos podem revogar (autosserviço
+normal, mais intervenção administrativa quando necessário, ex.
+perda/roubo/desligamento). "O administrador" é lido como o mesmo papel de
+administração de inventário fechado em GAP-05a (Direção/Reitoria), por
+reaproveitamento de papel já definido. Ver RULE-DEV-18. O passo a passo
+técnico exato da cerimônia de autorregistro (terceiro ponto original de
+GAP-08) não foi perguntado nesta rodada — permanece escopo de Solution
+Architect/Tech Decision, não um gap de negócio.
+
+**GAP-12 — Efeito da expiração do token de sessão sobre o vínculo
+ativo:** "Encerra o vínculo imediatamente (Recommended)" — vira um **4º
+gatilho de checkout**, ao lado dos três já existentes em RULE-DEV-06
+(logout explícito, fim de sessão de aula, inatividade configurável). É
+uma **emenda a RULE-DEV-06**, não uma regra nova separada — o texto
+original de três gatilhos foi preservado, riscado, como histórico. Ver
+RULE-DEV-06.
+
+**Ambiguidade BYOD × sala (identificada pelo Solution Architect, não um
+GAP numerado):** "Sempre vale, sem checagem de sala (Recommended)" — um
+vínculo BYOD sempre conta como fator de chamada quando há sessão de aula
+em andamento para a pessoa, sem nenhuma comparação de sala, porque BYOD
+não tem campo de sala cadastrado (diferente da máquina institucional de
+RULE-DEV-04). É uma emenda/esclarecimento a RULE-DEV-09: a checagem de
+divergência de sala se aplica **apenas** a máquina institucional, nunca a
+BYOD. Ver RULE-DEV-09.
+
+**Resumo de fechamento:** GAP-05, GAP-08 (limite e revogação — o passo a
+passo técnico de autorregistro não é mais tratado como gap de negócio),
+GAP-09, GAP-12 e a ambiguidade BYOD/sala estão **resolvidos**. **GAP-10
+permanece ABERTO**, com a diferença explícita de que a ausência de
+direção é, agora, uma escolha registrada do usuário — não um
+esquecimento.
+
+Arquivos editados nesta rodada de formalização:
+- `business-rules/references/institutional-device-binding-rules.md` —
+  nota de atualização no topo; RULE-DEV-02 (nota GAP-09 + GAP-08
+  parcial); RULE-DEV-06 emendada (4º gatilho); RULE-DEV-09 emendada
+  (escopo BYOD); RULE-DEV-14 (nota confirmando GAP-10 intencionalmente
+  aberto); Bloco G novo com RULE-DEV-15 a RULE-DEV-18.
+- `business-rules/references/access-control-rules.md` — RULE-ACC-08,
+  nota de atualização sobre titular de leitura e administração de
+  inventário (sem código de permissão dedicado para administração,
+  por analogia a RULE-ATT-12).
+- `business-rules/references/institutional-device-binding-requirements-analysis.md`
+  — addendum curto apontando AC-07/AC-09/AC-18/AC-27 desbloqueados e
+  AC-28 com nota de intencionalidade.
+- `project-knowledge/references/architecture-overview.md` — addendum
+  curto na seção "Decisão de arquitetura — Vínculo de Dispositivo
+  Institucional (Frente 12)" apontando os mesmos fechamentos.
+
+**Não tocado nesta rodada:** Frente 13 inteira; nenhuma decisão de
+tecnologia (biblioteca WebAuthn, mecanismo de detecção de token
+expirado); nenhum código-fonte.
+**Source of confirmation:** Usuário, 2026-09-10, sessão de fechamento de
+gaps — respostas literais citadas acima.
+
+### Resolvido — Tecnologia da Frente 12 aprovada pelo usuário (2026-09-10)
+
+> Quinta etapa da cadeia da Frente 12: o Tech Decision Agent propôs três
+> decisões de tecnologia preenchendo os pontos deixados em aberto pela
+> arquitetura já fechada acima. O usuário aprovou as três **exatamente
+> como recomendadas, sem nenhuma ressalva ou pedido de mudança**.
+> Formalização completa em
+> `project-knowledge/references/architecture-overview.md`, seção
+> "Decisão de tecnologia — Vínculo de Dispositivo Institucional (Frente
+> 12) (2026-09-10)" (logo após a "Decisão de arquitetura" e seu addendum
+> de gaps).
+
+- **Decisão A — Biblioteca WebAuthn + RP ID:** `@simplewebauthn/server`
+  (backend) + `@simplewebauthn/browser` (frontend), como par. RP ID único
+  para toda a plataforma (não por tenant) — isolamento continua via
+  `tenant_id` + RLS e JWT, não via domínio. Desafio WebAuthn viaja em JWT
+  de curtíssima duração via `JwtModule` já existente (sem Redis novo).
+- **Decisão B — Mecanismo dos gatilhos 2/3/4 de checkout (RULE-DEV-06
+  emendada):** híbrido, sem job/scheduler novo — timer client-side para
+  os gatilhos 3 (inatividade) e 4 (expiração de token), avaliação
+  preguiçosa server-side para o gatilho 2 (fim de sessão de aula, por
+  causa de `scheduledEnd` editável) e como rede de segurança para os
+  quatro gatilhos. Inclui **nota de honestidade explícita, aprovada pelo
+  usuário**: "imediatamente" é uma aproximação best-effort dependente do
+  navegador continuar executando JavaScript, não uma garantia formal de
+  tempo real — degradação coberta pela rede de segurança preguiçosa, sem
+  impacto no cálculo de permanência (RULE-DEV-11).
+- **Decisão C — Detecção de máquina sem TPM/WebAuthn (GAP-09):**
+  checagem de capacidade prévia
+  (`isUserVerifyingPlatformAuthenticatorAvailable()`) combinada com
+  tratamento de erro na cerimônia real; sniffing de User-Agent
+  rejeitado. UI de vínculo simplesmente não aparece quando a capacidade
+  não existe — sem erro, sem bloqueio, login normal.
+
+**GAP-10 permanece ABERTO e fora de escopo desta rodada** — nenhuma das
+três decisões acima depende de RULE-DEV-14/GAP-10; a primitiva de
+verificação de rede institucional continua sem mecanismo e sem direção,
+por instrução explícita do usuário (mesma condição já registrada na
+entrada "Resolvido — Gaps da Frente 12 fechados pelo usuário
+(2026-09-10)" acima).
+
+**Não tocado nesta rodada:** Frente 13 inteira; código-fonte (esta
+entrada é formalização de decisão já aprovada pelo usuário, não trabalho
+novo de análise).
+
+**Source of confirmation:** Usuário, 2026-09-10 — as três decisões
+aprovadas exatamente como recomendadas pelo Tech Decision Agent, sem
+ressalva.
+
+### Resolvido — Frente 12 implementada (Database + Backend + Frontend); cadeia pausada antes de Testing a pedido do usuário (2026-09-10)
+
+Sexta, sétima e oitava etapas da cadeia da Frente 12 concluídas, sobre a
+arquitetura e a tecnologia já fechadas nas duas entradas acima —
+nenhuma decisão de produto, arquitetura ou tecnologia nova nesta rodada.
+Formalização completa (com o detalhe técnico de cada item) em
+`project-knowledge/references/architecture-overview.md`, seção
+"Implementação — Vínculo de Dispositivo Institucional (Frente 12)
+(2026-09-10)", logo após a "Decisão de tecnologia" acima. Resumo:
+
+- **Database:** seis entidades novas (`device_identity` supertipo +
+  `institutional_machine`/`personal_device` subtipos, `device_credential`,
+  `device_binding`, `device_binding_config`) e duas migrations
+  (`1755870000000-AddDeviceBinding.ts`,
+  `1755871000000-SeedDeviceBindingFactorType.ts`).
+- **Backend:** módulos `device-identity` e `device-binding`; código
+  `VIEW_DEVICE_BINDINGS` no enum `Permission` (RULE-DEV-13/RULE-ACC-08);
+  `DEVICE_BINDING_FACTOR_CODE` e extensão do Motor de Regras para o
+  terceiro estado "não aplicável" (RULE-DEV-09); checkout idempotente
+  cobrindo os quatro gatilhos de RULE-DEV-06 (RULE-DEV-06 emendada) com
+  sweep preguiçoso como rede de segurança (Decisão B). Suíte completa:
+  **924 testes / 94 suítes, 0 regressão**; build limpo.
+- **Frontend:** features `device-binding` (hook
+  `useDeviceBindingSession` — oferta pós-login, timers de checkout,
+  reidratação) e `device-identity` (inventário institucional,
+  autosserviço BYOD); componente `role-hint.tsx` novo; `jwt.ts` novo.
+  `npx tsc --noEmit` e `npx vite build` limpos.
+
+**Verificação independente feita pela sessão principal** (não apenas
+relato dos agentes): `git status` conferido contra a lista de arquivos
+declarada por cada agente; leitura completa dos arquivos mais
+arquiteturalmente relevantes de cada rodada
+(`device-binding-config.service.ts`, `permission.enum.ts`, os quatro
+controllers novos, `device-binding.service.ts`,
+`device-credential.service.ts`, `use-device-binding-session.ts`); build,
+typecheck e suíte de testes rodados diretamente, não apenas confiados ao
+relato do agente.
+
+**Quatro itens sinalizados pelos próprios agentes de implementação,
+nenhum bloqueante, nenhum decidido aqui — ver o detalhe completo de cada
+um em `architecture-overview.md`:**
+1. Inventário de máquinas institucionais (list/get) gated a
+   Direção/Reitoria por conservadorismo do Backend Agent — GAP-05a só
+   fechou quem **administra**, não quem apenas **lista/vê**; titular de
+   `VIEW_DEVICE_BINDINGS` (RULE-DEV-16) é mais amplo (inclui
+   coordenação). Candidato a revisão do usuário, não uma inconsistência
+   já confirmada como erro.
+2. RULE-DEV-18 (revogação administrativa de BYOD) sem UI — falta
+   endpoint de busca de BYOD por `personId`; a listagem de vínculos só
+   expõe `deviceIdentityId` cru. Autosserviço (revogação pela própria
+   pessoa) funciona normalmente.
+3. Duas convenções de UX assumidas pelo Frontend Agent sem confirmação
+   explícita (posição de "Meu dispositivo" na navegação; distinção
+   InfoBanner/ErrorBanner entre oferta ambiente e cerimônia deliberada).
+4. Gap pré-existente, não introduzido por esta frente: `vitest`/
+   `@testing-library/react` referenciados por specs mas não instalados em
+   `frontend/package.json` — nenhum spec de frontend roda hoje.
+
+GAP-10 continua **ABERTO**, intocado, stub-only nos dois módulos —
+nenhuma mudança em relação à entrada "Resolvido — Gaps da Frente 12
+fechados pelo usuário (2026-09-10)" acima.
+
+**Cadeia pausada antes de Testing, por pedido explícito do usuário —
+não é encerramento completo da frente.** Diferente do molde de
+fechamento usado para outras frentes deste projeto (ex.: "FRENTE 07
+CONCLUÍDA", que só é escrito depois de Testing + QA + Project Guardian
+rodarem), esta entrada registra apenas que a implementação (Database +
+Backend + Frontend) está pronta e verificada — Testing (formal, com
+testes novos), QA e Project Guardian **ainda não rodaram**. O usuário
+pediu explicitamente para parar aqui, commitar e retomar os testes ele
+mesmo depois. Não presumir a frente como tecnicamente encerrada até essa
+etapa acontecer.
+
+**Não tocado nesta rodada:** Frente 13 inteira; GAP-10; qualquer decisão
+de produto/arquitetura/tecnologia nova.
+**Source of confirmation:** Backend Agent e Frontend Agent, 2026-09-10
+(implementação); verificação independente feita pela sessão principal no
+mesmo dia; decisão de pausar a cadeia antes de Testing — Usuário,
+2026-09-10 ("Finalize tudo dessa frente. Vou rodar o teste em um segundo
+momento. Pode fazer os commits e o push.").

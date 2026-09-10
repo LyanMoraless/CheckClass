@@ -31,6 +31,21 @@ obrigatórios para seu próprio processo de apuração.
 **Exceptions:** Nenhuma além da própria configuração.
 **Source of confirmation:** Prompt Mestre, seção 5.
 
+> **Nota de referência cruzada (2026-09-10) — novo fator padrão, vínculo
+> de dispositivo institucional:** a Frente 12 (vínculo de dispositivo
+> institucional — notebook da instituição amarrado ao aluno via WebAuthn)
+> acrescenta um novo fator de chamada configurável à lista desta regra:
+> **vínculo de dispositivo institucional**. Segue exatamente o mesmo
+> mecanismo desta regra — a instituição decide se ele é obrigatório — e
+> não altera o texto de RULE-ATT-02. Ver regra fechada completa em
+> RULE-DEV-12,
+> `business-rules/references/institutional-device-binding-rules.md`, que
+> também documenta como este fator convive com RULE-ATT-07/RULE-ATT-11
+> (pendência por fator obrigatório ausente) via a mitigação de BYOD
+> (RULE-DEV-02). Nenhum código foi escrito ainda — Frente 12 não aprovada
+> para implementação.
+> **Source of confirmation:** Usuário, 2026-09-10.
+
 ### RULE-ATT-03: Presença não é igual a check-in
 
 **Statement:** "Fez check-in" não deve, por padrão, ser tratado como
