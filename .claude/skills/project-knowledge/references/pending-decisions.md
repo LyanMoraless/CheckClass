@@ -3036,3 +3036,304 @@ total de aulas consideradas.
 4. Nenhum código-fonte foi alterado em nenhuma das 11 frentes — tudo
    listado acima é decisão/registro, seguindo o padrão "decisão primeiro,
    código depois" já usado no projeto inteiro.
+
+## Feature nova confirmada em escopo, implementação NÃO aprovada — Vínculo de dispositivo institucional + verificação facial no login (2026-09-10)
+
+> Registrado a partir de uma sessão de perguntas e respostas com o usuário
+> em 2026-09-10. **23 dúvidas foram levantadas e respondidas explicitamente
+> pelo usuário** — cada decisão abaixo tem resposta direta dele, nenhuma foi
+> presumida. Onde algo **não** foi perguntado, está na seção de GAPS, não
+> aqui.
+>
+> Nenhum código foi escrito e **nenhum addendum formal foi criado nos
+> arquivos de regra ainda** — escrever os `RULE-*` novos e os addenda nas
+> regras existentes é a **primeira etapa da Frente 12** (Product
+> Definition), seguindo o mesmo padrão "decisão primeiro, código depois"
+> usado no projeto inteiro.
+
+### Enunciado original do usuário (citação literal, 2026-09-10)
+
+> "A ideia é que amarremos o dispositivo da faculdade a um aluno e que isso
+> já nos auxilie na chamada. (...) A sala de aula tem 50 notebooks, e possui
+> 60 alunos. Os 10 de diferença são de alunos que trazem seus próprios
+> notebooks para a faculdade / escola. Ao realizar o login no website (QUE
+> RODA EXCLUSIVAMENTE NA REDE DA ESCOLA) o aluno deverá inserir CPF + Senha
+> (padrão que já é hoje). Logo em seguida, ele deve solicitar a facial do
+> usuário (indiferente se é aluno, professor etc). Após isso, o sistema (de
+> alguma forma) deve pegar algum ID único da máquina. Esse ID deve constar
+> na lista de IDs de dispositivos da faculdade. (...) Essa lista deverá ser
+> cadastrável no menu de configurações. Quando o aluno fizer o login, o
+> sistema consulta o ID unico (algo do hardware) e vincula o aluno que fez o
+> login a aquela máquina. Então teremos + 1 validação para a chamada e uma
+> amarração do dispositivo ao aluno. Essa amarração deve servir até quando o
+> aluno fizer o checkout. Após o checkout o aluno é desatrelado da máquina."
+
+### Decisões confirmadas — Bloco A: identidade da máquina
+
+**A1 — Mecanismo de prova: credencial WebAuthn apoiada em TPM.** A máquina é
+matriculada uma única vez e recebe uma chave privada **não-exportável** no
+TPM; a cada login o navegador assina um desafio do servidor. Nenhum agente
+instalado no parque. **Premissa técnica que motivou a pergunta:** nenhum
+navegador expõe serial de placa-mãe, MAC ou UUID de máquina — o "ID único do
+hardware" do enunciado original **não é obtível diretamente**, só provável
+por posse de chave. **Alternativas rejeitadas** (todas apresentadas ao
+usuário): agente local instalado lendo o serial real; mTLS com CA privada;
+token de dispositivo provisionado no navegador (copiável); correlação de rede
+por IP/MAC/DHCP/NAC 802.1X. **Consequência operacional aceita:** reimagem ou
+formatação de um notebook de laboratório apaga a credencial e exige
+rematrícula da máquina.
+
+**A2 — Máquina não reconhecida: entra sem o fator, e existe BYOD.** Login em
+máquina fora do inventário (notebook próprio, celular na wifi) é **permitido
+e registrado**, apenas sem o fator de dispositivo. Além disso, o aluno pode
+registrar o próprio notebook como **dispositivo pessoal**, vinculado
+permanentemente a ele — de forma que os 60 alunos do exemplo tenham o fator,
+não apenas os 50 do laboratório. Isto resolve a colisão com RULE-ATT-07/11
+descrita em C3 abaixo.
+
+**A3 — Modelo de dados: entidade nova, separada de `device`.** A tabela
+`device` continua exclusiva dos equipamentos de borda que ingerem eventos com
+API key (Raspberry, leitores, barreira IR). Uma estação de trabalho não
+ingere nada e se autentica por WebAuthn, não por API key — reusar `device`
+com um `device_type = 'workstation'` foi **explicitamente rejeitado** pelo
+usuário.
+
+**A4 — Campos do cadastro de máquina** (todos os quatro grupos marcados pelo
+usuário): patrimônio e número de série; sala/bloco e status (ativo,
+manutenção, baixado, roubado); especificação técnica (marca, modelo,
+processador, memória, SO); curso/departamento responsável.
+
+**A5 — O curso vinculado à máquina é metadado de inventário, NÃO
+autorização.** Qualquer aluno pode logar em qualquer máquina nesta rodada.
+Transformar "notebook de Ciência da Computação" em regra de autorização (nos
+moldes de categoria de pulseira → área, RULE-ACC-02) foi considerado e
+**adiado, não rejeitado**.
+
+### Decisões confirmadas — Bloco B: verificação facial
+
+**B1 — O casamento facial roda no BACKEND.** A imagem capturada pela webcam
+trafega até o servidor, que faz o match contra o template armazenado. **Isto
+REVERTE a decisão de privacidade de 2026-08-21** — ver colisão C1 abaixo. As
+alternativas (match na borda/Raspberry da sala; match no próprio navegador
+via WASM) foram apresentadas e rejeitadas.
+
+**B2 — Facial obrigatória em todo login de todo mundo, DENTRO da rede da
+instituição.** Indiferente do papel — aluno, professor, secretaria,
+administração. Fora da rede da instituição, o login segue com CPF + senha
+apenas. *(Este recorte por rede foi confirmado numa rodada posterior, depois
+que a combinação "facial sempre" + "portal acessível de fora" foi apontada ao
+usuário — ver B2-bis.)*
+
+**B2-bis — Por que a facial não vale fora da rede.** Perguntado se um aluno
+consultando frequência de casa, pelo celular, também teria que fazer facial,
+o usuário escolheu **restringir a exigência ao interior da rede da
+instituição**. Motivo registrado: preservar o Portal de Autoatendimento
+(Frente 03, já entregue) utilizável de casa, e concentrar o rigor onde ele
+gera valor — presença e prova.
+
+**B3 — Prova de vivacidade entra nesta rodada, na forma mais simples.**
+Desafio de movimento (piscar, virar o rosto) antes da captura. Reconhecido
+explicitamente como **não** à prova de vídeo/deepfake — o objetivo declarado é
+derrubar o ataque real e barato de segurar uma foto na frente da webcam.
+Solução robusta de mercado foi apresentada e não escolhida; adiar liveness
+por completo também foi apresentado e rejeitado.
+
+**B4 — Falha na facial BLOQUEIA o login.** Sem facial válida, sem acesso.
+Apresentadas e rejeitadas: entrar sem o fator gerando pendência; entrar sem o
+fator apenas com log. **Consequência aceita:** webcam quebrada, máquina sem
+câmera ou luz ruim impedem o acesso ao sistema.
+
+**B5 — Existe break-glass auditado, restrito ao administrador técnico.**
+Caminho de exceção que permite entrar sem facial, limitado ao papel de
+administrador técnico (que já existe, RULE-RET-04), com registro imutável de
+quem usou, quando e por quê. **Modo degradado automático foi explicitamente
+rejeitado** — o sistema **não** deve liberar logins sozinho quando o serviço
+de facial estiver fora do ar, porque isso criaria uma janela em que derrubar o
+serviço burla a facial. Esta decisão nasceu de um risco apontado ao usuário: a
+combinação B2 + B4 tranca a instituição inteira para fora se o match cair.
+
+**B6 — Captura inicial presencial na secretaria, com consentimento assinado
+no ato.** Um funcionário conduz a captura, na matrícula ou depois. Autocadastro
+no primeiro login e autocadastro com aprovação posterior foram apresentados e
+rejeitados. Motivo registrado: é o único caminho em que alguém confere que a
+face cadastrada é realmente da pessoa.
+
+### Decisões confirmadas — Bloco C: escopo institucional e rede
+
+**C-A — Vale para faculdade E escola.** Não é restrito a faculdade.
+
+**C-B — Aluno menor sem consentimento registrado fica BLOQUEADO até
+consentir.** Biometria de menor exige consentimento de quem exerce a guarda
+(LGPD, Art. 14). Apresentadas e rejeitadas: liberar o login sem facial até o
+consentimento chegar; recuar o escopo para só faculdade. **Consequência
+aceita e registrada explicitamente:** no início do ano letivo, alunos menores
+cujos responsáveis ainda não consentiram **não acessam o sistema**.
+
+**C-C — A restrição "só na rede da escola" vale apenas para o vínculo e para
+o que gera presença.** Consultar frequência, faltas e justificativas continua
+funcionando de fora. Apresentadas e rejeitadas: travar o produto inteiro na
+rede interna; exigir rede apenas no login e liberar a sessão depois.
+
+### Decisões confirmadas — Bloco D: ciclo de vida do vínculo
+
+**D1 — "Checkout" (conceito novo, não existe hoje no sistema) = logout
+explícito OU fim da sessão de aula OU inatividade configurável — o que vier
+primeiro.** Rejeitadas: só logout explícito; só fim da sessão de aula; saída
+física detectada pela pulseira.
+
+**D2 — Um vínculo institucional por pessoa por vez; o segundo é
+BLOQUEADO.** O aluno precisa fazer checkout da primeira máquina. Rejeitadas:
+liberar a primeira automaticamente ao logar na segunda; permitir os dois
+vínculos e apenas registrar.
+
+**D3 — Vincula fora de horário de aula, sem nenhum efeito na chamada.** O
+vínculo existe como registro de uso e responsabilidade patrimonial (quem
+estava no notebook 23 quando ele foi danificado), mas não gera fator de
+chamada quando não há aula casando. Rejeitadas: só vincular durante aula;
+bloquear o uso fora de aula.
+
+**D4 — Sala do dispositivo ≠ sala da aula: IGNORA o fator, sem pendência.** O
+login vale como uso da máquina, mas não conta como fator daquela aula, e
+**não** gera pendência de revisão manual. Rejeitadas: gerar pendência; valer
+mesmo assim; bloquear o vínculo.
+
+### Decisões confirmadas — Bloco E: relação com a chamada
+
+**E1 — O vínculo apenas VALIDA, nunca faz o check-in sozinho.** É um fator a
+mais de confirmação, não um mecanismo de check-in novo — coerente com
+RULE-ATT-03 ("presença não é check-in") e com o enunciado original ("+1
+validação para a chamada"). Rejeitadas: virar mecanismo de check-in ao lado de
+pulseira/facial/app (RULE-ATT-06); servir de check-in só quando não houver
+outro sinal.
+
+**E2 — O intervalo login→checkout NÃO conta como permanência.** RULE-ATT-04 e
+RULE-ATT-08 ficam **inalteradas** — a permanência continua vindo de
+entrada/saída física. Motivo registrado: ficar logado não prova ficar na sala.
+Rejeitadas: contar o intervalo inteiro; contar apenas o tempo com atividade
+real na máquina (descartada também por ser vigilância, com peso próprio de
+LGPD).
+
+**E3 — O fator é configurável como obrigatório pela instituição
+(RULE-ATT-02).** Entra na lista normal de fatores de chamada. Quem marcar
+obrigatório assume conscientemente o volume de pendências de RULE-ATT-07/11.
+Rejeitadas: sempre opcional; sempre obrigatório.
+
+### Decisões confirmadas — Bloco F: permissões
+
+**F1 — Dois códigos novos no enum `Permission`**, marcados pelo usuário:
+- ver quem está em qual máquina (vínculos ativos e histórico de uso — é dado
+  de rastreamento de pessoa, por isso código próprio);
+- usar o break-glass (acesso de emergência sem facial, sempre auditado).
+
+**F2 — Dois códigos apresentados e NÃO marcados:** administrar o inventário de
+máquinas e gerenciar o cadastro biométrico. **Não presumir que isso significa
+"pendurar nas permissões existentes"** — o usuário não disse onde essas duas
+capacidades ficam. Ver GAP-05.
+
+### Colisões com decisões já fechadas — o que esta feature MUDA
+
+**C1 — REVERTE a decisão de privacidade de 2026-08-21 (a mais séria).** A
+seção "Contrato de payload IoT e deduplicação — Núcleo do CheckClass" em
+`project-knowledge/references/architecture-overview.md` registra, como
+convergência entre Backend e Security Agent, que `FACIAL_CHECKIN` **nunca**
+transporta imagem ou template biométrico bruto — o casamento é resolvido
+localmente no Raspberry via OpenCV e o payload leva apenas uma referência
+local e a confiança do match. A decisão B1 acima contradiz isso para o novo
+fluxo de login. **A reversão é consciente e foi decidida pelo usuário**, mas
+precisa de addendum formal naquela seção, escrito pelo Product Definition
+Agent na Frente 13. **Consequência de modelo:** a entidade
+`person_facial_reference` existente é escopada **por dispositivo**
+(`device_id`, porque cada Raspberry mantém seu próprio banco facial local) —
+o novo fluxo precisa de uma referência biométrica escopada **por
+pessoa/tenant**, não por dispositivo. São dois modelos distintos convivendo,
+não uma extensão do existente.
+
+**C2 — RULE-ACC-05 precisa de addendum.** A regra diz que reconhecimento
+facial "não é obrigatório em todas as instituições ou ambientes". A decisão B2
+o torna obrigatório em todo login dentro da rede. Não é contradição
+insuperável (a instituição ainda escolhe adotar ou não a feature), mas o texto
+atual não comporta a leitura nova sem addendum.
+
+**C3 — RULE-ATT-07/11 e os 10 alunos com notebook próprio.** Fator obrigatório
+ausente vira pendência de revisão manual que **não expira sozinha**. Se o
+fator de dispositivo fosse marcado obrigatório sem BYOD, os 10 alunos do
+exemplo gerariam 10 pendências por aula, indefinidamente. **Resolvido pela
+decisão A2** (BYOD), não deixado em aberto.
+
+**C4 — O idioma anti-spoofing do projeto precisa valer aqui.** Todo o código
+existente resolve `tenantId`/`deviceId` a partir da credencial de
+autenticação e **nunca** os aceita no corpo do payload. Um navegador só
+consegue *declarar* um identificador de máquina, e um aluno com DevTools
+declara qualquer um. **A decisão A1 (WebAuthn) é o que torna isso compatível**
+— o vínculo nasce de uma assinatura verificada, não de um ID informado.
+Registrado aqui explicitamente para que ninguém implemente "manda o ID da
+máquina no body".
+
+**C5 — A Frente 10 (retenção/LGPD, concluída em 2026-09-10) não previu
+biometria.** As regras `RULE-RET-*` em
+`business-rules/references/data-retention-rules.md` cobrem fatores pontuais de
+identificação, mas nenhuma delas trata de template biométrico armazenado no
+servidor nem de registro de consentimento. Dado biométrico é **dado pessoal
+sensível** (LGPD, Art. 11). Ver GAP-02 e GAP-03.
+
+### GAPS que continuam EM ABERTO — não perguntados ao usuário, NÃO presumir resposta
+
+- **GAP-01 — Armazenar ou não o quadro capturado a cada login.** Foi
+  *proposto* (nunca armazenar a imagem; guardar apenas resultado do match,
+  confiança e timestamp, preservando o espírito da decisão de 2026-08-21) mas
+  **não foi perguntado nem confirmado**.
+- **GAP-02 — Retenção do template facial e dos registros de vínculo.** Por
+  quanto tempo, com que expurgo, e sob quais das regras `RULE-RET-*`.
+- **GAP-03 — Revogação do consentimento biométrico pelo titular.** Conflito
+  real e não resolvido: se a facial é obrigatória (B2/B4) e o titular exerce o
+  direito de revogar/excluir o dado biométrico, ele fica permanentemente
+  bloqueado do sistema.
+- **GAP-04 — Validação cruzada vínculo × pulseira.** Proposto (logado na A101
+  mas a pulseira registrou entrada em outro bloco → divergência), não
+  perguntado.
+- **GAP-05 — Onde ficam "administrar inventário" e "gerenciar cadastro
+  biométrico"** já que não receberam código próprio (ver F2).
+- **GAP-06 — Quantas tentativas de facial antes do bloqueio**, e qual o
+  caminho de recuperação do aluno bloqueado (fila na secretaria? destravamento
+  por quem?).
+- **GAP-07 — Tecnologia de reconhecimento facial** (biblioteca/serviço/modelo)
+  e de liveness — decisão de Tech Decision, não tomada.
+- **GAP-08 — Como o BYOD é matriculado.** Credencial WebAuthn no notebook
+  pessoal do aluno em autosserviço? Limite de dispositivos pessoais por
+  pessoa? Quem revoga?
+- **GAP-09 — Máquina sem TPM ou navegador sem WebAuthn.** Nenhum mecanismo de
+  degradação foi definido.
+- **GAP-10 — Como o sistema decide que a requisição veio "de dentro da rede da
+  instituição".** Faixa de IP, cabeçalho de proxy, outro sinal — e como isso
+  resiste a spoofing, já que B2 e C-C penduram nessa detecção.
+- **GAP-11 — Registro do consentimento:** onde vive, por quanto tempo vale,
+  como é revogado, e se maiores de idade também precisam consentir
+  formalmente (C-B só tratou de menores).
+- **GAP-12 — O que acontece com o vínculo quando o token de sessão expira.** O
+  vínculo sobrevive a um refresh de token? Morre junto? D1 não cobre este caso.
+
+### As duas frentes novas
+
+Registradas em [`.doc/checkclass-frentes-de-atuacao.html`](../../../../.doc/checkclass-frentes-de-atuacao.html),
+que passa de 11 para 13 frentes.
+
+**Frente 12 — Vínculo de dispositivo institucional.** Inventário de máquinas,
+matrícula WebAuthn, vínculo aluno↔máquina, ciclo de vida do checkout, BYOD, e
+o fator de chamada correspondente. Entrega valor sozinha e tem risco técnico
+contido. Cadeia: Product Definition → Business Analyst → Solution Architect →
+Tech Decision → Database → Backend + Frontend → Testing → QA → Project
+Guardian. Não depende de nenhuma frente aberta (a Frente 03, que forneceria a
+navegação de aluno, já está concluída).
+
+**Frente 13 — Verificação facial no login.** Cadastro biométrico presencial,
+consentimento (incluindo parental), match no backend, liveness, bloqueio em
+caso de falha e break-glass auditado. Separada da 12 de propósito: carrega uma
+reversão de decisão de privacidade, dado sensível sob a LGPD e uma decisão de
+tecnologia própria — peso completamente diferente. Cadeia: Product Definition
+→ Business Analyst → **Security** → Solution Architect → Tech Decision →
+Database → Backend + Frontend → Testing → QA → Project Guardian. Depende da 12
+para a detecção "dentro da rede" (GAP-10) e para o registro de consentimento
+não nascer duplicado.
+
+**Source of confirmation:** Usuário, 2026-09-10 — 23 perguntas respondidas
+explicitamente em cinco rodadas, mais uma rodada de consequências derivadas.

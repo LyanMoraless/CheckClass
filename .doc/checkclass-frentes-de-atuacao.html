@@ -250,7 +250,7 @@
   <img src="assets/logo.png" alt="LGI Morales">
   <div class="title-block">
     <h1>CheckClass — Frentes de Atuação</h1>
-    <p>Mapa de trabalho — 11 frentes, estado verificado no código real em 2026-09-02</p>
+    <p>Mapa de trabalho — 13 frentes, estado verificado no código real em 2026-09-02, frentes 12 e 13 acrescentadas em 2026-09-10</p>
   </div>
 </header>
 
@@ -259,11 +259,11 @@
   <section id="overview">
     <h2 class="section-title">Visão Geral</h2>
     <div class="overview-box">
-      <p class="lead">Todas as pendências do projeto agrupadas em <b>11 frentes</b>, cada uma com escopo concreto, a cadeia de agentes que precisa percorrer e as dependências entre elas.</p>
+      <p class="lead">Todas as pendências do projeto agrupadas em <b>13 frentes</b>, cada uma com escopo concreto, a cadeia de agentes que precisa percorrer e as dependências entre elas.</p>
       <p style="margin-bottom:0">O estado de cada frente foi verificado <b>no código real</b>, não apenas nas pendências registradas — os dois divergem em pontos importantes, e corrigir essa divergência é a própria frente 01. As <b>quatro ambiguidades</b> que travavam frentes inteiras foram <b>respondidas pelo usuário em 2026-09-02</b> e já estão formalizadas como addenda nas regras de negócio.</p>
       <p class="toc" style="margin-bottom:0">
         <a href="#estado">Estado real verificado</a> ·
-        <a href="#frentes">As 11 frentes</a> ·
+        <a href="#frentes">As 13 frentes</a> ·
         <a href="#ambiguidades">Ambiguidades resolvidas</a> ·
         <a href="#abertos">Gaps que continuam abertos</a>
       </p>
@@ -303,8 +303,9 @@
   </section>
 
   <section id="frentes">
-    <h2 class="section-title">As 11 Frentes</h2>
+    <h2 class="section-title">As 13 Frentes</h2>
     <p>A numeração reflete <b>ordem de dependência, não prioridade de negócio</b> — a 01 e a 02 destravam leitura confiável do resto, e várias frentes dependem da 03 existir antes.</p>
+    <p>As frentes <b>12 e 13 são novas (10 set)</b> e não faziam parte do mapa original de onze: nasceram de uma feature trazida pelo usuário — amarrar o notebook da instituição ao aluno no login, com facial — e do bloco de 23 dúvidas respondidas antes de qualquer linha de código.</p>
 
     <div class="front hot">
       <div class="rail"><div class="num">01</div><span class="st ready">Em execução</span></div>
@@ -541,6 +542,62 @@
         </div>
       </div>
     </div>
+
+    <div class="front">
+      <div class="rail"><div class="num">12</div><span class="st wait">Escopo fechado</span></div>
+      <div>
+        <h3>Vínculo de dispositivo institucional</h3>
+        <p class="desc">Amarrar a máquina ao aluno no login e usar isso como <b>mais um fator de chamada</b>. Feature nova, trazida pelo usuário em 10 set — 23 dúvidas levantadas e <b>todas respondidas na mesma sessão</b>.</p>
+        <div class="note">
+          <span class="tag">Premissa técnica que mudou a ideia original</span>
+          O enunciado pedia "pegar algum ID único da máquina (algo do hardware)". <b>Nenhum navegador expõe serial, MAC ou UUID de máquina</b> — foi removido de propósito de todos eles. O ID de hardware não é obtível: só é possível provar <b>posse de uma chave</b>. Daí a escolha de WebAuthn.
+        </div>
+        <ul class="scope">
+          <li><b>Prova da máquina</b> — credencial WebAuthn apoiada em TPM, matrícula única, chave não-exportável. Rejeitados: agente local, mTLS, token provisionado no navegador, correlação por IP/MAC/NAC. Reimagem do notebook exige rematrícula</li>
+          <li><b>Inventário cadastrável</b> — entidade <b>nova</b>, separada de <code>device</code> (que continua exclusiva dos equipamentos de borda com API key). Campos: patrimônio e nº de série, sala/bloco e status, especificação técnica, curso responsável</li>
+          <li><b>BYOD</b> — o aluno registra o próprio notebook como dispositivo pessoal. É o que faz os 60 alunos do exemplo terem o fator, não só os 50 do laboratório — e o que evita 10 pendências manuais por aula (RULE-ATT-07/11)</li>
+          <li><b>Máquina desconhecida</b> — entra, sem o fator, registrado. Nunca bloqueia</li>
+          <li><b>Checkout</b> (conceito novo, não existe hoje) — logout explícito <b>ou</b> fim da aula <b>ou</b> inatividade configurável, o que vier primeiro</li>
+          <li><b>Um vínculo por pessoa</b> — o segundo login simultâneo é bloqueado</li>
+          <li><b>Papel na chamada</b> — apenas <b>valida</b>, nunca faz check-in sozinho (RULE-ATT-03). O intervalo login→checkout <b>não</b> conta como permanência: RULE-ATT-04/08 ficam inalteradas</li>
+          <li><b>Sala divergente</b> — logou na máquina da A101 mas a aula é na B203: ignora o fator, sem pendência</li>
+          <li><b>Fora de horário de aula</b> — vincula assim mesmo, como registro de uso e responsabilidade patrimonial, sem efeito na chamada</li>
+          <li><b>Curso da máquina</b> — metadado de inventário, <b>não</b> autorização. Restringir uso por curso ficou adiado, não rejeitado</li>
+        </ul>
+        <p class="dep">Não depende de nenhuma frente aberta — a <b>03</b>, que forneceria a navegação de aluno, já está concluída.</p>
+        <div class="metarow">
+          <span class="k">Agentes</span>
+          <div class="pipe"><span class="ag">Product Definition</span><span class="arw">→</span><span class="ag">Business Analyst</span><span class="arw">→</span><span class="ag">Solution Architect</span><span class="arw">→</span><span class="ag">Tech Decision</span><span class="arw">→</span><span class="ag">Database</span><span class="arw">→</span><span class="ag">Backend</span><span class="arw">+</span><span class="ag">Frontend</span><span class="arw">→</span><span class="ag">Testing</span><span class="arw">→</span><span class="ag">QA</span><span class="arw">→</span><span class="ag">Project Guardian</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="front hot">
+      <div class="rail"><div class="num">13</div><span class="st wait">Escopo fechado</span></div>
+      <div>
+        <h3>Verificação facial no login</h3>
+        <p class="desc">Facial obrigatória em todo login feito <b>de dentro da rede da instituição</b>. Separada da 12 de propósito: <b>reverte uma decisão de privacidade já fechada</b>, mexe com dado sensível sob a LGPD e tem decisão de tecnologia própria.</p>
+        <div class="note">
+          <span class="tag">Reversão consciente — decisão de 2026-08-21</span>
+          Está registrado desde agosto que o casamento facial é resolvido <b>localmente no Raspberry</b> e que o payload <b>nunca</b> carrega imagem nem template. Facial pelo navegador de um notebook qualquer não tem borda: o usuário decidiu em 10 set que <b>o match roda no backend</b>. A reversão é intencional e precisa de addendum formal em <code>architecture-overview.md</code> e em RULE-ACC-05.
+        </div>
+        <ul class="scope">
+          <li><b>Quem e onde</b> — todo login de todo mundo (aluno, professor, secretaria, administração), mas <b>só dentro da rede</b>. De fora, segue CPF + senha, para o portal continuar utilizável de casa</li>
+          <li><b>Onde roda o match</b> — no backend. Rejeitados: borda/Raspberry da sala e WASM no navegador</li>
+          <li><b>Vivacidade</b> — entra nesta rodada, na forma simples (desafio de movimento). Reconhecidamente não resiste a vídeo/deepfake; derruba o ataque real e barato da foto na frente da webcam</li>
+          <li><b>Falha na facial bloqueia o login</b> — sem exceção para o usuário comum. Webcam quebrada ou máquina sem câmera impedem o acesso, e isso foi aceito explicitamente</li>
+          <li><b>Break-glass auditado</b> — saída de emergência restrita ao administrador técnico (RULE-RET-04), com registro imutável. <b>Modo degradado automático foi rejeitado</b>: o sistema não libera logins sozinho se o serviço de facial cair, senão derrubar o serviço vira o jeito de burlar a facial</li>
+          <li><b>Cadastro biométrico</b> — presencial na secretaria, com consentimento assinado no ato. Autocadastro foi rejeitado</li>
+          <li><b>Menor de idade</b> — sem consentimento de quem exerce a guarda (LGPD Art. 14), o aluno <b>não acessa o sistema</b>. Consequência aceita: no início do ano letivo, menores sem consentimento registrado ficam de fora</li>
+          <li><b>Permissões novas</b> — ver quem está em qual máquina, e usar o break-glass</li>
+        </ul>
+        <p class="dep">Depende da <b>12</b> para a detecção de "dentro da rede" e para o registro de consentimento não nascer duplicado. <b>Doze gaps continuam abertos</b> — retenção do template, revogação do consentimento, tecnologia de match, degradação sem TPM — todos listados em <span class="ref">pending-decisions.md</span>, nenhum presumido.</p>
+        <div class="metarow">
+          <span class="k">Agentes</span>
+          <div class="pipe"><span class="ag">Product Definition</span><span class="arw">→</span><span class="ag">Business Analyst</span><span class="arw">→</span><span class="ag">Security</span><span class="arw">→</span><span class="ag">Solution Architect</span><span class="arw">→</span><span class="ag">Tech Decision</span><span class="arw">→</span><span class="ag">Database</span><span class="arw">→</span><span class="ag">Backend</span><span class="arw">+</span><span class="ag">Frontend</span><span class="arw">→</span><span class="ag">Testing</span><span class="arw">→</span><span class="ag">QA</span><span class="arw">→</span><span class="ag">Project Guardian</span></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="ambiguidades">
@@ -592,18 +649,25 @@
       <li><span class="tag">Frente 08</span> <b>Os 4 gaps de RULE-SEC-05</b> (contagem de entrada/saída).</li>
       <li><span class="tag">Frente 08</span> <b>Tela de gerenciamento de Áreas/Blocos</b> — existe API e cliente HTTP, não existe página. Confirmado pelo usuário em 2026-09-02 como lacuna real.</li>
       <li><span class="tag">Frente 08</span> <b>Permissão de área por horário semanal recorrente</b> — hoje <code>valid_from</code>/<code>valid_until</code> só expressam uma janela absoluta de datas. Levantar se a instituição precisa de grade semanal (ex.: "terças, 18h–22h").</li>
+      <li><span class="tag">Frente 12</span> <b>Máquina sem TPM ou navegador sem WebAuthn</b> — nenhum caminho de degradação definido. <b>Matrícula do BYOD</b> — quem registra, com que limite por pessoa, quem revoga. <b>Onde ficam as permissões de administrar inventário e de gerenciar cadastro biométrico</b> — não receberam código próprio, e não presumir que penduram nas existentes.</li>
+      <li><span class="tag">Frente 12/13</span> <b>Como o sistema decide que a requisição veio "de dentro da rede"</b> — a facial obrigatória e a restrição de vínculo penduram inteiramente nessa detecção. <b>O que acontece com o vínculo quando o token de sessão expira.</b></li>
+      <li><span class="tag">Frente 13</span> <b>Retenção do template facial e dos registros de vínculo</b> — as regras <code>RULE-RET-*</code> da frente 10 não previram biometria. <b>Revogação do consentimento pelo titular</b> — conflito real: facial obrigatória mais direito de revogar significa bloqueio permanente. <b>Armazenar ou não o quadro capturado</b> a cada login. <b>Tecnologia de match e de liveness.</b> <b>Quantas tentativas antes do bloqueio</b> e como o aluno bloqueado se recupera. <b>Registro do consentimento</b>, inclusive para maiores.</li>
       <li><span class="tag">Fora de frente</span> <b>Inteligência Artificial</b> (Prioridade 4, nunca definida — não tratar como requisito) e a <b>hierarquia de papéis administrativos de escola</b>, em aberto desde agosto (resolvida apenas para faculdade).</li>
     </ul>
     <div class="note risk">
       <span class="tag">Consequência confirmada que vale reler</span>
       Com a turma passando a ter várias matérias e o professor continuando vinculado à <b>turma inteira</b>, o professor de uma matéria aprova justificativa de falta de outra.
     </div>
+    <div class="note risk">
+      <span class="tag">Consequência confirmada que vale reler — frente 13</span>
+      Facial obrigatória em todo login somada a <b>bloqueio em caso de falha</b> significa que uma webcam quebrada impede o acesso ao sistema, e que um aluno menor cujos responsáveis ainda não consentiram <b>não entra</b> — inclusive no primeiro dia letivo. As duas coisas foram apresentadas ao usuário com essa consequência explícita e confirmadas assim mesmo. O <b>break-glass</b> cobre o administrador técnico, não o aluno.
+    </div>
   </section>
 
 </main>
 
 <footer>
-  Mapa de organização de trabalho do projeto CheckClass, montado a partir do levantamento de estado real feito em 2026-09-02 e das decisões registradas em <code>.claude/skills/project-knowledge/references/pending-decisions.md</code> e <code>.claude/skills/business-rules/references/*.md</code>. As respostas A1–A4 foram confirmadas pelo usuário em 2026-09-02 e formalizadas como addenda nas regras correspondentes. Ver também <a href="checkclass-visao-geral.html">checkclass-visao-geral.html</a>, <a href="checkclass-area-de-provas.html">checkclass-area-de-provas.html</a> e <a href="checkclass-seguranca-intrusao.html">checkclass-seguranca-intrusao.html</a>.
+  Mapa de organização de trabalho do projeto CheckClass, montado a partir do levantamento de estado real feito em 2026-09-02, acrescido das frentes 12 e 13 em 2026-09-10 (23 dúvidas respondidas pelo usuário antes de qualquer implementação), e das decisões registradas em <code>.claude/skills/project-knowledge/references/pending-decisions.md</code> e <code>.claude/skills/business-rules/references/*.md</code>. As respostas A1–A4 foram confirmadas pelo usuário em 2026-09-02 e formalizadas como addenda nas regras correspondentes. Ver também <a href="checkclass-visao-geral.html">checkclass-visao-geral.html</a>, <a href="checkclass-area-de-provas.html">checkclass-area-de-provas.html</a> e <a href="checkclass-seguranca-intrusao.html">checkclass-seguranca-intrusao.html</a>.
 </footer>
 
 </body>
