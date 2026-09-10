@@ -2804,9 +2804,144 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
    recorrente" acima.
 9. **App mobile** — pausado por decisão do usuário até o Portal web (03)
    estar pronto. Não é falta de trabalho.
-10. **Conformidade LGPD e retenção** — regras aprovadas desde agosto, nada
+10. **Conformidade LGPD e retenção** — ~~regras aprovadas desde agosto, nada
     construído. Falta soft-delete e mecanismo de fechamento mensal/anual.
-    Único item que bloqueia produção independente de qualquer feature nova.
+    Único item que bloqueia produção independente de qualquer feature
+    nova.~~ **FRENTE 10 CONCLUÍDA (2026-09-10)** — ver bloco de fechamento
+    completo ao final deste item; a frente saiu do caminho crítico de
+    produção.
+    **ARQUITETURA APROVADA (2026-09-09):** ver "Decisão de arquitetura —
+    Conformidade LGPD e retenção, Frente 10" em `architecture-overview.md`
+    — novo bounded context `attendance-retention` (fechamento mensal →
+    expurgo → consolidação anual), reusando os padrões já em produção
+    (script CLI não-assistido como RULE-JUST-19, GUC de escopo de job,
+    "gerar artefato confiável antes de eliminar a fonte"). **As duas Open
+    Questions bloqueantes foram decididas pelo usuário:** (1) Controle B
+    passa a manter um **agregado incremental persistido** de
+    numerador/denominador em vez de reler o histórico inteiro do período —
+    altera o trecho correspondente da arquitetura da Frente 06 já
+    implementada. (2) a exceção de `attendance_pending_review` (não
+    expira) **se estende** às tabelas de origem que sustentam a pendência,
+    não só à tabela de pendência em si.
+    **TECNOLOGIA APROVADA (2026-09-09):** ver "Decisão de tecnologia —
+    Conformidade LGPD e retenção, Frente 10" em `architecture-overview.md`
+    — artefato de fechamento em object storage S3 (bucket novo, checksum
+    SHA-256), script CLI + cron externo (mesmo padrão RULE-JUST-19),
+    tabela nova `attendance_frequency_period_aggregate` para o agregado
+    incremental de Controle B, gate de pendência via `EXISTS`/join sem
+    coluna nova. ~~**Próximo passo: Database.**~~ **Superada — ver "FRENTE
+    10 CONCLUÍDA (2026-09-10)" abaixo: a cadeia completa (Database,
+    Backend, Testing, QA e Project Guardian) já rodou por inteiro.**
+
+    **FRENTE 10 CONCLUÍDA (2026-09-10).** Database modelou duas tabelas
+    novas na migration
+    `backend/src/database/migrations/1755869000000-AddAttendanceRetention.ts`:
+    `attendance_closure_document` (metadado/resumo em `jsonb` do
+    fechamento mensal/anual; o conteúdo bruto vai para o S3) e
+    `attendance_frequency_period_aggregate` (agregado incremental
+    numerador/denominador de Controle B, decisão 3 da Tecnologia
+    aprovada). Backend entregou em duas partes: (a) o agregado incremental
+    dentro de `AttendanceFrequencyEngineService`
+    (`recalculate()`/`recalculateForSessionPerson()`/
+    `reconcileForPerson()` passam a ler/corrigir o agregado persistido em
+    vez de re-somar o período inteiro a cada chamada — ver o comentário
+    "WRITE PATH (Frente 10)" no próprio arquivo, que documenta a mudança
+    como **addendum** sobre a arquitetura da Frente 06, não como
+    contradição silenciosa); (b) o módulo `attendance-retention` completo
+    (17 arquivos em `backend/src/modules/attendance-retention/`, incluindo
+    7 specs) — fechamento mensal
+    (`attendance-monthly-closure.service.ts`), gate de pendência via
+    `EXISTS`/join (`attendance-retention-pending-gate.service.ts`),
+    expurgo (`attendance-purge.service.ts`), consolidação anual
+    (`attendance-annual-consolidation.service.ts`), leitura do documento
+    de fechamento para o indicador "arquivado" de `/v1/me/attendance`
+    (`attendance-retention-archive-lookup.service.ts`), storage S3
+    (`attendance-retention-storage.service.ts`), GUC de escopo de job
+    (`attendance-retention-rls-context.service.ts`) e os dois scripts CLI
+    não-assistidos em `backend/src/scripts/`
+    (`attendance-retention-close-month.ts`,
+    `attendance-retention-consolidate-annual.ts`).
+
+    **Testing achou dois tipos de bug, só visíveis contra Postgres real:**
+    (1) uma **race condition de alta severidade** — lost update no
+    bootstrap concorrente do agregado incremental de Controle B (duas
+    transações tocando sessões diferentes da mesma chave (tenant, person,
+    class_group, subject, period) ao mesmo tempo, cada uma rodando seu
+    próprio full-rescan sem ver o commit da outra) — corrigida com um
+    advisory lock transacional do Postgres (`pg_advisory_xact_lock`) que
+    serializa bootstrap e diff-update por chave, tomado antes da checagem
+    de existência da linha (ver comentário "LOST-UPDATE FIX" em
+    `attendance-frequency-engine.service.ts`); e (2) **3 bugs de leitura
+    incorreta de resultado de query do TypeORM**, achados só quando os
+    testes de integração reais contra Postgres foram escritos: o driver
+    Postgres do TypeORM devolve uma **tupla** `[rows, rowCount]` para
+    UPDATE/DELETE (não `rows` direto, como em SELECT/INSERT) —
+    `AttendanceFrequencyEngineService.applyAggregateDelta` e
+    `AttendancePurgeService` liam o array sem desestruturar (o segundo
+    sempre reportava 2 linhas expurgadas, qualquer que fosse a contagem
+    real); e um **bug preexistente desde a Frente 06**, não introduzido
+    por esta frente — `repository.findOneBy()`/`manager.getRepository()`
+    devolve `class_group.term_start_date`/`term_end_date` como STRING, não
+    `Date`, ao contrário de `manager.query()` na mesma coluna — corrigido
+    com o novo helper `hydrateNullableDate()` em
+    `backend/src/common/utc-date.util.ts`, aplicado em todo call site que
+    lê essas duas colunas de uma entidade carregada por repositório.
+
+    **QA aprovou com ressalva**, fechada na mesma rodada: faltava teste de
+    integração real (não só mock) para o gate de pendência no expurgo —
+    fechado com um teste de integração adicional,
+    `attendance-retention-purge-pending-review-gate.integration.spec.ts`.
+
+    **Cadeia de agentes:** Solution Architect → Tech Decision → Database →
+    Backend → Testing (achado bloqueante, corrigido) → Backend → Testing →
+    QA (aprovado com ressalva, fechada) → Project Guardian.
+    **Verificação:** módulo completo em
+    `backend/src/modules/attendance-retention/`; migration
+    `backend/src/database/migrations/1755869000000-AddAttendanceRetention.ts`;
+    agregado incremental em
+    `backend/src/modules/attendance-frequency/attendance-frequency-engine.service.ts`;
+    helper de hidratação de data em `backend/src/common/utc-date.util.ts`.
+    Suíte completa do backend: **894 testes unitários (91 suítes)** + **17
+    testes de integração (7 suítes)**, todos passando, zero regressão,
+    lint e build limpos.
+    **Project Guardian:** veredito **Consistente** — um achado
+    não-bloqueante: comentário incompleto em
+    `backend/src/modules/self-service/me.controller.ts` sobre o indicador
+    `archived: true` nunca disparar hoje na prática (não é bug — degrada
+    com segurança: `attendance_closure_document` ainda não tem política
+    RLS interativa de leitura, só o GUC do job não-assistido enxerga a
+    linha, então `AttendanceRetentionArchiveLookupService` sempre resolve
+    "não encontrado" e o endpoint cai no formato silencioso pré-existente)
+    — comentário já corrigido para documentar isso explicitamente.
+
+    **Pendências que continuam em aberto, não bloquearam esta frente:**
+    - **Open Question 4 do Solution Architect** ("quem pode baixar/ler o
+      documento de fechamento") — sem isso, o indicador "arquivado" em
+      `/v1/me/attendance` nunca dispara na prática (ver achado do Project
+      Guardian acima). Resolve-se sozinho quando essa Open Question ganhar
+      uma política RLS interativa — nenhuma mudança de código necessária
+      neste endpoint quando isso acontecer.
+    - **Os dois GUCs de escopo de job**
+      (`app.absence_justification_retention_job` da Frente 07,
+      `app.attendance_retention_job` desta frente) seguem sem revisão do
+      Security Agent — a própria arquitetura já recomenda revisar os dois
+      numa única passagem, em vez de acumular uma terceira instância não
+      revisada no futuro.
+    - **RULE-RET-04** (papel de administrador técnico, gap de
+      "detalhamento fino") — gap menor já registrado, não bloqueou esta
+      frente; o expurgo/fechamento só precisava de um código de permissão
+      aditivo reservado, já contemplado.
+    - Demais Open Questions não-bloqueantes do Solution Architect
+      (pendência resolvida tardiamente, janela rolante vs. ano-calendário
+      para os 12 fechamentos, dimensionamento do job para tenants de alto
+      volume) — seguem em aberto, sem dono designado além do que já está
+      registrado em `architecture-overview.md`.
+    **Source of confirmation:** código verificável no repositório
+    (2026-09-10); decisões documentadas em
+    `project-knowledge/references/architecture-overview.md` ("Decisão de
+    arquitetura" e "Decisão de tecnologia — Conformidade LGPD e retenção,
+    Frente 10") e nas Open Questions bloqueantes registradas acima nesta
+    skill.
 11. **Débitos técnicos menores** — `captured_at` indexado, ~~idempotency key
     do check-in via app~~ (**removido em 2026-09-02 — já resolvido em
     código: `POST /v1/app-checkin` exige `idempotencyKey` obrigatória

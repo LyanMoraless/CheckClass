@@ -2990,3 +2990,407 @@ de decisão já aprovada, não decisão de produto:
 > múltiplos encerramentos de aviso. ✓ Testes: 80 caso de teste backend
 > (`frequency-*.*.spec.ts`), 34 casos frontend (`student-warnings-page.spec.tsx`
 > e `warnings-list.spec.tsx`), todos passando.
+
+## Decisão de arquitetura — Conformidade LGPD e retenção, Frente 10 (APROVADA — 2026-09-09)
+
+### Contexto
+
+Frente 10 — última frente do backlog que bloqueia produção independente
+de qualquer feature nova, pendente desde 2026-08-21. As regras de negócio
+(RULE-RET-01/02/03/04, `business-rules/references/data-retention-rules.md`)
+já estão fechadas e confirmadas pelo usuário; faltava inteiramente a
+arquitetura técnica, que é o conteúdo desta seção. RULE-RET-03 já está
+implementada (fora de escopo aqui). Cobre o mecanismo de "sair da base
+viva", o formato/geração dos fechamentos mensal e anual, a direção de
+agendamento do job, a interação com `attendance_pending_review`, e o
+impacto sobre os consumidores já existentes de dado de chamada — sem
+escolher tecnologia (Tech Decision) e sem migration (Database).
+
+### Componentes afetados
+
+- **`raw_identification_event`, `identification_checkin`,
+  `presence_interval`, `session_attendance_consolidation`** — escopo
+  direto de RULE-RET-01. Hoje sem TTL, soft-delete ou qualquer mecanismo
+  de saída da base viva.
+- **`attendance_pending_review`** — exceção explícita (RULE-ATT-11 /
+  RULE-RET-01): não expira, e precisa **bloquear** o expurgo de dado
+  relacionado (ver Integrações).
+- **`AttendanceRulesEngineService` (Controle A)** — leitor, sem alteração
+  de comportamento dentro da janela de 60 dias.
+- **`AttendanceFrequencyEngineService`/`AttendanceWarningService`
+  (Controle B, Frente 06)** — **impacto real, não trivial.** O desenho já
+  implementado da Frente 06 recomputa a frequência acumulada relendo
+  `session_attendance_consolidation` na janela **inteira do período de
+  apuração** (semestral = 6 meses). RULE-RET-01 expurga essa tabela aos 60
+  dias. Um período semestral tem ~120 dias de sobra além da janela viva —
+  com o desenho atual, Controle B **não consegue mais recalcular** o
+  início do período depois que o expurgo passar a rodar. Ver Open
+  Questions, item 1 — bloqueante.
+- **Módulo `absence-justification` (Frente 07)** — lê
+  `session_attendance_consolidation` para elegibilidade (prazo de 15
+  dias, sempre dentro da janela viva — sem conflito direto) e dispara o
+  mesmo recompute de Controle B ao aprovar/revogar (herda o mesmo
+  problema acima, indiretamente).
+- **`/v1/me/*` (self-service, App Mobile e Portal Web)** — precisa passar
+  a distinguir "não existe" de "existe, mas foi arquivado" (nota
+  confirmada em RULE-RET-01).
+- **`QueueModule`/`QueueService`** — infraestrutura de fila (`pg-boss`)
+  existente, avaliada como candidata para agendamento, não adotada por
+  padrão (ver Integrações).
+- **RLS/multi-tenant** — toda tabela nova segue o padrão já estabelecido
+  (`tenant_id` + política revisada pelo Security Agent antes de produção).
+
+### Estrutura proposta
+
+Novo bounded context **`attendance-retention`**, módulo NestJS síncrono
+dentro do monólito modular — mesma família de padrão já usada em
+Gerenciamento da Instituição, Área de Provas, Controle B e Justificativa
+de Faltas (não o pipeline orientado a eventos do núcleo — não há borda de
+dispositivo IoT aqui).
+
+1. **Serviço de Fechamento Mensal** — por (tenant, mês-calendário):
+   seleciona os registros das quatro tabelas de RULE-RET-01 cuja data de
+   evento/sessão cai naquele mês, elegível só quando o mês inteiro já
+   ultrapassou os 60 dias (fim do mês + 60 dias ≤ hoje) **e** nenhuma
+   linha do escopo está associada a um `attendance_pending_review` ainda
+   não terminal. Materializa o **documento de fechamento** e persiste de
+   forma durável antes de qualquer expurgo — geração e expurgo são passos
+   sequenciais, nunca o inverso.
+2. **Repositório de Documentos de Fechamento** — proposta ilustrativa, não
+   vinculante: tabela `attendance_closure_document` com `period_type` ∈
+   {`monthly`, `annual`}, período, `generated_at`, resumo/contagens, e
+   referência ao artefato (jsonb inline vs. arquivo referenciado é decisão
+   de Tech Decision). `tenant_id` + RLS como todo o resto do domínio.
+3. **Serviço de Expurgo (Purge/Sweep)** — componente distinto do de
+   geração (mesma separação já usada na Frente 07 entre calcular a data de
+   expurgo e efetivamente expurgar). Só expurga um (tenant, mês) depois de
+   confirmar que o documento de fechamento correspondente já foi
+   persistido com sucesso. Aplica o gate de `attendance_pending_review`
+   linha a linha, não só no nível do mês inteiro.
+4. **Serviço de Consolidação Anual** — dispara ao acumular 12 documentos
+   de fechamento mensal ainda não consolidados; gera o fechamento anual e
+   então elimina o **conteúdo** dos 12 artefatos mensais (mesmo padrão de
+   `AbsenceJustificationAttachmentService.eliminate()`: remove o
+   conteúdo, preserva a linha de metadado).
+5. **Endpoint(s) de download do fechamento** — controle de acesso via
+   `Permission` aditivo (mesmo precedente das permissões de câmera de
+   RULE-ACC-07). Quem exatamente pode baixar não está definido nas regras
+   de negócio — ver Open Questions, item 4.
+6. **Extensão de leitura em `/v1/me/*`** — quando a rota de
+   presença/histórico não encontra linha viva para uma sessão cuja data já
+   passou dos 60 dias, devolve um indicador explícito de "arquivado" em
+   vez de tratar como inexistente. `class_session` não está no escopo de
+   RULE-RET-01 (continua existindo), então a checagem é
+   `class_session.scheduledStart` fora da janela viva + existência de um
+   `attendance_closure_document` cobrindo o período → "arquivado"; fora da
+   janela sem fechamento correspondente é um estado inconsistente (sweep
+   atrasado) a tratar defensivamente, não como "não existe".
+7. **Scripts CLI não-assistidos** — mesma forma já usada em
+   `session:evaluate`, `pending:resolve` e
+   `absence-justification:retention-sweep`: ex.
+   `attendance-retention:close-month -- <tenantId> <yearMonth>` e
+   `attendance-retention:consolidate-annual -- <tenantId>`, por tenant. O
+   wiring de execução periódica real é decisão de **DevOps**, fora do
+   escopo desta arquitetura — mesma fronteira já registrada no header do
+   script de RULE-JUST-19.
+8. **GUC de escopo do job (RLS)** — mesmo mecanismo já usado no sweep de
+   anexos (`app.absence_justification_retention_job`): um GUC de sessão
+   dedicado (ex. `app.attendance_retention_job`) dando ao job visibilidade
+   sobre as linhas do próprio tenant sem passar pelas políticas RLS
+   pensadas para requisições interativas. **O GUC análogo já existente
+   está marcado no código como pendente de revisão de segurança** —
+   recomenda-se que o Security Agent revise os dois numa única passagem,
+   em vez de acumular uma segunda instância não revisada.
+
+### Integrações
+
+Fluxo: Fechamento Mensal → (grava documento) → Expurgo → [após 12
+fechamentos] → Consolidação Anual → (elimina conteúdo dos 12 mensais).
+Nenhum passo escreve sobre `attendance_pending_review`.
+
+**Gate de pendência:** nenhuma linha das quatro tabelas de RULE-RET-01
+associada a um `attendance_pending_review` em estado não-terminal pode
+ser expurgada, mesmo com data já vencida — isto **estende** a exceção que
+RULE-RET-01 declara literalmente só sobre `attendance_pending_review` às
+tabelas de origem que sustentam a pendência. É proposta de arquitetura
+para não destruir evidência que um humano ainda precisa decidir, **não é
+regra de negócio confirmada** — ver Open Questions, item 2.
+
+`pg-boss` foi avaliado e não adotado por padrão para o agendamento: o uso
+atual do `QueueService` é *event-driven* (enqueue dentro de uma
+transação, disparado por requisição). Um fechamento mensal é *time-driven*
+(roda sem nenhuma requisição acontecer) — categoria diferente, para a
+qual o projeto já tem precedente deliberado de **não usar fila/scheduler**
+(RULE-JUST-19: script CLI + wiring deixado para DevOps). `pg-boss` tem
+`schedule()` nativo que poderia, no futuro, substituir o cron externo —
+sinalizado como alternativa a avaliar pelo Tech Decision/DevOps **com
+evidência de necessidade**, não adotado agora (mesmo critério de
+"evidência antes de complexidade" já usado neste projeto para broker
+externo, MQTT, calendário acadêmico dedicado).
+
+### Padrão arquitetural aplicado
+
+Módulo síncrono de domínio dentro do monólito modular — mesma família já
+usada em Gerenciamento da Instituição, Área de Provas, Controle B e
+Justificativa de Faltas. É, porém, o **primeiro job de lote real sobre o
+tenant inteiro** do projeto (Controle B foi desenhado deliberadamente para
+nunca precisar disso) — diferença relevante para quem for dimensionar.
+
+### Escalabilidade
+
+O expurgo **reduz** o volume das tabelas operacionais mais quentes do
+sistema (`raw_identification_event` em especial) — melhora estrutural de
+escalabilidade de longo prazo, não custo. O ponto de atenção é o job em
+si: por ser o primeiro job de lote sobre o tenant inteiro, seu
+dimensionamento (processar tudo num script síncrono vs. paginar
+internamente) precisa de avaliação do Tech Decision para tenants de alto
+volume — não presumido aqui. A tabela de documentos de fechamento é
+pequena por natureza (um registro por tenant por mês/ano).
+
+### Acoplamento/coesão
+
+`attendance-retention` depende, numa via só, de `class_session`,
+`session_attendance_consolidation`, `raw_identification_event`,
+`identification_checkin`, `presence_interval` e
+`attendance_pending_review` (leitura, para o gate) — nenhuma dessas
+tabelas/serviços passa a depender de `attendance-retention`. Consistente
+com a direção de acoplamento já usada em todas as frentes anteriores
+(módulo novo depende do núcleo, nunca o inverso). Não é uma dependência
+nova introduzida por esta frente, mas uma dependência **latente já
+existente** que o expurgo expõe: Controle B já lia o histórico completo do
+período de apuração; o expurgo só torna essa dependência visível e
+quebrável.
+
+### Checagem de consistência
+
+**Consistente:** padrão de bounded context síncrono; padrão "gerar
+artefato confiável, depois eliminar a fonte redundante" (mesma forma de
+`AbsenceJustificationAttachmentService.eliminate()`); padrão de script CLI
+não-assistido + wiring deixado para DevOps (RULE-JUST-19); padrão de GUC
+dedicado para escopo de job em RLS; critério de "não adotar mecanismo mais
+complexo sem evidência" (aplicado à recomendação de não usar
+`pg-boss`/scheduler).
+
+**Inconsistência real, pré-existente, não resolvida silenciosamente:** a
+decisão de arquitetura da Frente 06 (IMPLEMENTADA E FECHADA em
+2026-09-04) descreve o recompute de Controle B como "idempotente e
+orientado a query (não contador incremental)" — texto que só se sustenta
+assumindo que o histórico completo do período sobrevive. RULE-RET-01
+(2026-08-21, anterior à Frente 06) invalida essa premissa para qualquer
+período com mais de ~60 dias. Não é uma contradição introduzida por esta
+arquitetura — é uma contradição pré-existente entre duas decisões já
+registradas, que só fica visível agora que a arquitetura de retenção está
+sendo desenhada. Ver Open Questions, item 1.
+
+### Trade-offs
+
+Esta arquitetura otimiza por reaproveitar ao máximo os padrões e a
+infraestrutura já existentes (nenhuma tecnologia nova, nenhum scheduler
+novo, mesmo idioma de CLI script, mesmo padrão de "gerar documento
+confiável antes de eliminar a fonte") e por manter os módulos consumidores
+existentes (Controle A, self-service, Justificativa de Faltas) sem
+alteração de contrato dentro da janela viva de 60 dias. O custo real: (a)
+o primeiro job de lote sobre o tenant inteiro do projeto, ainda sem
+avaliação de dimensionamento; (b) — o mais sério — **Controle B, como
+implementado hoje, quebra silenciosamente para períodos
+trimestrais/semestrais assim que o expurgo passar a rodar**, porque seu
+recompute depende de reler histórico que deixa de existir. Resolver isso
+exige tocar num componente que a Frente 06 fechou explicitamente como
+"zero alteração" — não é decisão que cabe ao Solution Architect sozinho
+(seria alterar regra de arquitetura já aprovada sem aprovação explícita),
+por isso vira Open Question em vez de proposta fechada.
+
+### Open questions
+
+1. **[Bloqueante] Como Controle B sobrevive ao expurgo de 60 dias em
+   períodos > 60 dias (trimestral, semestral)?** Recomendação técnica, não
+   decidida: substituir a leitura "recompute reprocessa
+   `session_attendance_consolidation` do período inteiro" por um
+   **agregado incremental durável** por (pessoa, matéria, período) —
+   numerador/denominador persistidos e atualizados a cada evento de
+   finalização (mesmo call site que já existe hoje), nunca re-derivados de
+   histórico antigo. Isto reverte uma frase específica da decisão de
+   arquitetura da Frente 06 já implementada — precisa de aprovação
+   explícita (Tech Decision + usuário), não pode ser tratado como detalhe
+   de implementação do Backend.
+2. **A exceção de `attendance_pending_review` deve se estender às tabelas
+   de origem (raw/checkin/interval) que sustentam a pendência, e não só à
+   própria tabela de pendência?** RULE-RET-01 lista literalmente só
+   `attendance_pending_review`. Esta arquitetura assume que sim (para não
+   destruir evidência de um caso ainda em revisão) como comportamento
+   padrão de segurança, mas é interpretação arquitetural, não regra
+   confirmada — recomenda-se confirmação explícita do usuário/Business
+   Analyst.
+3. **O que acontece quando uma pendência é resolvida tardiamente** (depois
+   que sua sessão já passou dos 60 dias)? O registro consolidado nasce "já
+   elegível para expurgo" no momento em que é criado. Não presumido — nem
+   RULE-RET-01 nem RULE-ATT-11 respondem isto.
+4. **Quem pode baixar o documento de fechamento (mensal e anual)?** Não
+   definido pelas regras de negócio. Candidatos óbvios (Direção/Reitoria,
+   o novo administrador técnico de RULE-RET-04) não foram confirmados como
+   exclusivos ou conjuntos.
+5. **Formato/local de armazenamento do artefato de fechamento** (coluna
+   `jsonb` vs. arquivo com referência + checksum) — deixado para Tech
+   Decision; a arquitetura recomenda um artefato copiável/baixável de
+   verdade, dado que RULE-RET-01 fala explicitamente em "copiar para mídia
+   física própria".
+6. **"12 fechamentos mensais" (RULE-RET-02) é ano-calendário fixo ou
+   janela rolante por tenant?** Esta arquitetura assume janela rolante
+   (cardinalidade, não calendário) por ser a leitura mais literal da regra
+   — não confirmado.
+7. **Dimensionamento do job de lote** para tenants de alto volume
+   (paginação interna do script vs. execução única) — sinalizado ao Tech
+   Decision, não resolvido aqui.
+8. **RULE-RET-04 (papel de administrador técnico), gap "detalhamento
+   fino"** — a conclusão da Frente 05 (gerenciamento institucional) não
+   fecha automaticamente este gap (eixos diferentes: administração
+   técnica/infraestrutura vs. hierarquia pedagógica). Recomenda-se flagar
+   separadamente para o Business Analyst como rodada pequena e dedicada
+   (quem atribui o papel, se há mais de um por instituição) — não bloqueia
+   esta frente; o expurgo/fechamento só precisa de um código de permissão
+   aditivo reservado (item 5 de "Estrutura proposta"), já contemplado.
+
+**Ready for technical design? Sim.**
+
+> **APROVAÇÃO (2026-09-09).** O usuário decidiu as duas Open Questions
+> bloqueantes:
+> 1. **Controle B vs. expurgo → agregado incremental.** Aprovada a
+>    recomendação do Solution Architect: o recompute de Controle B passa a
+>    manter numerador/denominador de frequência **persistidos e
+>    atualizados incrementalmente** a cada evento de finalização, em vez de
+>    reler `session_attendance_consolidation` do período inteiro. Isto
+>    **altera** a decisão de arquitetura da Frente 06 (que descrevia o
+>    recompute como "idempotente e orientado a query, não contador
+>    incremental") — a partir desta aprovação, aquele texto está
+>    **superado** para o trecho específico de releitura de histórico
+>    antigo; o restante da arquitetura da Frente 06 (fatiamento de datas,
+>    ciclo de vida do aviso, polling) não muda. Onde o agregado vive
+>    (extensão de `attendance_frequency_warning` vs. tabela nova) fica para
+>    o Tech Decision Agent, abaixo.
+> 2. **Gate de pendência estendido às tabelas de origem.** Aprovado:
+>    enquanto um `attendance_pending_review` não terminal existir, as
+>    linhas de `raw_identification_event`/`identification_checkin`/
+>    `presence_interval`/`session_attendance_consolidation` relacionadas
+>    também ficam fora do expurgo, mesmo com data vencida — não é mais
+>    interpretação arquitetural, é decisão confirmada.
+
+Perguntas específicas para o **Tech Decision Agent** resolver a seguir:
+formato/mídia do artefato de fechamento (jsonb inline vs. arquivo
+referenciado + checksum, e se implica reusar o storage de anexo já criado
+na Frente 07); mecanismo real de disparo periódico do job (cron
+externo/DevOps vs. `pg-boss.schedule()`, e se a resposta deve ser a mesma
+para expurgo mensal e consolidação anual); onde vive o agregado
+incremental de Controle B (extensão de `attendance_frequency_warning` vs.
+tabela nova dedicada); nomes/formas exatas de tabelas e colunas.
+
+## Decisão de tecnologia — Conformidade LGPD e retenção, Frente 10 (APROVADA — 2026-09-09)
+
+> **APROVADA pelo usuário em 2026-09-09** — as 4 decisões abaixo estão em
+> vigor. Mesma praxe do projeto: nenhuma decisão de tecnologia é
+> automaticamente aprovada. Todas reaproveitam categoria de tecnologia já
+> em uso no projeto — nenhuma dependência nova. Verificação direta no
+> código feita pelo Tech Decision Agent antes de decidir:
+> `attendance-frequency-warning.entity.ts` (grão sem dimensão de período,
+> linha fisicamente deletada na recuperação — não serve de base para o
+> agregado incremental), as quatro entidades de origem de RULE-RET-01 e
+> `attendance-pending-review.entity.ts` (chaves de correlação reais
+> conferidas — `raw_identification_event` não carrega `person_id`/
+> `class_session_id` diretamente, só via `identification_checkin`),
+> `absence-justification-attachment-storage.service.ts` e as variáveis
+> `STORAGE_S3_*` (padrão de storage S3-compatível já aprovado na Frente
+> 07), `absence-justification-attachment-retention-sweep.ts` (precedente
+> real de script CLI não-assistido, RULE-JUST-19).
+
+1. **Formato/mídia do artefato de fechamento:** arquivo em object storage
+   S3-compatível — mesma tecnologia já aprovada na Frente 07 (provider-
+   agnóstico, `STORAGE_S3_*`), **bucket novo e separado**
+   (`checkclass-attendance-retention-documents`), com checksum SHA-256
+   (mesmo algoritmo já usado no projeto para device API key/refresh
+   token). Bucket separado, não prefixo compartilhado com o bucket de
+   anexo de justificativa, porque o ciclo de vida é completamente
+   diferente: o anexo da Frente 07 é apagado 30 dias após a decisão; o
+   documento de fechamento sobrevive até a consolidação anual eliminar o
+   **conteúdo** dos 12 mensais (a linha de metadado permanece) — política
+   de lifecycle/IAM mais simples por bucket dedicado do que por prefixo
+   dentro de um bucket com regras mistas. `attendance_closure_document`
+   guarda só um resumo/contagens em `jsonb` (tamanho limitado); o
+   conteúdo bruto do fechamento vai para o storage, nunca para a linha.
+   **Rejeitado:** `jsonb` inline com o conteúdo completo — não entrega um
+   artefato de fato copiável/baixável (RULE-RET-01 pede explicitamente
+   "copiar para mídia física própria"), e um ano de dado consolidado em
+   `jsonb` é anti-padrão conhecido em Postgres (TOAST, peso de
+   backup/replicação). Nome exato da variável de ambiente
+   (`STORAGE_S3_RETENTION_BUCKET` ou equivalente) e se compartilha
+   credenciais/conta S3 com o bucket da Frente 07 ficam para
+   Backend/DevOps — nenhuma razão de segurança encontrada para forçar
+   conta separada.
+2. **Mecanismo de disparo periódico do job:** confirma o padrão já
+   estabelecido em RULE-JUST-19 — script CLI não-assistido
+   (`npm run attendance-retention:close-month -- <tenantId> <yearMonth>` e
+   `npm run attendance-retention:consolidate-annual -- <tenantId>`), com o
+   agendamento real (cron do SO, cron do orquestrador de deploy) deixado
+   para o DevOps Agent. **Mesma resposta para fechamento mensal e
+   consolidação anual** — os dois são jobs em lote por tenant sem
+   requisição/latência associada, e a consolidação anual já é
+   auto-condicional ("roda, verifica se existem 12 documentos não
+   consolidados, no-op caso contrário"), o que um script simples resolve
+   tão bem quanto um scheduler. **Rejeitado:** `pg-boss.schedule()` —
+   introduziria um segundo paradigma de agendamento (orientado a tempo)
+   numa fila hoje usada em todo o projeto estritamente por evento
+   (enqueue dentro de transação, disparado por requisição); mesmo
+   critério de "não adicionar complexidade sem evidência de necessidade"
+   já aplicado a broker externo/MQTT/calendário acadêmico dedicado/
+   biblioteca de datas. Fica como alternativa de fallback se a fronteira
+   de agendamento externo (DevOps) se mostrar não confiável no futuro —
+   não adotado agora.
+3. **Onde vive o agregado incremental de Controle B:** tabela nova,
+   `attendance_frequency_period_aggregate` — **não** estende
+   `attendance_frequency_warning`, cujo grão (tenant, person, class_group,
+   subject, **sem dimensão de período**) e ciclo de vida (linha
+   fisicamente **deletada** quando a frequência se recupera, RULE-FREQ-04
+   addendum a) são incompatíveis com um agregado durável que precisa
+   sobreviver exatamente quando não há aviso ativo e precisa de uma linha
+   por período, não uma linha "atual" mutável. Colunas: `id`, `tenant_id`,
+   `person_id`, `class_group_id`, `subject_id`, `period_start_date`,
+   `period_end_date`, `present_count`, `considered_count`, `created_at`,
+   `updated_at`; chave única `(tenant_id, person_id, class_group_id,
+   subject_id, period_start_date, period_end_date)` — mesmas fronteiras de
+   janela já calculadas por `currentPeriodWindow()` em
+   `reporting-period.util.ts`. Substitui o full-rescan de `countInWindow()`
+   (`AttendanceFrequencyEngineService`, atualmente relido por
+   `recalculate()`/`recalculateForSessionPerson()`/`reconcileForPerson()`)
+   como a fonte que essas três chamadas passam a ler/incrementar — a
+   lógica exata de atualização incremental é do Backend Agent.
+4. **Mecanismo exato do gate de pendência:** **sem coluna nova** em
+   nenhuma das quatro tabelas de origem — join em tempo de expurgo via
+   `EXISTS`, não flag denormalizada. `session_attendance_consolidation` e
+   `presence_interval` juntam direto por `(tenant_id, class_session_id,
+   person_id)` contra `attendance_pending_review` não-terminal;
+   `identification_checkin` da mesma forma (linha com `class_session_id`
+   nulo não tem data de sessão para testar contra a janela de 60 dias, a
+   pergunta do gate nem se aplica); `raw_identification_event` precisa de
+   `EXISTS` em dois saltos, via
+   `identification_checkin.raw_identification_event_id`. **Rejeitado:**
+   coluna "bloqueado" denormalizada nas tabelas de origem — exigiria
+   mecanismo de sincronização próprio (setar na criação da pendência,
+   limpar na resolução), um segundo lugar que pode divergir do estado
+   real de `attendance_pending_review`, para um job que roda no máximo uma
+   vez por mês e não é sensível a latência. Mesmo critério já usado no
+   restante do projeto (não adicionar máquina de sincronização sem
+   evidência de que o join em tempo de query é insuficiente); mantém o
+   fluxo de pendência (RULE-ATT-11) com diff zero, mesma postura já usada
+   em toda integração de Controle B/Frente 07 com pendências.
+
+**Trade-offs aceitos:** um segundo bucket S3 a provisionar (DevOps); uma
+tabela nova convivendo com `attendance_frequency_warning` (duas tabelas
+agora descrevem fatos relacionados, mas distintos, de Controle B); join de
+dois saltos para `raw_identification_event` em tempo de expurgo
+(aceitável — job em lote infrequente, não caminho quente).
+
+**Pronta para o Database Agent.** Nenhuma pergunta bloqueante restante
+nesta camada; as Open Questions não-bloqueantes do Solution Architect
+(quem baixa o documento de fechamento, pendência resolvida tardiamente,
+janela rolante vs. ano-calendário para os 12 fechamentos, dimensionamento
+do job em lote para tenants de alto volume, detalhamento do papel de
+RULE-RET-04) seguem em aberto para Business Analyst/Security/DevOps, sem
+bloquear o desenho de schema.
