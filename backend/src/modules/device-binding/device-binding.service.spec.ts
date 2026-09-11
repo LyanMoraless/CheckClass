@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { ClassGroupEntity, ClassSessionEntity, DeviceBindingEntity } from '../../database/entities';
 import {
@@ -8,9 +8,12 @@ import {
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
 import { DeviceCredentialService } from '../device-identity/device-credential.service';
+import { InstitutionalNetworkService } from '../institutional-network/institutional-network.service';
 import { CheckoutReason } from './checkout-reason.enum';
 import { DeviceBindingConfigService } from './device-binding-config.service';
 import { DeviceBindingService } from './device-binding.service';
+
+const insideNetworkIp = '203.0.113.5';
 
 const pastSession: ClassSessionEntity = {
   id: 'session-1',
@@ -40,6 +43,10 @@ describe('DeviceBindingService', () => {
     evaluateRows?: Array<{ institutional_room_id: string | null; is_personal_device: boolean }>;
     classGroupRoomId?: string | null;
     inactivityTimeoutMinutes?: number;
+    // GAP-10 (RULE-DEV-14): defaults to "inside the network" so every
+    // pre-existing test in this file (written before GAP-10 was wired)
+    // keeps exercising RULE-DEV-06/07/09 unaffected by the new check.
+    withinInstitutionalNetwork?: boolean;
   }) {
     const bindingRepo = createMockRepository({
       findOneBy: jest.fn().mockResolvedValue(options.existingActive ?? null),
@@ -76,15 +83,19 @@ describe('DeviceBindingService', () => {
       getEffective: jest.fn().mockResolvedValue({ inactivityTimeoutMinutes: options.inactivityTimeoutMinutes ?? 30, isDefault: false }),
     } as unknown as DeviceBindingConfigService;
 
-    const service = new DeviceBindingService(tenantContext as never, deviceCredentialService, deviceBindingConfigService);
-    return { service, bindingRepo, classGroupRepo, deviceCredentialService, deviceBindingConfigService };
+    const institutionalNetworkService = {
+      isWithinInstitutionalNetwork: jest.fn().mockResolvedValue(options.withinInstitutionalNetwork ?? true),
+    } as unknown as InstitutionalNetworkService;
+
+    const service = new DeviceBindingService(tenantContext as never, deviceCredentialService, deviceBindingConfigService, institutionalNetworkService);
+    return { service, bindingRepo, classGroupRepo, deviceCredentialService, deviceBindingConfigService, institutionalNetworkService };
   }
 
   describe('createBinding (RULE-DEV-07)', () => {
     test('test_createBinding_noActiveBinding_createsAndReturnsInactivityTimeout', async () => {
       const { service, bindingRepo } = buildService({ existingActive: null, inactivityTimeoutMinutes: 45 });
 
-      const result = await service.createBinding('person-1', 'device-identity-1');
+      const result = await service.createBinding('person-1', 'device-identity-1', insideNetworkIp);
 
       expect(bindingRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ personId: 'person-1', deviceIdentityId: 'device-identity-1', status: 'active' }),
@@ -98,7 +109,7 @@ describe('DeviceBindingService', () => {
         sweepSession: null, // no session tied to it -> gatilho 2 never applies -> stays active
       });
 
-      await expect(service.createBinding('person-1', 'device-identity-2')).rejects.toThrow(ConflictException);
+      await expect(service.createBinding('person-1', 'device-identity-2', insideNetworkIp)).rejects.toThrow(ConflictException);
       expect(bindingRepo.save).not.toHaveBeenCalled();
     });
 
@@ -118,7 +129,7 @@ describe('DeviceBindingService', () => {
         return Promise.resolve(call === 1 ? { id: 'existing-binding', personId: 'person-1', status: 'active', startedAt: new Date('2020-01-01T09:00:00.000Z') } : null);
       });
 
-      await service.createBinding('person-1', 'device-identity-2');
+      await service.createBinding('person-1', 'device-identity-2', insideNetworkIp);
 
       expect(bindingRepo.update).toHaveBeenCalledWith(
         { id: 'existing-binding', status: 'active' },
@@ -139,7 +150,7 @@ describe('DeviceBindingService', () => {
       });
       bindingRepo.save.mockRejectedValue(uniqueViolation);
 
-      await expect(service.createBinding('person-1', 'device-identity-2')).rejects.toThrow(ConflictException);
+      await expect(service.createBinding('person-1', 'device-identity-2', insideNetworkIp)).rejects.toThrow(ConflictException);
     });
 
     test('test_createBinding_unrelatedDbError_rethrowsAsIsWithoutWrappingAsConflict', async () => {
@@ -147,7 +158,43 @@ describe('DeviceBindingService', () => {
       const otherError = new Error('connection lost');
       bindingRepo.save.mockRejectedValue(otherError);
 
-      await expect(service.createBinding('person-1', 'device-identity-2')).rejects.toThrow('connection lost');
+      await expect(service.createBinding('person-1', 'device-identity-2', insideNetworkIp)).rejects.toThrow('connection lost');
+    });
+
+    // GAP-10 (RULE-DEV-14) — wired this round.
+    describe('institutional network check (GAP-10/RULE-DEV-14)', () => {
+      test('test_createBinding_outsideInstitutionalNetwork_throwsForbiddenAndNeverWrites', async () => {
+        const { service, bindingRepo, institutionalNetworkService } = buildService({
+          existingActive: null,
+          withinInstitutionalNetwork: false,
+        });
+
+        await expect(service.createBinding('person-1', 'device-identity-1', '198.51.100.9')).rejects.toThrow(ForbiddenException);
+        expect(bindingRepo.save).not.toHaveBeenCalled();
+        expect(institutionalNetworkService.isWithinInstitutionalNetwork).toHaveBeenCalledWith('tenant-a-id', '198.51.100.9');
+      });
+
+      test('test_createBinding_outsideInstitutionalNetwork_neverReachesRuleDev07CheckOrSweep', async () => {
+        // The network check must be the FIRST thing createBinding does — an
+        // existing active binding (RULE-DEV-07) must never be reported as
+        // the rejection reason when the real reason is "outside the
+        // network".
+        const { service, bindingRepo } = buildService({
+          existingActive: { id: 'existing-binding', personId: 'person-1', status: 'active', startedAt: new Date() },
+          withinInstitutionalNetwork: false,
+        });
+
+        await expect(service.createBinding('person-1', 'device-identity-2', '198.51.100.9')).rejects.toThrow(ForbiddenException);
+        expect(bindingRepo.findOneBy).not.toHaveBeenCalled();
+      });
+
+      test('test_createBinding_insideInstitutionalNetwork_passesTenantIdAndSourceIpThrough', async () => {
+        const { service, institutionalNetworkService } = buildService({ existingActive: null, withinInstitutionalNetwork: true });
+
+        await service.createBinding('person-1', 'device-identity-1', insideNetworkIp);
+
+        expect(institutionalNetworkService.isWithinInstitutionalNetwork).toHaveBeenCalledWith('tenant-a-id', insideNetworkIp);
+      });
     });
   });
 
@@ -171,7 +218,7 @@ describe('DeviceBindingService', () => {
       const { service, bindingRepo, deviceCredentialService } = buildService({ existingActive: null });
       (deviceCredentialService.verifyAuthentication as jest.Mock).mockResolvedValue({ deviceIdentityId: 'device-identity-from-assertion' });
 
-      await service.completeLogin('person-1', 'challenge-token-1', { id: 'cred-1' } as never);
+      await service.completeLogin('person-1', 'challenge-token-1', { id: 'cred-1' } as never, insideNetworkIp);
 
       expect(deviceCredentialService.verifyAuthentication).toHaveBeenCalledWith('challenge-token-1', { id: 'cred-1' });
       expect(bindingRepo.save).toHaveBeenCalledWith(
@@ -183,7 +230,7 @@ describe('DeviceBindingService', () => {
       const { service, bindingRepo, deviceCredentialService } = buildService({ existingActive: null });
       (deviceCredentialService.verifyAuthentication as jest.Mock).mockRejectedValue(new Error('invalid assertion'));
 
-      await expect(service.completeLogin('person-1', 'bad-token', {} as never)).rejects.toThrow('invalid assertion');
+      await expect(service.completeLogin('person-1', 'bad-token', {} as never, insideNetworkIp)).rejects.toThrow('invalid assertion');
       expect(bindingRepo.save).not.toHaveBeenCalled();
     });
   });

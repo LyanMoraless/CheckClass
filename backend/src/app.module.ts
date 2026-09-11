@@ -29,6 +29,7 @@ import { HolidayModule } from './modules/holiday/holiday.module';
 import { IdentificationModule } from './modules/identification/identification.module';
 import { IngestionModule } from './modules/ingestion/ingestion.module';
 import { InstitutionOnboardingModule } from './modules/institution-onboarding/institution-onboarding.module';
+import { InstitutionalNetworkModule } from './modules/institutional-network/institutional-network.module';
 import { IntrusionDetectionModule } from './modules/intrusion-detection/intrusion-detection.module';
 import { LeadershipAssignmentModule } from './modules/leadership-assignment/leadership-assignment.module';
 import { PendingReviewModule } from './modules/pending-review/pending-review.module';
@@ -119,6 +120,12 @@ import { QueueModule } from './queue/queue.module';
     // never the reverse) — registration order in this array doesn't affect
     // Nest's DI resolution, kept this way only for readability.
     DeviceIdentityModule,
+    // GAP-10 (RULE-DEV-14) — detecção de rede institucional. Own module
+    // (own controller for the admin CRUD of ranges) so the future Frente 13
+    // login-decision flow can import InstitutionalNetworkService without
+    // depending on DeviceBindingModule — DeviceBindingModule already imports
+    // it directly for createBinding's own use.
+    InstitutionalNetworkModule,
     DeviceBindingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

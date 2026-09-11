@@ -45,6 +45,7 @@
     "class-validator": "^0.14.1",
     "dotenv": "^16.4.7",
     "file-type": "^16.5.4",
+    "ipaddr.js": "^2.5.0",
     "pg": "^8.13.1",
     "pg-boss": "^12.27.0",
     "reflect-metadata": "^0.2.2",

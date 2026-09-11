@@ -1,9 +1,10 @@
 import { AuthenticationResponseJSON } from '@simplewebauthn/server';
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { ClassGroupEntity, ClassSessionEntity, DeviceBindingEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { DeviceCredentialService, AuthenticationCeremonyOptions } from '../device-identity/device-credential.service';
+import { InstitutionalNetworkService } from '../institutional-network/institutional-network.service';
 import { CheckoutReason } from './checkout-reason.enum';
 import { DeviceBindingConfigService } from './device-binding-config.service';
 
@@ -31,6 +32,7 @@ export class DeviceBindingService {
     private readonly tenantContext: TenantContextService,
     private readonly deviceCredentialService: DeviceCredentialService,
     private readonly deviceBindingConfigService: DeviceBindingConfigService,
+    private readonly institutionalNetworkService: InstitutionalNetworkService,
   ) {}
 
   // ---- Login ceremony (wraps device-identity's WebAuthn verification) ----
@@ -39,25 +41,36 @@ export class DeviceBindingService {
     return this.deviceCredentialService.generateAuthenticationCeremonyOptions();
   }
 
-  async completeLogin(personId: string, challengeToken: string, response: AuthenticationResponseJSON): Promise<CreatedDeviceBinding> {
+  async completeLogin(
+    personId: string,
+    challengeToken: string,
+    response: AuthenticationResponseJSON,
+    sourceIp: string,
+  ): Promise<CreatedDeviceBinding> {
     // deviceIdentityId is NEVER accepted from the request body (RULE-DEV-01
     // nota C4) — it only ever comes out of a successfully verified WebAuthn
     // assertion.
     const { deviceIdentityId } = await this.deviceCredentialService.verifyAuthentication(challengeToken, response);
-    return this.createBinding(personId, deviceIdentityId);
+    return this.createBinding(personId, deviceIdentityId, sourceIp);
   }
 
   // ---- Binding lifecycle ----
 
-  async createBinding(personId: string, deviceIdentityId: string): Promise<CreatedDeviceBinding> {
-    // GAP-10 stub (RULE-DEV-14): the "is this request coming from inside the
-    // institution's network" check would be called right here, at binding
-    // creation only (never at checkout) — deliberately NOT implemented. The
-    // user confirmed leaving this gap open with no direction (see
-    // institutional-device-binding-rules.md, RULE-DEV-14's "GAP-10
-    // confirmado como deliberadamente em aberto" note). Do not add an IP
-    // range, proxy header, or any other signal here without a fresh Tech
-    // Decision addendum.
+  async createBinding(personId: string, deviceIdentityId: string, sourceIp: string): Promise<CreatedDeviceBinding> {
+    // GAP-10 (RULE-DEV-14): the vínculo can only be created from inside the
+    // institution's declared network — the rule's own "Applies to" names
+    // ONLY the vínculo's creation, never checkout, so this check has no
+    // counterpart anywhere else in this file. Checked ahead of the
+    // RULE-DEV-07 active-binding check on purpose: someone outside the
+    // network should see the real reason for rejection, not "you already
+    // have an active binding" as a red herring.
+    const tenantId = this.tenantContext.getTenantId();
+    const withinNetwork = await this.institutionalNetworkService.isWithinInstitutionalNetwork(tenantId, sourceIp);
+    if (!withinNetwork) {
+      throw new ForbiddenException(
+        `Device binding creation for person ${personId} requires being inside the institutional network (RULE-DEV-14)`,
+      );
+    }
 
     // Rede de segurança preguiçosa (Tech Decision B) applied BEFORE the
     // RULE-DEV-07 check — normalizes a stale "active" row whose class
@@ -66,7 +79,6 @@ export class DeviceBindingService {
     await this.sweepActiveBindingForPerson(personId);
 
     const manager = this.tenantContext.getManager();
-    const tenantId = this.tenantContext.getTenantId();
     const repository = manager.getRepository(DeviceBindingEntity);
 
     const existingActive = await repository.findOneBy({ personId, status: 'active' });

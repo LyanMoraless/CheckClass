@@ -30,10 +30,21 @@ export class DeviceBindingController {
 
   // RULE-DEV-01/07/10: creates the vínculo after a successful WebAuthn
   // verification, always tied to the already-authenticated JWT person —
-  // deviceIdentityId is never accepted from the client.
+  // deviceIdentityId is never accepted from the client. request.ip is
+  // Express's own resolution (GAP-10/RULE-DEV-14) — no `trust proxy`
+  // handling here on purpose: correctly resolving the real client IP behind
+  // a reverse proxy/load balancer is a DevOps deploy-time concern flagged in
+  // the Tech Decision, not solved here (see architecture-overview.md,
+  // "Decisão de tecnologia — Detecção de rede institucional / GAP-10").
+  // Express types request.ip as `string | undefined` (it can be undefined if
+  // the underlying socket is already destroyed) — coalesced to '' rather
+  // than widening every downstream signature to `string | undefined`; an
+  // empty string is not a parseable IP either, so it falls into the same
+  // fail-closed "outside the network" branch as any other unparseable
+  // value (InstitutionalNetworkService.isWithinInstitutionalNetwork).
   @Post('login')
   login(@Body() body: WebauthnLoginVerifyDto, @Req() request: AuthenticatedRequest) {
-    return this.bindingService.completeLogin(request.personId, body.challengeToken, body.response);
+    return this.bindingService.completeLogin(request.personId, body.challengeToken, body.response, request.ip ?? '');
   }
 
   // Same endpoint for all four RULE-DEV-06 triggers — only `reason` varies.
