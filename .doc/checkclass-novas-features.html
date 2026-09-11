@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckClass — Novas Features (Longo Prazo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --text: #1c1c1c;
+    --muted: #5a5a5a;
+    --faint: #8a8a86;
+    --bg: #ffffff;
+    --panel: #f6f6f4;
+    --line: #e2e2df;
+    --pill-core: #1c1c1c;
+    --pill-2: #55524a;
+    --pill-3: #8a8a86;
+    --pill-4: #b7b7b3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Montserrat', sans-serif; color: var(--text); background: var(--bg); line-height: 1.6; }
+  header.masthead { display: flex; align-items: center; gap: 20px; padding: 36px 48px 28px; border-bottom: 3px solid var(--text); }
+  header.masthead img { height: 56px; width: auto; }
+  header.masthead .title-block h1 { font-family: 'Archivo Black', sans-serif; font-size: 26px; margin: 0 0 4px; letter-spacing: 0.5px; }
+  header.masthead .title-block p { margin: 0; color: var(--muted); font-size: 14px; }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 48px 80px; }
+  section { margin-bottom: 52px; }
+  h2.section-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 1px; margin: 0 0 18px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
+  h3 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16.5px; margin: 30px 0 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 16.5px; }
+  .overview-box { background: var(--panel); border-left: 4px solid var(--text); padding: 20px 24px; border-radius: 4px; }
+  code { font-family: 'Courier New', monospace; font-size: 12.5px; background: var(--panel); padding: 1px 5px; border-radius: 3px; }
+  .st {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 3px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .st.escopo-fechado { background: var(--text); border-color: var(--text); color: #fff; }
+  .st.pausado { background: #fff; border-color: var(--text); color: var(--text); }
+  .st.nao-def { background: var(--panel); }
+  .front {
+    border-top: 1px solid var(--line);
+    padding: 24px 0 6px;
+  }
+  .front:last-of-type { border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .front .num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 34px;
+    line-height: 0.9;
+    color: var(--pill-4);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .front h3.title { margin: 0 0 8px; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+  .front .desc { font-size: 14.2px; color: var(--muted); margin: 0 0 12px; max-width: 70ch; }
+  .front .desc b { color: var(--text); }
+  ul.scope { margin: 0 0 12px; padding-left: 20px; font-size: 13.8px; }
+  ul.scope li { margin-bottom: 6px; }
+  .gap-list { margin: 8px 0 0; padding-left: 20px; font-size: 13.5px; }
+  .gap-list li { margin-bottom: 7px; }
+  .gap-list li .tag { color: var(--muted); font-size: 11px; text-transform: uppercase; margin-right: 6px; font-weight: 700; }
+  .item { border-top: 1px solid var(--line); padding: 14px 0; }
+  .item:last-child { border-bottom: 1px solid var(--line); }
+  .item p.desc { font-size: 14px; color: var(--text); margin: 4px 0 4px; max-width: 72ch; }
+  .item p.why { font-size: 13px; color: var(--muted); margin: 0; max-width: 72ch; }
+  .item p.why b { color: var(--text); }
+  footer { border-top: 3px solid var(--text); padding: 22px 48px 40px; font-size: 12.5px; color: var(--muted); max-width: 1016px; margin: 0 auto; }
+  footer code { font-size: 11.5px; }
+  @media print {
+    header.masthead { border-bottom: 2px solid #000; }
+    .front, .item { break-inside: avoid; }
+    section { break-inside: avoid-page; }
+  }
+  @media (max-width: 700px) {
+    header.masthead, main, footer { padding-left: 20px; padding-right: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <img src="assets/logo.png" alt="LGI Morales">
+  <div class="title-block">
+    <h1>CheckClass — Novas Features</h1>
+    <p>Implementações e decisões de longo prazo — ainda não iniciadas ou travadas em decisão de tecnologia</p>
+  </div>
+</header>
+
+<main>
+
+  <section id="overview">
+    <h2 class="section-title">O Que É Este Documento</h2>
+    <div class="overview-box lead">
+      <p>Levantamento feito em <strong>2026-09-11</strong>, cruzando código real do repositório com <code>.claude/skills/business-rules/</code> e <code>.claude/skills/project-knowledge/references/pending-decisions.md</code>. Reúne o que é <strong>trabalho de longo prazo</strong> — feature nova inteira ainda não construída, ou item travado numa decisão de tecnologia que ainda não foi tomada. Itens pequenos, não-bloqueantes, deixados para trás em frentes já entregues estão no <a href="checkclass-pendencias.html">documento irmão</a>.</p>
+      <p>Nada aqui foi rejeitado pelo usuário — são itens <strong>explicitamente adiados, não descartados</strong> (com uma exceção clara, marcada abaixo). Nenhum agente deve presumir escopo, prioridade ou tecnologia para nenhum destes itens sem nova confirmação.</p>
+    </div>
+  </section>
+
+  <section id="frente-13">
+    <div class="front">
+      <div class="num">13</div>
+      <h3 class="title">Verificação Facial no Login <span class="st escopo-fechado">Escopo fechado, implementação não iniciada</span></h3>
+      <p class="desc">Facial obrigatória em todo login feito <b>de dentro da rede da instituição</b>. Depende da Frente 12 (concluída) para a detecção de "dentro da rede" — essa parte, GAP-10, já está pronta. Reverte conscientemente uma decisão de privacidade fechada em 2026-08-21 (o match facial deixa de ser resolvido localmente no Raspberry e passa a rodar no backend) — decisão do usuário, registrada, não um erro a corrigir.</p>
+      <ul class="scope">
+        <li><b>Quem e onde:</b> todo login de todo mundo, mas só dentro da rede. De fora, continua CPF + senha.</li>
+        <li><b>Onde roda o match:</b> no backend — rejeitados borda/Raspberry da sala e WASM no navegador.</li>
+        <li><b>Falha bloqueia o login</b>, sem exceção — webcam quebrada ou máquina sem câmera impedem o acesso, aceito explicitamente.</li>
+        <li><b>Break-glass auditado</b> para o administrador técnico; modo degradado automático foi rejeitado (derrubaria o serviço como forma de burlar a facial).</li>
+        <li><b>Cadastro biométrico presencial</b> na secretaria, com consentimento assinado no ato — autocadastro rejeitado.</li>
+        <li><b>Menor sem consentimento do responsável não acessa o sistema</b> — consequência aceita explicitamente, inclusive no início do ano letivo.</li>
+      </ul>
+      <p style="font-size: 13.5px; color: var(--muted);">Cadeia prevista: Product Definition → Business Analyst → <b>Security</b> → Solution Architect → Tech Decision → Database → Backend + Frontend → Testing → QA → Project Guardian.</p>
+
+      <h3 style="margin-top:22px;">12 gaps abertos — nenhum perguntado ao usuário ainda</h3>
+      <ul class="gap-list">
+        <li><span class="tag">GAP-01</span>Armazenar ou não o quadro capturado a cada login (proposto: nunca armazenar, só resultado/confiança/timestamp — não confirmado).</li>
+        <li><span class="tag">GAP-02</span>Retenção do template facial e dos registros de vínculo — as regras <code>RULE-RET-*</code> da Frente 10 não previram biometria.</li>
+        <li><span class="tag">GAP-03</span>Revogação do consentimento biométrico pelo titular — conflito real: facial obrigatória + direito de revogar pode significar bloqueio permanente.</li>
+        <li><span class="tag">GAP-04</span>Validação cruzada vínculo de dispositivo × pulseira (divergência de local = possível fraude?).</li>
+        <li><span class="tag">GAP-05</span>Onde ficam as permissões de "administrar inventário" e "gerenciar cadastro biométrico" — não receberam código próprio ainda.</li>
+        <li><span class="tag">GAP-06</span>Quantas tentativas antes do bloqueio, e como o aluno bloqueado se recupera.</li>
+        <li><span class="tag">GAP-07</span>Tecnologia de reconhecimento facial e de liveness — decisão de Tech Decision, não tomada.</li>
+        <li><span class="tag">GAP-08</span>Como o BYOD é matriculado para este fluxo (limite por pessoa, quem revoga).</li>
+        <li><span class="tag">GAP-09</span>Máquina sem TPM ou navegador sem WebAuthn — nenhum caminho de degradação definido.</li>
+        <li><span class="tag">GAP-11</span>Registro do consentimento — onde vive, validade, revogação, e se maiores também precisam consentir formalmente.</li>
+        <li><span class="tag">GAP-12</span>O que acontece com o vínculo quando o token de sessão expira.</li>
+      </ul>
+      <p style="font-size: 13px; color: var(--faint);">Fonte: <code>pending-decisions.md</code>, seção "Feature nova confirmada em escopo... Vínculo de dispositivo institucional + verificação facial no login (2026-09-10)". GAP-10 (rede institucional) já saiu desta lista — fechado pela Frente 12.</p>
+    </div>
+  </section>
+
+  <section id="frente-09">
+    <div class="front">
+      <div class="num">09</div>
+      <h3 class="title">App Mobile <span class="st pausado">Pausado por decisão do usuário</span></h3>
+      <p class="desc">Confirmado por código: <b>nenhuma tela nova desde 01/09/2026</b> — o único commit posterior a essa data que toca <code>mobile/</code> é um ajuste de texto no README (03/09). Enquanto isso, o portal web (<code>frontend/</code>) recebeu commits até hoje e já ultrapassou o escopo original do mobile.</p>
+      <ul class="scope">
+        <li><b>O que o mobile tem hoje (6 telas):</b> login, presença/faltas, cronograma, check-in, resolução de pendências (professor), conta (só logout).</li>
+        <li><b>O que o portal web já tem e o mobile não:</b> justificativa de faltas, avisos de frequência, portal de coordenação/direção, Área de Provas inteira (e por decisão de produto <i>nunca vai existir no mobile</i> — depende de conceitos de navegador para monitoramento).</li>
+        <li><b>Condição da pausa</b> (Portal web pronto) foi cumprida em 2026-09-03 — retomar é decisão do usuário, não automática.</li>
+        <li><b>Escopo confirmado, arquitetura pendente:</b> conteúdo de app mobile para Faculdade — hoje o mobile só cobre conteúdo Escola/Aluno.</li>
+        <li><b>Adiado, não rejeitado:</b> conteúdo "Atividades" (Escola); paginação/filtro de data no cronograma (sem evidência de volume real que justifique).</li>
+      </ul>
+      <p style="font-size: 13px; color: var(--faint);">Retomar exige decidir primeiro: reimplementar as telas que faltam nativamente, ou usar WebView do portal — nenhuma das duas foi escolhida.</p>
+    </div>
+  </section>
+
+  <section id="frente-08-tech">
+    <h2 class="section-title">Frente 08 — Decisões de Tecnologia Pendentes</h2>
+    <p>O núcleo da Segurança de Intrusão já está implementado (detecção, incidentes, câmeras, autorização de área). Os itens abaixo são os que dependem de uma decisão de tecnologia ainda não tomada — diferente da tela de Áreas/Blocos, que é só um CRUD faltando no frontend (ver <a href="checkclass-pendencias.html">documento de pendências</a>).</p>
+
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Vídeo ao vivo das câmeras pelo navegador</h3>
+      <p class="desc">Confirmado pelo usuário: a intenção de produto de RULE-SEC-03 <i>é</i> vídeo ao vivo, não snapshot estático — mas a implementação depende do relay RTSP→HLS/WebRTC entre câmera e navegador, que segue "apenas sinalizado, não escolhido". Hoje o sistema já sugere automaticamente qual câmera é relevante para um incidente; só falta o mecanismo de exibir o stream em si.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st nao-def">Tecnologia não decidida</span> Contagem exata de entrada/saída (RULE-SEC-05)</h3>
+      <p class="desc">Confirmado por código: o pipeline de segurança registra cada cruzamento/leitura individualmente (<code>intrusion_incident_location_entry</code>), mas <b>não existe contador agregado de ocupação por sala</b>. Há inclusive um tipo de evento <code>CAMERA_COUNT</code> no pipeline de presença que é ingerido e imediatamente descartado. Direção técnica mais concreta já dada pelo usuário — câmera de sala de aula + visão computacional (ex. OpenCV), cruzada com contagem de tags via leitor de área, para auditoria/validação cruzada — mas a tecnologia final cabe ao Tech Decision + Computer Vision Agent, não decidida.</p>
+      <p class="why"><b>Gaps que vêm junto, nenhum perguntado:</b> frequência exata da contagem periódica; o que acontece quando a contagem por câmera diverge da contagem por tag (incidente? alerta? só log?); se o mecanismo é exclusivo de sala de aula ou também se aplica a áreas gerais de segurança; se é a mesma câmera já aprovada para Segurança de Intrusão ou uma adicional.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Bloqueio automático de portas/ambientes (RULE-SEC-04)</h3>
+      <p class="desc">Adiado desde 2026-08-23, não rejeitado. Ressalva inegociável já registrada: nunca prender pessoas durante uma emergência (incêndio, evacuação). Não há hoje, neste projeto, nenhum hardware relacionado a bloqueio de porta.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st nao-def">Limitação conhecida</span> Horário semanal recorrente para permissão de área</h3>
+      <p class="desc"><code>wristband_category_area_permission.valid_from</code>/<code>valid_until</code> modelam uma janela <b>absoluta</b> (um intervalo entre dois instantes), não recorrência do tipo "terças, 18h–22h". Nunca foi confirmado pelo usuário se isso é suficiente — não presumir que é defeito, nem que é aceitável. Levantar como pergunta objetiva quando esta frente voltar a ser tocada.</p>
+    </div>
+  </section>
+
+  <section id="ia">
+    <h2 class="section-title">Inteligência Artificial</h2>
+    <div class="item">
+      <h3><span class="st nao-def">Hipótese, nunca definida</span> Prioridade 4 — nunca núcleo do sistema</h3>
+      <p class="desc">Áreas possíveis citadas sem compromisso: segurança, análise de comportamento, análise de padrões, relatórios inteligentes, automações, previsão, assistente institucional. Nenhum agente deve inventar finalidade ou tratar como requisito fechado — é a 4ª prioridade do produto, e deve permanecer assim até o usuário decidir avançar.</p>
+    </div>
+  </section>
+
+  <section id="area-de-provas">
+    <h2 class="section-title">Área de Provas — Escopo Adiado</h2>
+    <p>A Frente 04 está concluída e em produção. Os itens abaixo foram explicitamente colocados fora desta rodada — não rejeitados.</p>
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Banco de questões reutilizável entre provas</h3>
+      <p class="desc">Hoje cada prova nasce com perguntas próprias do zero (RULE-EXAM-15). Reutilização entre provas é pendência futura legítima, sem data.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Múltiplas seções/páginas dentro de uma prova</h3>
+      <p class="desc">Não mencionado nem confirmado — prova é de página única nesta rodada.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Agente de monitoramento nativo/desktop</h3>
+      <p class="desc"><code>EXTERNAL_APPLICATION_FOCUS</code> foi citado como exemplo de evento monitorável, mas não está confirmado se implica um agente desktop real fora do navegador, ou se era só um exemplo aspiracional do texto original.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Pausa de timer configurável (RULE-EXAM-10)</h3>
+      <p class="desc">Fora desta rodada, sem alteração desde o desenho original da Frente 04.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Ação diferenciada por tipo de evento dentro da mesma prova</h3>
+      <p class="desc">Hoje todo evento monitorado aciona a mesma política. Arquitetura já preparada para essa evolução (<code>ExamViolationPolicyService</code>), mas diferenciação por tipo de evento não foi implementada.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Tentativas múltiplas por prova</h3>
+      <p class="desc">Schema atual tem <code>UNIQUE</code> sessão-aluno-prova. Suportar múltiplas tentativas no futuro seria migration aditiva, não reconstrução.</p>
+    </div>
+    <div class="item">
+      <h3><span class="st pausado">Adiado</span> Obrigatoriedade de pergunta</h3>
+      <p class="desc">Campo "obrigatória" não existe ainda no modelo de pergunta.</p>
+    </div>
+  </section>
+
+  <section id="hierarquia">
+    <h2 class="section-title">Hierarquia Administrativa — Escola</h2>
+    <div class="item">
+      <h3><span class="st nao-def">Gap parcial</span> Papéis administrativos internos, resolvidos só para Faculdade</h3>
+      <p class="desc">A hierarquia Aluno → Professor → Coordenador de Curso → Direção/Reitoria está fechada para <b>faculdade</b>. Para <b>escola</b>, continua em aberto desde agosto — sem resposta ainda sobre quem cadastra usuários, quem configura regras, etc. nesse tipo de instituição.</p>
+      <p class="why"><b>Por quê isso importa:</b> bloqueia silenciosamente qualquer feature que dependa de hierarquia de liderança quando o tenant é do tipo escola — hoje mitigado porque a maior parte do trabalho recente mirou faculdade primeiro.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Levantamento feito em 2026-09-11 a partir de exploração direta do código-fonte (<code>backend/src/</code>, <code>frontend/src/</code>, <code>mobile/src/</code>) e de <code>.claude/skills/business-rules/</code> e <code>.claude/skills/project-knowledge/references/pending-decisions.md</code>. Ver também <a href="checkclass-pendencias.html">checkclass-pendencias.html</a> (itens pequenos e não-bloqueantes de curto prazo).
+</footer>
+
+</body>
+</html>
