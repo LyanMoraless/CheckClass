@@ -4208,6 +4208,46 @@ ou a Frente 13 (ainda não formalizada) retomarem este trabalho.
 recomendada pelo Tech Decision Agent, sem ressalva ou pedido de mudança —
 mesmo padrão das três decisões anteriores de tecnologia da Frente 12.
 
+> **Nota de ratificação retroativa (2026-09-11) — GAP-10 implementado;
+> contradição interna do texto acima resolvida a favor de N faixas por
+> tenant:** o parágrafo "Alternativa escolhida" acima descreve "uma lista
+> de faixas CIDR cadastrada pela própria instituição ... uma linha por
+> instituição", o que contradiz a si mesmo — a mesma decisão fala em
+> "faixas" no plural e a "Estrutura de implementação recomendada" pede
+> explicitamente "uma tabela ... guardando uma ou mais faixas CIDR"; o
+> próprio exemplo substantivo por trás da decisão (prédio principal +
+> anexo) já implicava mais de uma faixa por instituição. Ao implementar, o
+> Database Agent resolveu a contradição a favor da leitura substantiva
+> pretendida, não da frase literal "uma linha por instituição": tabela
+> `institutional_network_range` com **N linhas por tenant** (uma linha por
+> faixa CIDR), unique em `(tenant_id, cidr)` — não em `tenant_id` sozinho,
+> o que permitiria só uma faixa por instituição. Mesmo padrão de processo
+> já usado neste projeto para o mecanismo de API key por dispositivo e
+> para `wristband_category_area_permission` (ver
+> `pending-decisions.md`, seções "Resolvido — Mecanismo de autenticação
+> por dispositivo" e "## ~~Gap~~ FECHADO — Vínculo categoria de pulseira →
+> área (schema)"): a implementação avançou sobre a leitura substantiva
+> antes do registro formal da ambiguidade, e o usuário ratificou
+> retroativamente o modelo, sem alterações.
+>
+> **Duas confirmações adicionais do usuário nesta mesma rodada** (detalhe
+> completo em `pending-decisions.md`, seção "Resolvido — GAP-10 fechado:
+> detecção de rede institucional implementada, testada e ratificada
+> (2026-09-11)"): (1) a checagem de rede roda apenas na criação do
+> vínculo, não é reverificada continuamente enquanto ele permanece ativo
+> (nota correspondente também em RULE-DEV-14,
+> `business-rules/references/institutional-device-binding-rules.md`); (2)
+> a administração das faixas de IP/CIDR é do papel Direção/Reitoria, mesma
+> autoridade de RULE-DEV-15/RULE-ACC-08.
+>
+> Suíte completa verificando a implementação: backend 1005/1005 testes,
+> frontend 75/75 testes, 0 regressão. QA aprovou; Project Guardian
+> considerou o resultado Consistente. **Isto fecha GAP-10.**
+> **Source of confirmation:** Database Agent, Testing Agent, QA Agent e
+> Project Guardian Agent, 2026-09-11 (implementação, schema e testes);
+> Usuário, 2026-09-11 (ratificação retroativa do modelo N-linhas-por-tenant
+> e as duas confirmações acima, sem ressalva).
+
 ## Escopo NÃO formalizado — Frente 13 (verificação facial no login)
 
 A Frente 13 (Bloco B do registro de 2026-09-10 — cadastro biométrico,

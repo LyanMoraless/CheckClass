@@ -3774,3 +3774,68 @@ encerrada** a partir desta data.
 **Source of confirmation:** Testing Agent, QA Agent e Project Guardian
 Agent, 2026-09-11; verificação independente da sessão principal no mesmo
 dia (fatos de código/suíte de testes observáveis no repositório).
+
+### Resolvido — GAP-10 fechado: detecção de rede institucional implementada, testada e ratificada (2026-09-11)
+
+Fecha GAP-10 (RULE-DEV-14,
+`business-rules/references/institutional-device-binding-rules.md`), que
+permanecia aberto mesmo depois do fechamento formal da Frente 12 acima
+("Resolvido — Frente 12 formalmente encerrada..."). Sobre a tecnologia já
+aprovada em "Decisão de tecnologia — Detecção de rede institucional /
+GAP-10 (2026-09-11)" (`architecture-overview.md`), esta rodada implementou
+de ponta a ponta: Database (tabela `institutional_network_range`, N linhas
+por tenant, unique em `(tenant_id, cidr)` — ver ratificação retroativa da
+leitura de schema na mesma seção de `architecture-overview.md`), Backend
+(`InstitutionalNetworkService`, integrado em
+`DeviceBindingService.createBinding`) e Frontend. Suíte completa: backend
+1005/1005 testes, frontend 75/75 testes, 0 regressão. QA aprovou; Project
+Guardian considerou o resultado **Consistente**.
+
+**Dois pontos de interpretação levantados pelo Project Guardian,
+confirmados pelo usuário nesta rodada exatamente como recomendado — não
+são decisões de produto novas, são esclarecimento/ratificação de decisões
+já tomadas:**
+
+1. **A checagem de rede roda apenas uma vez, na criação do vínculo — não é
+   reverificada continuamente enquanto o vínculo permanece ativo.**
+   Coerente com RULE-DEV-11 (o sistema já não policia continuamente o
+   estado físico do vínculo): uma vez provado que a máquina estava dentro
+   da rede da instituição ao criar o vínculo, ele vale até um dos quatro
+   gatilhos de checkout de RULE-DEV-06 dispará-lo. Esclarece a leitura de
+   "Applies to: Criação/uso" em RULE-DEV-14 — "uso" não implica
+   reverificação de rede a cada avaliação de presença que consome o
+   vínculo já criado; apenas a criação precisa acontecer dentro da rede.
+   Nota correspondente registrada em RULE-DEV-14
+   (`business-rules/references/institutional-device-binding-rules.md`).
+2. **A administração das faixas de IP/CIDR
+   (`institutional_network_range`) é do papel Direção/Reitoria** —
+   formaliza o que já estava implementado por analogia com
+   RULE-DEV-15/RULE-ACC-08 (mesma autoridade do inventário de máquinas
+   institucionais e da configuração de checkout), sem mudança de código
+   necessária. Mesmo padrão de processo já usado neste projeto para o
+   mecanismo de API key por dispositivo (2026-08-23) e para
+   `wristband_category_area_permission` (ver "## ~~Gap~~ FECHADO — Vínculo
+   categoria de pulseira → área (schema)" acima nesta skill): a
+   implementação avançou por analogia antes do registro formal, e o
+   usuário ratificou retroativamente, sem alterações.
+
+**Nota operacional de rollout, levantada pelo QA — não é bug:**
+instituições que já usam vínculo de dispositivo (Frente 12) vão precisar
+configurar ao menos uma faixa de IP/CIDR antes de continuar criando
+vínculos novos — o default documentado na "Decisão de tecnologia"
+(`architecture-overview.md`) trata "nenhuma faixa configurada" como
+**fora da rede**, então a criação de vínculo fica bloqueada (fail-closed)
+até a instituição configurar seu range. Comportamento esperado e já
+decidido no desenho de tecnologia, não uma regressão introduzida por esta
+implementação.
+
+**Cadeia de agentes desta rodada:** Database → Backend → Frontend →
+Testing → QA → Project Guardian → Product Definition (este fechamento de
+documentação).
+**Não tocado nesta rodada:** código-fonte (`backend/`, `frontend/`) — este
+registro é só documentação; Frente 13 (verificação facial no login)
+continua sem addendum formal.
+**Source of confirmation:** Testing Agent, QA Agent e Project Guardian
+Agent, 2026-09-11 (implementação e testes); Usuário, 2026-09-11 (as duas
+confirmações acima, exatamente como recomendado pelo Project Guardian, sem
+ressalva).

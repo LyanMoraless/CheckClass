@@ -464,6 +464,45 @@ tecnologia aprovada, ainda não implementado".
 **Source of confirmation:** Usuário, 2026-09-11, aprovação exatamente como
 recomendada pelo Tech Decision Agent, sem ressalva ou pedido de mudança.
 
+**Nota de atualização (2026-09-11) — GAP-10 implementado e testado de
+ponta a ponta (Database + Backend + Frontend); a nota anterior está
+superada:** a nota acima registrava apenas a tecnologia aprovada, "ainda
+não implementado". Nesta mesma sessão a detecção de rede institucional foi
+efetivamente construída — tabela `institutional_network_range` (Database),
+`InstitutionalNetworkService` chamado em
+`DeviceBindingService.createBinding` (Backend, no ponto já marcado com o
+comentário GAP-10) e a interface correspondente (Frontend). Suíte
+completa: backend 1005/1005 testes, frontend 75/75 testes, 0 regressão. QA
+aprovou; Project Guardian considerou o resultado **Consistente**. Detalhe
+técnico completo, incluindo a ratificação do desenho de schema (N faixas
+CIDR por tenant), em
+`project-knowledge/references/architecture-overview.md` (seção "Decisão de
+tecnologia — Detecção de rede institucional / GAP-10 (2026-09-11)") e o
+fechamento formal em `project-knowledge/references/pending-decisions.md`
+(seção "Resolvido — GAP-10 fechado: detecção de rede institucional
+implementada, testada e ratificada (2026-09-11)"). **Isto fecha GAP-10.**
+
+**Esclarecimento de escopo confirmado pelo usuário — "Applies to:
+Criação/uso" não significa reverificação contínua de rede:** o Project
+Guardian levantou, como ponto de interpretação não confirmado, se "uso" no
+campo "Applies to" desta regra (acima) implicaria reverificar a rede a
+cada avaliação de presença que consome o vínculo já criado como fator de
+chamada, ou se apenas a criação do vínculo precisa acontecer dentro da
+rede. **O usuário confirmou, exatamente como recomendado:** a checagem de
+rede roda **apenas uma vez, no momento da criação do vínculo** — não é
+reverificada continuamente enquanto o vínculo permanece ativo. Isto é
+coerente com RULE-DEV-11 (o sistema já não policia continuamente o estado
+físico do vínculo): uma vez provado que a máquina estava dentro da rede da
+instituição ao criar o vínculo, ele vale até um dos quatro gatilhos de
+checkout de RULE-DEV-06 dispará-lo. "Uso" em "Applies to: Criação/uso" não
+deve ser lido como "reverificação de rede a cada uso" — o uso subsequente
+do vínculo já criado (como fator de chamada) não é reverificado quanto à
+rede.
+**Source of confirmation:** Testing Agent, QA Agent e Project Guardian
+Agent, 2026-09-11 (implementação e testes); Usuário, 2026-09-11
+(esclarecimento de escopo "criação, não uso contínuo", confirmado
+exatamente como recomendado pelo Project Guardian, sem ressalva).
+
 ---
 
 ## Bloco G — Administração de inventário, titular de visualização e BYOD (segunda rodada, 2026-09-10)
