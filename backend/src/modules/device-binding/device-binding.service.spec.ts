@@ -1,4 +1,5 @@
 import { ConflictException } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { ClassGroupEntity, ClassSessionEntity, DeviceBindingEntity } from '../../database/entities';
 import {
   createMockEntityManager,
@@ -125,6 +126,123 @@ describe('DeviceBindingService', () => {
       );
       expect(bindingRepo.save).toHaveBeenCalledWith(expect.objectContaining({ personId: 'person-1', deviceIdentityId: 'device-identity-2' }));
     });
+
+    // Race condition: two concurrent logins for the same person both pass the
+    // defensive findOneBy check (both see no active binding), then both try
+    // to INSERT — device_binding_one_active_per_person_unique is the actual
+    // race-safety net, surfaced to the caller as the same ConflictException
+    // as the defensive check above, never a raw 500.
+    test('test_createBinding_concurrentLoginRacesUniqueIndex_catchesQueryFailedErrorAsConflict', async () => {
+      const { service, bindingRepo } = buildService({ existingActive: null });
+      const uniqueViolation = Object.assign(new QueryFailedError('insert', [], new Error('duplicate key')), {
+        driverError: { code: '23505' },
+      });
+      bindingRepo.save.mockRejectedValue(uniqueViolation);
+
+      await expect(service.createBinding('person-1', 'device-identity-2')).rejects.toThrow(ConflictException);
+    });
+
+    test('test_createBinding_unrelatedDbError_rethrowsAsIsWithoutWrappingAsConflict', async () => {
+      const { service, bindingRepo } = buildService({ existingActive: null });
+      const otherError = new Error('connection lost');
+      bindingRepo.save.mockRejectedValue(otherError);
+
+      await expect(service.createBinding('person-1', 'device-identity-2')).rejects.toThrow('connection lost');
+    });
+  });
+
+  describe('completeLogin / generateLoginOptions (WebAuthn login ceremony wrapper)', () => {
+    test('test_generateLoginOptions_delegatesToDeviceCredentialService', async () => {
+      const { service, deviceCredentialService } = buildService({});
+      (deviceCredentialService.generateAuthenticationCeremonyOptions as jest.Mock).mockResolvedValue({
+        options: { challenge: 'c' },
+        challengeToken: 'token-1',
+      });
+
+      const result = await service.generateLoginOptions();
+
+      expect(result).toEqual({ options: { challenge: 'c' }, challengeToken: 'token-1' });
+    });
+
+    test('test_completeLogin_verifiesWebauthnThenCreatesBindingForResolvedDeviceIdentityId', async () => {
+      // RULE-DEV-01 nota C4: deviceIdentityId comes ONLY from the verified
+      // assertion's return value — never accepted as a parameter alongside
+      // the WebAuthn response itself.
+      const { service, bindingRepo, deviceCredentialService } = buildService({ existingActive: null });
+      (deviceCredentialService.verifyAuthentication as jest.Mock).mockResolvedValue({ deviceIdentityId: 'device-identity-from-assertion' });
+
+      await service.completeLogin('person-1', 'challenge-token-1', { id: 'cred-1' } as never);
+
+      expect(deviceCredentialService.verifyAuthentication).toHaveBeenCalledWith('challenge-token-1', { id: 'cred-1' });
+      expect(bindingRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ personId: 'person-1', deviceIdentityId: 'device-identity-from-assertion' }),
+      );
+    });
+
+    test('test_completeLogin_webauthnVerificationRejects_neverCreatesBinding', async () => {
+      const { service, bindingRepo, deviceCredentialService } = buildService({ existingActive: null });
+      (deviceCredentialService.verifyAuthentication as jest.Mock).mockRejectedValue(new Error('invalid assertion'));
+
+      await expect(service.completeLogin('person-1', 'bad-token', {} as never)).rejects.toThrow('invalid assertion');
+      expect(bindingRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getActiveForPerson', () => {
+    test('test_getActiveForPerson_sweepsThenReturnsActiveBinding', async () => {
+      const { service, bindingRepo } = buildService({
+        existingActive: { id: 'binding-1', personId: 'person-1', status: 'active', startedAt: new Date('2026-08-21T09:00:00.000Z') },
+      });
+
+      const result = await service.getActiveForPerson('person-1');
+
+      expect(result).toEqual(expect.objectContaining({ id: 'binding-1' }));
+      expect(bindingRepo.findOneBy).toHaveBeenCalledWith({ personId: 'person-1', status: 'active' });
+    });
+
+    test('test_getActiveForPerson_noActiveBinding_returnsNull', async () => {
+      const { service } = buildService({ existingActive: null });
+
+      const result = await service.getActiveForPerson('person-1');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('listActiveAndHistory (RULE-DEV-13/RULE-ACC-08)', () => {
+    test('test_listActiveAndHistory_sweepsOnceForEachDistinctActivePersonThenReturnsFullHistoryOrdered', async () => {
+      const activeRows = [
+        { id: 'binding-1', personId: 'person-1', status: 'active', startedAt: new Date('2026-08-21T09:00:00.000Z') },
+        { id: 'binding-2', personId: 'person-1', status: 'active', startedAt: new Date('2026-08-21T09:00:00.000Z') }, // same person twice — must dedup
+        { id: 'binding-3', personId: 'person-2', status: 'active', startedAt: new Date('2026-08-21T09:00:00.000Z') },
+      ];
+      const { service, bindingRepo } = buildService({});
+      bindingRepo.findBy.mockResolvedValue(activeRows);
+      bindingRepo.find.mockResolvedValue(activeRows);
+      // sweepActiveBindingForPerson's own findOneBy lookup — no active row by
+      // the time the sweep runs (already swept or never had one), so the
+      // sweep itself becomes a no-op for both distinct persons.
+      bindingRepo.findOneBy.mockResolvedValue(null);
+
+      const result = await service.listActiveAndHistory();
+
+      // Deduplicated to 2 distinct personIds (person-1, person-2), not 3 sweep calls.
+      expect(bindingRepo.findOneBy).toHaveBeenCalledTimes(2);
+      expect(bindingRepo.findOneBy).toHaveBeenCalledWith({ personId: 'person-1', status: 'active' });
+      expect(bindingRepo.findOneBy).toHaveBeenCalledWith({ personId: 'person-2', status: 'active' });
+      expect(bindingRepo.find).toHaveBeenCalledWith({ order: { startedAt: 'DESC' } });
+      expect(result).toBe(activeRows);
+    });
+
+    test('test_listActiveAndHistory_noActiveBindings_skipsSweepEntirelyAndReturnsHistory', async () => {
+      const { service, bindingRepo } = buildService({});
+      bindingRepo.findBy.mockResolvedValue([]);
+      bindingRepo.find.mockResolvedValue([]);
+
+      await service.listActiveAndHistory();
+
+      expect(bindingRepo.findOneBy).not.toHaveBeenCalled();
+    });
   });
 
   describe('checkout (RULE-DEV-06, idempotent)', () => {
@@ -207,6 +325,24 @@ describe('DeviceBindingService', () => {
 
       expect(classGroupRepo.findOneBy).toHaveBeenCalledWith({ id: 'class-group-1' });
       expect(result).toBe('present');
+    });
+
+    test('test_evaluateFactorForClassSession_noResolvableEffectiveRoomAtAll_returnsNotApplicableRatherThanThrowing', async () => {
+      // Neither the session nor its class_group has a room on record — the
+      // comparison has nothing to match against. RULE-DEV-09 only spells out
+      // "room diverges"; a room that plain doesn't exist to compare against
+      // is read here as the same non-applicable outcome, not a crash and not
+      // silently counted as "present".
+      const sessionWithoutRoomOverride: ClassSessionEntity = { ...pastSession, roomId: null };
+      const { service, classGroupRepo } = buildService({
+        evaluateRows: [{ institutional_room_id: 'room-1', is_personal_device: false }],
+        classGroupRoomId: null,
+      });
+
+      const result = await service.evaluateFactorForClassSession('person-1', sessionWithoutRoomOverride);
+
+      expect(classGroupRepo.findOneBy).toHaveBeenCalledWith({ id: 'class-group-1' });
+      expect(result).toBe('not_applicable');
     });
   });
 });

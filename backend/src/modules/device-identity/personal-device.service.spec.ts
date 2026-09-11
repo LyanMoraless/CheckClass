@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { DeviceIdentityEntity, PersonalDeviceEntity } from '../../database/entities';
 import {
   createMockEntityManager,
@@ -53,6 +54,45 @@ describe('PersonalDeviceService', () => {
     await expect(service.register('person-1', null)).rejects.toThrow(ConflictException);
     expect(identityRepo.save).not.toHaveBeenCalled();
     expect(deviceRepo.save).not.toHaveBeenCalled();
+  });
+
+  // RULE-DEV-17 race: two concurrent self-registrations for the same person
+  // both pass the defensive findOneBy check — personal_device_one_active_
+  // per_person_unique (AddDeviceBinding migration) is the actual safety net,
+  // surfaced here as the same ConflictException, never a raw 500.
+  test('test_register_concurrentRegistrationRacesUniqueIndex_throwsConflictNotRawDbError', async () => {
+    const { service, deviceRepo } = buildService({ existingActive: null });
+    const uniqueViolation = Object.assign(new QueryFailedError('insert', [], new Error('duplicate key')), {
+      driverError: { code: '23505' },
+    });
+    deviceRepo.save.mockRejectedValue(uniqueViolation);
+
+    await expect(service.register('person-1', null)).rejects.toThrow(ConflictException);
+  });
+
+  test('test_register_unrelatedDbError_rethrowsAsIsWithoutWrappingAsConflict', async () => {
+    const { service, deviceRepo } = buildService({ existingActive: null });
+    deviceRepo.save.mockRejectedValue(new Error('connection lost'));
+
+    await expect(service.register('person-1', null)).rejects.toThrow('connection lost');
+  });
+
+  test('test_getMine_hasActiveDevice_returnsIt', async () => {
+    const { service, deviceRepo } = buildService();
+    deviceRepo.findOneBy.mockResolvedValue({ id: 'device-1', personId: 'person-1', revokedAt: null });
+
+    const result = await service.getMine('person-1');
+
+    expect(result).toEqual(expect.objectContaining({ id: 'device-1' }));
+  });
+
+  test('test_getMine_noActiveDevice_returnsNull', async () => {
+    const { service, deviceRepo } = buildService();
+    deviceRepo.findOneBy.mockResolvedValue(null);
+
+    const result = await service.getMine('person-1');
+
+    expect(result).toBeNull();
   });
 
   test('test_revoke_deviceNotFound_throwsNotFoundException', async () => {

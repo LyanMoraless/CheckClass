@@ -1,4 +1,5 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { CourseEntity, DeviceIdentityEntity, InstitutionalMachineEntity, RoomEntity } from '../../database/entities';
 import {
   createMockEntityManager,
@@ -87,10 +88,53 @@ describe('InstitutionalMachineService', () => {
     await expect(service.create(validInput, 'direction-1')).rejects.toThrow(NotFoundException);
   });
 
+  // Race/duplicate: two concurrent cadastros for the same assetTag/serialNumber,
+  // or simply re-submitting an already-registered patrimônio — the DB's
+  // institutional_machine_asset_tag_unique/_serial_number_unique constraints
+  // are the actual guard; this only verifies the 409 translation.
+  test('test_create_duplicateAssetTagOrSerialNumber_throwsConflictNotRawDbError', async () => {
+    const { service, machineRepo } = buildService({ authorized: true });
+    const uniqueViolation = Object.assign(new QueryFailedError('insert', [], new Error('duplicate key')), {
+      driverError: { code: '23505' },
+    });
+    machineRepo.save.mockRejectedValue(uniqueViolation);
+
+    await expect(service.create(validInput, 'direction-1')).rejects.toThrow(ConflictException);
+  });
+
+  test('test_create_unrelatedDbError_rethrowsAsIsWithoutWrappingAsConflict', async () => {
+    const { service, machineRepo } = buildService({ authorized: true });
+    machineRepo.save.mockRejectedValue(new Error('connection lost'));
+
+    await expect(service.create(validInput, 'direction-1')).rejects.toThrow('connection lost');
+  });
+
   test('test_list_notDirection_throwsForbidden', async () => {
     const { service } = buildService({ authorized: false });
 
     await expect(service.list('professor-1')).rejects.toThrow(ForbiddenException);
+  });
+
+  test('test_get_authorizedDirectionMachineExists_returnsMachine', async () => {
+    const { service, machineRepo } = buildService({ authorized: true });
+
+    const result = await service.get('device-identity-1', 'direction-1');
+
+    expect(machineRepo.findOneBy).toHaveBeenCalledWith({ id: 'device-identity-1' });
+    expect(result).toEqual(expect.objectContaining({ id: 'device-identity-1' }));
+  });
+
+  test('test_get_machineNotFound_throwsNotFoundException', async () => {
+    const { service, machineRepo } = buildService({ authorized: true });
+    machineRepo.findOneBy.mockResolvedValue(null);
+
+    await expect(service.get('missing-machine', 'direction-1')).rejects.toThrow(NotFoundException);
+  });
+
+  test('test_get_notDirection_throwsForbidden', async () => {
+    const { service } = buildService({ authorized: false });
+
+    await expect(service.get('device-identity-1', 'professor-1')).rejects.toThrow(ForbiddenException);
   });
 
   test('test_update_notDirection_throwsForbiddenAndNeverWrites', async () => {
@@ -117,5 +161,41 @@ describe('InstitutionalMachineService', () => {
     await service.update('device-identity-1', { status: InstitutionalMachineStatus.DECOMMISSIONED }, 'direction-1');
 
     expect(machineRepo.update).toHaveBeenCalledWith({ id: 'device-identity-1' }, { status: InstitutionalMachineStatus.DECOMMISSIONED });
+  });
+
+  test('test_update_newRoomIdNotFound_throwsNotFoundWithoutWriting', async () => {
+    const { service, machineRepo, roomRepo } = buildService({ authorized: true });
+    roomRepo.findOneBy.mockResolvedValue(null);
+
+    await expect(service.update('device-identity-1', { roomId: 'missing-room' }, 'direction-1')).rejects.toThrow(NotFoundException);
+    expect(machineRepo.update).not.toHaveBeenCalled();
+  });
+
+  test('test_update_newCourseIdNotFound_throwsNotFoundWithoutWriting', async () => {
+    const { service, machineRepo, courseRepo } = buildService({ authorized: true });
+    courseRepo.findOneBy.mockResolvedValue(null);
+
+    await expect(service.update('device-identity-1', { courseId: 'missing-course' }, 'direction-1')).rejects.toThrow(NotFoundException);
+    expect(machineRepo.update).not.toHaveBeenCalled();
+  });
+
+  test('test_update_partialUpdateWithoutRoomIdOrCourseId_skipsThoseLookupsEntirely', async () => {
+    const { service, machineRepo, roomRepo, courseRepo } = buildService({ authorized: true });
+
+    await service.update('device-identity-1', { brand: 'Lenovo' }, 'direction-1');
+
+    expect(roomRepo.findOneBy).not.toHaveBeenCalled();
+    expect(courseRepo.findOneBy).not.toHaveBeenCalled();
+    expect(machineRepo.update).toHaveBeenCalledWith({ id: 'device-identity-1' }, { brand: 'Lenovo' });
+  });
+
+  test('test_update_duplicateAssetTagOrSerialNumberAgainstAnotherMachine_throwsConflict', async () => {
+    const { service, machineRepo } = buildService({ authorized: true });
+    const uniqueViolation = Object.assign(new QueryFailedError('update', [], new Error('duplicate key')), {
+      driverError: { code: '23505' },
+    });
+    machineRepo.update.mockRejectedValue(uniqueViolation);
+
+    await expect(service.update('device-identity-1', { assetTag: 'PAT-DUP' }, 'direction-1')).rejects.toThrow(ConflictException);
   });
 });
