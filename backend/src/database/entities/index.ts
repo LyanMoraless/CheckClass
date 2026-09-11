@@ -61,3 +61,4 @@ export * from './personal-device.entity';
 export * from './device-credential.entity';
 export * from './device-binding.entity';
 export * from './device-binding-config.entity';
+export * from './institutional-network-range.entity';
