@@ -3972,6 +3972,17 @@ cada leitura como rede de segurança para o timer client-side (Decisão
 B). Verificação: suíte completa do backend — **924 testes / 94 suítes,
 0 regressão**; `npx nest build` limpo.
 
+> **Correção (2026-09-11) — contagem superada pela rodada de Testing:**
+> "924 testes / 94 suítes" era a contagem no momento em que Backend/
+> Frontend concluíram a implementação, antes da cadeia pausar propositalmente
+> antes de Testing (ver seção "Cadeia pausada antes de Testing" abaixo).
+> Depois que Testing rodou de fato, a contagem final do backend é **971
+> testes / 96 suítes**, 0 regressão. Ver "Implementação — Vínculo de
+> Dispositivo Institucional (Frente 12): Testing + QA + Project Guardian
+> (2026-09-11)" mais abaixo para o fechamento completo.
+> **Source of confirmation:** Testing Agent + verificação independente da
+> sessão principal, 2026-09-11.
+
 ### Frontend
 
 Duas features novas: `device-binding` (hook `useDeviceBindingSession` —
@@ -4005,12 +4016,19 @@ sem verificação de assinatura). Verificação: `npx tsc --noEmit` limpo;
    sempre visível (não em "Configurações"); falhas da oferta ambiente
    pós-login usam um `InfoBanner` neutro, falhas de uma cerimônia
    deliberada (a pessoa clicou em "vincular") usam `ErrorBanner`.
-4. **Gap pré-existente, não introduzido por esta frente:** `vitest`/
+4. ~~**Gap pré-existente, não introduzido por esta frente:** `vitest`/
    `@testing-library/react` são referenciados por specs (incluindo os
    dois novos desta frente, `jwt.spec.ts` e
    `device-binding-config-page.spec.ts`) mas não estão instalados em
    `frontend/package.json` — nenhum spec de frontend roda hoje, só
-   typecheck/build.
+   typecheck/build.~~
+
+   > **FECHADO (2026-09-11):** a infraestrutura de teste de frontend foi
+   > instalada e ligada nesta data — ver "Implementação — Vínculo de
+   > Dispositivo Institucional (Frente 12): Testing + QA + Project
+   > Guardian (2026-09-11)" mais abaixo. O nome do segundo spec citado
+   > acima também mudou: `device-binding-config-page.spec.ts` foi
+   > renomeado para `device-binding-config-page.spec.tsx` (contém JSX).
 
 GAP-10 continua **aberto, intocado**, como stub-only nos dois módulos —
 exatamente como confirmado na rodada de gaps registrada acima.
@@ -4030,6 +4048,94 @@ fechamento correspondente em `pending-decisions.md`.
 testes feita pela sessão principal no mesmo dia; decisão de pausar a
 cadeia antes de Testing — Usuário, 2026-09-10 ("Vou rodar o teste em um
 segundo momento").
+
+## Implementação — Vínculo de Dispositivo Institucional (Frente 12): Testing + QA + Project Guardian (2026-09-11)
+
+Retoma a cadeia pausada na seção acima. Nenhuma decisão de produto,
+arquitetura ou tecnologia nova nesta rodada — só fechamento técnico
+(Testing formal, QA e Project Guardian) sobre a implementação já
+aprovada.
+
+### Infraestrutura de teste de frontend instalada (fecha gap pré-existente)
+
+`vitest`, `@testing-library/react`, `@testing-library/jest-dom` e
+`jsdom` foram instalados em `frontend/package.json`, com script
+`"test": "vitest run"`. `vite.config.ts` ganhou um bloco `test`
+(`environment: 'jsdom'`, `setupFiles: ['./src/test-setup.ts']`), e
+`frontend/src/test-setup.ts` é novo (importa
+`@testing-library/jest-dom/vitest` e roda `afterEach(() => cleanup())`).
+Isto fecha o item 4 ("Gap pré-existente, não introduzido por esta
+frente") registrado na seção "Itens sinalizados pelos agentes de
+implementação" acima — o gap não era específico da Frente 12, mas foi
+fechado no contexto dela.
+
+Quatro arquivos de spec foram renomeados de `.spec.ts` para `.spec.tsx`
+por conterem JSX (o transform do Vite não parseia JSX em `.ts`):
+`frontend/src/features/attendance-config/attendance-config-page.spec.tsx`,
+`frontend/src/features/device-binding/device-binding-config-page.spec.tsx`,
+`frontend/src/features/device-binding/device-link-prompt.spec.tsx`,
+`frontend/src/features/portal-student-warnings/student-warnings-page.spec.tsx`.
+Os dois primeiros pertencem à Frente 12; os outros dois pertencem a
+frentes já fechadas (06/07) e foram corrigidos pelo mesmo motivo, sem
+mudança de comportamento.
+
+### Suítes verdes e bug real encontrado
+
+Com a infraestrutura ligada, as suítes agora executam de fato: backend
+**971/971 testes (96 suítes)**, frontend **67/67 testes (6 arquivos)**.
+Typecheck (`npx tsc -b --noEmit`) e build (`npx vite build`) do frontend
+limpos — reverificados de forma independente pela sessão principal, não
+apenas relatados pelo agente.
+
+Testing achou um **bug real de implementação** em
+`frontend/src/features/device-binding/device-binding-config-page.tsx`:
+um `useEffect` de sincronização (`minutes` a partir do `config` carregado
+via `useQuery`) podia sobrescrever silenciosamente o valor que o usuário
+(Direção/Reitoria) estava digitando, se o fetch inicial resolvesse no
+mesmo ciclo de render do `onChange` — um bug de perda de dado do
+usuário, não uma peculiaridade de teste. Corrigido com uma ref
+`hasUserEditedRef` que, uma vez marcada, impede o efeito de sobrescrever
+o campo. Coberto por teste novo,
+`test_deviceBindingConfigPage_isDirection_submitsUpdatedMinutes`.
+
+### QA — aprovado, sem divergência bloqueante
+
+QA validou os 28 critérios de aceite de
+`institutional-device-binding-requirements-analysis.md` contra
+RULE-DEV-01..18 (validação estática — sem Postgres/Docker disponíveis no
+ambiente, mesmo padrão já aceito para a Frente 03). Nenhuma divergência
+real código×regra bloqueante. Três pontos **não-bloqueantes**, sem
+decisão nova, registrados como itens abertos para rodada futura em
+`pending-decisions.md`: (a) se coordenação deveria também enxergar
+(list/get, sem editar) o inventário de máquinas institucionais — hoje
+restrito a Direção/Reitoria por conservadorismo do Backend Agent, ver
+item 1 de "Itens sinalizados pelos agentes de implementação" acima; (b)
+endpoint de busca de BYOD por `personId` + tela administrativa de
+revogação (RULE-DEV-18) — hoje só via chamada direta de API; (c)
+"titular padrão" de `VIEW_DEVICE_BINDINGS` (RULE-DEV-16) não é grant
+automático — é diretriz de configuração para o admin do tenant criar o
+`permission_group` correspondente, mesmo padrão de todo o enum
+`Permission` na plataforma.
+
+### Project Guardian — veredito Consistente
+
+Nenhuma inconsistência bloqueante. Apontou apenas documentação
+desatualizada — exatamente as correções registradas nesta seção e nas
+notas de correção acima (`architecture-overview.md` e
+`pending-decisions.md` citando infraestrutura de teste ainda não
+instalada e o nome antigo do spec; contagem de testes do backend
+desatualizada; `business-rules/SKILL.md` sem os arquivos de referência
+da Frente 12 no índice — fechado em
+`.claude/skills/business-rules/SKILL.md`).
+
+**Cadeia de agentes desta rodada:** Testing → QA → Project Guardian →
+Product Definition (este fechamento de documentação).
+**Verificação:** suíte completa reexecutada pela sessão principal
+(backend e frontend), typecheck e build do frontend reexecutados
+independentemente.
+**Source of confirmation:** Testing Agent, QA Agent e Project Guardian
+Agent, 2026-09-11; verificação independente da sessão principal no mesmo
+dia. Ver fechamento correspondente em `pending-decisions.md`.
 
 ## Escopo NÃO formalizado — Frente 13 (verificação facial no login)
 

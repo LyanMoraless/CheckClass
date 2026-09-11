@@ -140,6 +140,24 @@ so agents can find the referenced rule quickly without reading everything.
   never be hardcoded (minimum attendance %, check-in tolerance, access
   permissions/schedules, surveillance levels, lockdown rules, required
   attendance factors).
+- `references/institutional-device-binding-rules.md` — RULE-DEV-01..18
+  (Frente 12, added 2026-09-10): institutional-machine/BYOD device
+  binding via TPM-backed WebAuthn credential as identity proof, separate
+  `device_identity` entity from the ingestion `device` entity, checkout
+  triggers (logout, class-session end, inactivity, token expiry — the
+  first to occur), one active institutional binding per person at a
+  time, binding never checks in by itself and never counts as
+  permanence, divergence between device room and class room ignores the
+  factor without generating a pendency, configurable required-factor
+  addendum to RULE-ATT-02, BYOD device limit (one per person) and
+  administrative revocation, `VIEW_DEVICE_BINDINGS` permission
+  (addendum to RULE-ACC-08).
+- `references/institutional-device-binding-requirements-analysis.md` —
+  Business Analyst memorial for Frente 12 (2026-09-10): actors, flows,
+  exceptions, impact matrix over RULE-ATT-02/07/11, 28
+  Given/When/Then acceptance criteria. Analysis document, not the source
+  of truth for the rules — `institutional-device-binding-rules.md`
+  prevails in case of divergence.
 
 Rules are added here only after explicit user confirmation, recorded by
 the Product Definition Agent.

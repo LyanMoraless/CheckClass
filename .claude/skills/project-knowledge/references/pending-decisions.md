@@ -3614,6 +3614,15 @@ Formalização completa (com o detalhe técnico de cada item) em
   cobrindo os quatro gatilhos de RULE-DEV-06 (RULE-DEV-06 emendada) com
   sweep preguiçoso como rede de segurança (Decisão B). Suíte completa:
   **924 testes / 94 suítes, 0 regressão**; build limpo.
+
+  > **Correção (2026-09-11) — contagem superada pela rodada de Testing:**
+  > "924 testes / 94 suítes" era a contagem no momento em que a
+  > implementação (Database + Backend + Frontend) foi concluída, antes da
+  > cadeia pausar propositalmente antes de Testing. Depois que Testing
+  > rodou de fato, a contagem final do backend é **971 testes / 96
+  > suítes**, 0 regressão. Ver "Resolvido — Frente 12 formalmente
+  > encerrada: Testing + QA + Project Guardian rodaram (2026-09-11)" mais
+  > abaixo nesta mesma skill.
 - **Frontend:** features `device-binding` (hook
   `useDeviceBindingSession` — oferta pós-login, timers de checkout,
   reidratação) e `device-identity` (inventário institucional,
@@ -3672,3 +3681,76 @@ de produto/arquitetura/tecnologia nova.
 mesmo dia; decisão de pausar a cadeia antes de Testing — Usuário,
 2026-09-10 ("Finalize tudo dessa frente. Vou rodar o teste em um segundo
 momento. Pode fazer os commits e o push.").
+
+### Resolvido — Frente 12 formalmente encerrada: Testing + QA + Project Guardian rodaram (2026-09-11)
+
+Retoma a entrada acima ("Frente 12 implementada... cadeia pausada antes
+de Testing"), que permanece como registro histórico do estado naquele
+momento. Nesta data, a cadeia completou as etapas que faltavam: Testing
+(formal, com testes novos), QA e Project Guardian. Detalhe técnico
+completo em
+`project-knowledge/references/architecture-overview.md`, seção
+"Implementação — Vínculo de Dispositivo Institucional (Frente 12):
+Testing + QA + Project Guardian (2026-09-11)". Resumo:
+
+- **Infraestrutura de teste de frontend instalada** (fechava um gap
+  pré-existente, não introduzido pela Frente 12): `vitest`,
+  `@testing-library/react`, `@testing-library/jest-dom`, `jsdom` em
+  `frontend/package.json`; script `"test": "vitest run"`;
+  `vite.config.ts` com bloco `test`; `frontend/src/test-setup.ts` novo.
+- **Quatro specs renomeados** de `.spec.ts` para `.spec.tsx` (contêm
+  JSX): dois da Frente 12
+  (`device-binding-config-page.spec.tsx`,
+  `device-link-prompt.spec.tsx`) e dois de frentes já fechadas (06/07:
+  `attendance-config-page.spec.tsx`,
+  `student-warnings-page.spec.tsx`), mesmo motivo, sem mudança de
+  comportamento.
+- **Suítes 100% verdes:** backend 971/971 testes (96 suítes), frontend
+  67/67 testes (6 arquivos). Typecheck e build do frontend limpos,
+  reverificados de forma independente pela sessão principal.
+- **Bug real de implementação encontrado e corrigido:** em
+  `device-binding-config-page.tsx`, um `useEffect` de sincronização
+  podia sobrescrever silenciosamente o valor que a Direção/Reitoria
+  estava digitando no campo de minutos, se o fetch inicial resolvesse no
+  mesmo ciclo de render do `onChange` — bug de perda de dado do usuário,
+  corrigido com uma ref `hasUserEditedRef`. Coberto por teste novo,
+  `test_deviceBindingConfigPage_isDirection_submitsUpdatedMinutes`.
+- **QA aprovou** os 28 critérios de aceite de
+  `institutional-device-binding-requirements-analysis.md` contra
+  RULE-DEV-01..18 (validação estática, sem Postgres/Docker disponíveis —
+  mesmo padrão aceito para a Frente 03). Nenhuma divergência bloqueante.
+- **Project Guardian: veredito Consistente.** Nenhuma inconsistência
+  bloqueante — apenas documentação desatualizada, corrigida nesta mesma
+  rodada (esta entrada, o addendum em `architecture-overview.md`, e o
+  índice de `.claude/skills/business-rules/SKILL.md`).
+
+**Três itens não-bloqueantes levantados pelo QA — não são decisões novas,
+apenas registro de pontos em aberto para rodada futura, sem urgência de
+negócio:**
+1. Confirmar com o usuário, em rodada futura, se coordenação deveria
+   também enxergar (list/get, sem editar) o inventário de máquinas
+   institucionais — hoje restrito a Direção/Reitoria por conservadorismo
+   do Backend Agent (não decidido por nenhuma regra; RULE-DEV-15 só
+   fechou quem **administra**). Mesmo item já registrado como ponto 1 em
+   "Itens sinalizados pelos agentes de implementação" em
+   `architecture-overview.md`.
+2. Avaliar em rodada futura um endpoint de busca de BYOD por `personId`
+   + tela administrativa de revogação (RULE-DEV-18) — hoje só acessível
+   via chamada direta de API; autosserviço (revogação pela própria
+   pessoa) funciona integralmente.
+3. "Titular padrão" de `VIEW_DEVICE_BINDINGS` (RULE-DEV-16, coordenação +
+   diretoria) não é grant automático do sistema — é diretriz de
+   configuração para o admin do tenant criar o `permission_group`
+   correspondente, mesmo padrão de todo o enum `Permission` na
+   plataforma (nenhum código concede permissão por nome de papel, exceto
+   a conta Root).
+
+GAP-10 continua **aberto, intocado** — nenhuma mudança em relação às
+entradas anteriores desta skill.
+
+**Cadeia de agentes:** Testing → QA → Project Guardian → Product
+Definition (fechamento de documentação). **Frente 12 tecnicamente
+encerrada** a partir desta data.
+**Source of confirmation:** Testing Agent, QA Agent e Project Guardian
+Agent, 2026-09-11; verificação independente da sessão principal no mesmo
+dia (fatos de código/suíte de testes observáveis no repositório).
