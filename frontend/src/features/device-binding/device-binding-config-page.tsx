@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save, Timer } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ErrorBanner } from '../../components/error-banner';
 import { InfoBanner } from '../../components/info-banner';
 import { Loading } from '../../components/loading';
@@ -25,12 +25,26 @@ export function DeviceBindingConfigPage() {
 
   const { data: config, isLoading, error } = useQuery({ queryKey: QUERY_KEY, queryFn: getDeviceBindingConfig });
   const [minutes, setMinutes] = useState('30');
-
+  // Guards against a real race: the initial config fetch can resolve in the
+  // very same render/commit as the user's first keystroke in the field
+  // below (e.g. a fast edit right as the page finishes loading). Without
+  // this guard, this sync-from-server effect unconditionally overwrites
+  // `minutes` whenever `config` changes identity — including that first
+  // arrival — silently discarding whatever the Direção/Reitoria user just
+  // typed. A ref (not state) is used so the flag is visible to the effect
+  // within the very same commit that set it, with no extra render. Caught
+  // by test_deviceBindingConfigPage_isDirection_submitsUpdatedMinutes.
+  const hasUserEditedRef = useRef(false);
   useEffect(() => {
-    if (config) {
+    if (config && !hasUserEditedRef.current) {
       setMinutes(String(config.inactivityTimeoutMinutes));
     }
   }, [config]);
+
+  function handleMinutesChange(value: string) {
+    hasUserEditedRef.current = true;
+    setMinutes(value);
+  }
 
   const mutation = useMutation({
     mutationFn: () => upsertDeviceBindingConfig(Number(minutes)),
@@ -70,7 +84,7 @@ export function DeviceBindingConfigPage() {
               min={1}
               step="1"
               value={minutes}
-              onChange={(event) => setMinutes(event.target.value)}
+              onChange={(event) => handleMinutesChange(event.target.value)}
               required
             />
           </label>
