@@ -1,20 +1,18 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as webauthnBrowser from '@simplewebauthn/browser';
 import * as authStorage from '../../lib/auth-storage';
 import * as bindingApi from './device-binding-api';
 import { useDeviceBindingSession } from './use-device-binding-session';
 
-// NOTE (Testing Agent, 2026-09-11): vitest/@testing-library/react are not
-// installed in frontend/package.json yet (pre-existing gap, not introduced by
-// Frente 12 — see architecture-overview.md's "Implementação — Vínculo de
-// Dispositivo Institucional" item 4). This spec cannot be run today; it is
-// written as typed documentation of use-device-binding-session.ts's intended
-// behavior, same posture already established by jwt.spec.ts and
-// device-binding-config-page.spec.ts. It has NOT been executed — treat it as
-// a design record to validate once the tooling gap is closed (Tech Decision
-// scope), not as proof the hook currently behaves this way.
-//
+// @simplewebauthn/browser is a real ESM package — its named exports are
+// non-configurable on the module namespace object, so vi.spyOn(...) on them
+// directly throws ("Cannot redefine property"). vi.mock(...) (hoisted above
+// these imports by Vitest regardless of where it's written) replaces the
+// whole module with an auto-mocked version whose exports ARE plain vi.fn()s,
+// which vi.mocked(...) below then configures per test.
+vi.mock('@simplewebauthn/browser');
+
 // This hook is the single highest-risk piece of the whole Frente 12 frontend
 // surface: a mount-once async bootstrap racing a component unmount, two
 // independently-scheduled setTimeout timers (Gatilhos 3/4, RULE-DEV-06), and
@@ -27,6 +25,22 @@ function buildToken(payload: Record<string, unknown>): string {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const body = btoa(JSON.stringify(payload));
   return `${header}.${body}.signature-not-checked-client-side`;
+}
+
+// waitFor() and vi.useFakeTimers() don't mix in this project's
+// testing-library setup: @testing-library/dom only auto-detects *Jest's*
+// fake timers (it checks for a global `jest`, which Vitest never defines),
+// so under vi.useFakeTimers() (always on in this file's beforeEach) its
+// usual setInterval-based retry loop silently never fires — every waitFor()
+// call just hangs until Vitest's own wall-clock test timeout kills the
+// test. This hook's mount-time bootstrap is plain Promise-chained
+// microtasks (no timers of its own until scheduleTimers runs), so draining
+// the fake clock by 0ms — wrapped in act() so the resulting state update
+// commits — is enough to let it settle.
+async function flushMicrotasks() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
 }
 
 describe('useDeviceBindingSession', () => {
@@ -44,12 +58,13 @@ describe('useDeviceBindingSession', () => {
   describe('mount-once rehydrate-or-offer bootstrap', () => {
     it('test_mount_noExistingBindingAndCapableDevice_offersDeviceLink', async () => {
       vi.spyOn(bindingApi, 'getMyActiveBinding').mockResolvedValue(null);
-      vi.spyOn(webauthnBrowser, 'platformAuthenticatorIsAvailable').mockResolvedValue(true);
+      vi.mocked(webauthnBrowser.platformAuthenticatorIsAvailable).mockResolvedValue(true);
 
       const { result } = renderHook(() => useDeviceBindingSession());
 
       expect(result.current.offerState).toBe('checking');
-      await waitFor(() => expect(result.current.offerState).toBe('offering'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('offering');
       expect(result.current.activeBinding).toBeNull();
     });
 
@@ -57,20 +72,22 @@ describe('useDeviceBindingSession', () => {
     // never any UI at all, not even an error.
     it('test_mount_noExistingBindingAndIncapableDevice_staysHiddenWithNoUi', async () => {
       vi.spyOn(bindingApi, 'getMyActiveBinding').mockResolvedValue(null);
-      vi.spyOn(webauthnBrowser, 'platformAuthenticatorIsAvailable').mockResolvedValue(false);
+      vi.mocked(webauthnBrowser.platformAuthenticatorIsAvailable).mockResolvedValue(false);
 
       const { result } = renderHook(() => useDeviceBindingSession());
 
-      await waitFor(() => expect(result.current.offerState).toBe('hidden'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('hidden');
     });
 
     it('test_mount_capabilityCheckRejects_treatedAsIncapableNeverThrows', async () => {
       vi.spyOn(bindingApi, 'getMyActiveBinding').mockResolvedValue(null);
-      vi.spyOn(webauthnBrowser, 'platformAuthenticatorIsAvailable').mockRejectedValue(new Error('not supported in this context'));
+      vi.mocked(webauthnBrowser.platformAuthenticatorIsAvailable).mockRejectedValue(new Error('not supported in this context'));
 
       const { result } = renderHook(() => useDeviceBindingSession());
 
-      await waitFor(() => expect(result.current.offerState).toBe('hidden'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('hidden');
     });
 
     it('test_mount_existingActiveBinding_rehydratesWithoutOfferingAndSchedulesTimers', async () => {
@@ -87,11 +104,12 @@ describe('useDeviceBindingSession', () => {
       };
       vi.spyOn(bindingApi, 'getMyActiveBinding').mockResolvedValue(existing);
       vi.spyOn(bindingApi, 'getDeviceBindingConfig').mockResolvedValue({ inactivityTimeoutMinutes: 30, isDefault: false });
-      const capabilitySpy = vi.spyOn(webauthnBrowser, 'platformAuthenticatorIsAvailable');
+      const capabilitySpy = vi.mocked(webauthnBrowser.platformAuthenticatorIsAvailable);
 
       const { result } = renderHook(() => useDeviceBindingSession());
 
-      await waitFor(() => expect(result.current.offerState).toBe('hidden'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('hidden');
       expect(result.current.activeBinding).toEqual(existing);
       // An already-bound session never runs Tech Decision C's capability
       // check at all — the offer only ever applies to an UNBOUND device.
@@ -115,7 +133,8 @@ describe('useDeviceBindingSession', () => {
       const checkoutSpy = vi.spyOn(bindingApi, 'checkoutMyBinding').mockResolvedValue({ checkedOut: true });
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.offerState).toBe('hidden'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('hidden');
 
       // Fallback is 30 minutes (device-binding-config.service.ts's own
       // DEFAULT_INACTIVITY_TIMEOUT_MINUTES) — advancing just short of it must
@@ -150,7 +169,8 @@ describe('useDeviceBindingSession', () => {
       const checkoutSpy = vi.spyOn(bindingApi, 'checkoutMyBinding').mockResolvedValue({ checkedOut: true });
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.activeBinding).toEqual(existing));
+      await flushMicrotasks();
+      expect(result.current.activeBinding).toEqual(existing);
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5 * 60_000);
@@ -180,7 +200,8 @@ describe('useDeviceBindingSession', () => {
       vi.spyOn(bindingApi, 'checkoutMyBinding').mockRejectedValue(new Error('network error'));
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.activeBinding).toEqual(existing));
+      await flushMicrotasks();
+      expect(result.current.activeBinding).toEqual(existing);
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5 * 60_000);
@@ -214,7 +235,8 @@ describe('useDeviceBindingSession', () => {
       const checkoutSpy = vi.spyOn(bindingApi, 'checkoutMyBinding').mockResolvedValue({ checkedOut: true });
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.activeBinding).toEqual(existing));
+      await flushMicrotasks();
+      expect(result.current.activeBinding).toEqual(existing);
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(10 * 60_000);
@@ -241,7 +263,8 @@ describe('useDeviceBindingSession', () => {
       const checkoutSpy = vi.spyOn(bindingApi, 'checkoutMyBinding').mockResolvedValue({ checkedOut: true });
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.activeBinding).toEqual(existing));
+      await flushMicrotasks();
+      expect(result.current.activeBinding).toEqual(existing);
 
       // Advance well past any plausible token lifetime — only the (120 min)
       // inactivity timer should ever be pending; nothing must fire yet.
@@ -255,12 +278,12 @@ describe('useDeviceBindingSession', () => {
   describe('bindThisDevice (Tech Decision C ceremony)', () => {
     it('test_bindThisDevice_success_setsActiveBindingAndOfferStateBound', async () => {
       vi.spyOn(bindingApi, 'getMyActiveBinding').mockResolvedValue(null);
-      vi.spyOn(webauthnBrowser, 'platformAuthenticatorIsAvailable').mockResolvedValue(true);
+      vi.mocked(webauthnBrowser.platformAuthenticatorIsAvailable).mockResolvedValue(true);
       vi.spyOn(bindingApi, 'generateLoginOptions').mockResolvedValue({
         options: {} as never,
         challengeToken: 'challenge-token-1',
       });
-      vi.spyOn(webauthnBrowser, 'startAuthentication').mockResolvedValue({ id: 'assertion-1' } as never);
+      vi.mocked(webauthnBrowser.startAuthentication).mockResolvedValue({ id: 'assertion-1' } as never);
       const newBinding: bindingApi.DeviceBinding = {
         id: 'binding-2',
         personId: 'person-1',
@@ -275,7 +298,8 @@ describe('useDeviceBindingSession', () => {
       vi.spyOn(bindingApi, 'completeLogin').mockResolvedValue({ binding: newBinding, inactivityTimeoutMinutes: 30 });
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.offerState).toBe('offering'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('offering');
 
       await act(async () => {
         await result.current.bindThisDevice();
@@ -290,12 +314,13 @@ describe('useDeviceBindingSession', () => {
     // network error — all land here, never block the already-completed login.
     it('test_bindThisDevice_anyFailure_setsOfferStateFailedWithoutCreatingBinding', async () => {
       vi.spyOn(bindingApi, 'getMyActiveBinding').mockResolvedValue(null);
-      vi.spyOn(webauthnBrowser, 'platformAuthenticatorIsAvailable').mockResolvedValue(true);
+      vi.mocked(webauthnBrowser.platformAuthenticatorIsAvailable).mockResolvedValue(true);
       vi.spyOn(bindingApi, 'generateLoginOptions').mockResolvedValue({ options: {} as never, challengeToken: 'challenge-token-1' });
-      vi.spyOn(webauthnBrowser, 'startAuthentication').mockRejectedValue(new Error('user cancelled the platform prompt'));
+      vi.mocked(webauthnBrowser.startAuthentication).mockRejectedValue(new Error('user cancelled the platform prompt'));
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.offerState).toBe('offering'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('offering');
 
       await act(async () => {
         await result.current.bindThisDevice();
@@ -309,10 +334,11 @@ describe('useDeviceBindingSession', () => {
   describe('dismissOffer', () => {
     it('test_dismissOffer_fromOffering_setsHidden', async () => {
       vi.spyOn(bindingApi, 'getMyActiveBinding').mockResolvedValue(null);
-      vi.spyOn(webauthnBrowser, 'platformAuthenticatorIsAvailable').mockResolvedValue(true);
+      vi.mocked(webauthnBrowser.platformAuthenticatorIsAvailable).mockResolvedValue(true);
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.offerState).toBe('offering'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('offering');
 
       act(() => result.current.dismissOffer());
 
@@ -323,11 +349,12 @@ describe('useDeviceBindingSession', () => {
   describe('checkoutBeforeLogout (Gatilho 1)', () => {
     it('test_checkoutBeforeLogout_noActiveBinding_neverCallsCheckoutEndpoint', async () => {
       vi.spyOn(bindingApi, 'getMyActiveBinding').mockResolvedValue(null);
-      vi.spyOn(webauthnBrowser, 'platformAuthenticatorIsAvailable').mockResolvedValue(false);
+      vi.mocked(webauthnBrowser.platformAuthenticatorIsAvailable).mockResolvedValue(false);
       const checkoutSpy = vi.spyOn(bindingApi, 'checkoutMyBinding');
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.offerState).toBe('hidden'));
+      await flushMicrotasks();
+      expect(result.current.offerState).toBe('hidden');
 
       await act(async () => {
         await result.current.checkoutBeforeLogout();
@@ -353,7 +380,8 @@ describe('useDeviceBindingSession', () => {
       const checkoutSpy = vi.spyOn(bindingApi, 'checkoutMyBinding').mockResolvedValue({ checkedOut: true });
 
       const { result } = renderHook(() => useDeviceBindingSession());
-      await waitFor(() => expect(result.current.activeBinding).toEqual(existing));
+      await flushMicrotasks();
+      expect(result.current.activeBinding).toEqual(existing);
 
       await act(async () => {
         await result.current.checkoutBeforeLogout();

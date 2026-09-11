@@ -1,8 +1,11 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AttendanceConfigPage } from './attendance-config-page';
 import * as configApi from './attendance-config-api';
+import * as coursesApi from '../courses/courses-api';
+import * as classGroupsApi from '../class-groups/class-groups-api';
+import * as authContext from '../auth/auth-context';
 
 // Configuration page for attendance rules (Controle A and Controle B).
 // This test suite covers form validation, submission, and the two distinct
@@ -18,6 +21,20 @@ describe('AttendanceConfigPage', () => {
       },
     });
     vi.clearAllMocks();
+    // AttendanceConfigPage reads useAuth().hasPermission('configure_attendance_rules')
+    // to gate the whole form fieldset. There is no AuthProvider in this render
+    // tree (only QueryClientProvider), so useAuth is mocked directly — same
+    // pattern as device-binding-config-page.spec.tsx — with the permission
+    // granted, since every test below exercises the enabled form.
+    vi.spyOn(authContext, 'useAuth').mockReturnValue({
+      status: 'authenticated',
+      personId: 'person-1',
+      permissions: new Set(['configure_attendance_rules']),
+      roleContext: { isStudent: false, teaching: [], coordinating: [], isDirection: false, institutionType: 'faculdade' },
+      hasPermission: () => true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
   });
 
   function renderPage() {
@@ -34,8 +51,8 @@ describe('AttendanceConfigPage', () => {
   describe('fieldset organization', () => {
     beforeEach(() => {
       vi.spyOn(configApi, 'listConfigs').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listCourses').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listClassGroups').mockResolvedValue([]);
+      vi.spyOn(coursesApi, 'listCourses').mockResolvedValue([]);
+      vi.spyOn(classGroupsApi, 'listClassGroups').mockResolvedValue([]);
       vi.spyOn(configApi, 'listFactorTypes').mockResolvedValue([]);
     });
 
@@ -72,8 +89,8 @@ describe('AttendanceConfigPage', () => {
   describe('Controle A fields', () => {
     beforeEach(() => {
       vi.spyOn(configApi, 'listConfigs').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listCourses').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listClassGroups').mockResolvedValue([]);
+      vi.spyOn(coursesApi, 'listCourses').mockResolvedValue([]);
+      vi.spyOn(classGroupsApi, 'listClassGroups').mockResolvedValue([]);
       vi.spyOn(configApi, 'listFactorTypes').mockResolvedValue([]);
     });
 
@@ -102,8 +119,8 @@ describe('AttendanceConfigPage', () => {
   describe('Controle B fields', () => {
     beforeEach(() => {
       vi.spyOn(configApi, 'listConfigs').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listCourses').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listClassGroups').mockResolvedValue([]);
+      vi.spyOn(coursesApi, 'listCourses').mockResolvedValue([]);
+      vi.spyOn(classGroupsApi, 'listClassGroups').mockResolvedValue([]);
       vi.spyOn(configApi, 'listFactorTypes').mockResolvedValue([]);
     });
 
@@ -154,8 +171,8 @@ describe('AttendanceConfigPage', () => {
   describe('form validation', () => {
     beforeEach(() => {
       vi.spyOn(configApi, 'listConfigs').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listCourses').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listClassGroups').mockResolvedValue([]);
+      vi.spyOn(coursesApi, 'listCourses').mockResolvedValue([]);
+      vi.spyOn(classGroupsApi, 'listClassGroups').mockResolvedValue([]);
       vi.spyOn(configApi, 'listFactorTypes').mockResolvedValue([]);
       vi.spyOn(configApi, 'upsertConfig').mockResolvedValue({ configId: 'config-1' });
     });
@@ -208,13 +225,13 @@ describe('AttendanceConfigPage', () => {
   describe('form submission', () => {
     beforeEach(() => {
       vi.spyOn(configApi, 'listConfigs').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listCourses').mockResolvedValue([
-        { id: 'course-1', name: 'Engenharia' },
-        { id: 'course-2', name: 'Medicina' },
+      vi.spyOn(coursesApi, 'listCourses').mockResolvedValue([
+        { id: 'course-1', name: 'Engenharia', code: null },
+        { id: 'course-2', name: 'Medicina', code: null },
       ]);
-      vi.spyOn(configApi, 'listClassGroups').mockResolvedValue([
-        { id: 'class-1', name: 'Turma A' },
-        { id: 'class-2', name: 'Turma B' },
+      vi.spyOn(classGroupsApi, 'listClassGroups').mockResolvedValue([
+        { id: 'class-1', courseId: 'course-1', subjectIds: [], name: 'Turma A', roomId: null, termStartDate: null, termEndDate: null },
+        { id: 'class-2', courseId: 'course-1', subjectIds: [], name: 'Turma B', roomId: null, termStartDate: null, termEndDate: null },
       ]);
       vi.spyOn(configApi, 'listFactorTypes').mockResolvedValue([]);
     });
@@ -239,11 +256,15 @@ describe('AttendanceConfigPage', () => {
       fireEvent.click(submitButton);
 
       await waitFor(() => {
+        // TanStack Query v5's mutationFn is invoked as fn(variables, context)
+        // — the second arg (client/meta/mutationKey) isn't something this
+        // page controls, so only the variables shape is asserted here.
         expect(upsertMock).toHaveBeenCalledWith(
           expect.objectContaining({
             minAccumulatedFrequencyPercentage: 80,
             accumulatedFrequencyPeriod: 'trimester',
           }),
+          expect.anything(),
         );
       });
     });
@@ -265,6 +286,7 @@ describe('AttendanceConfigPage', () => {
             scopeType: 'institution',
             scopeId: undefined,
           }),
+          expect.anything(),
         );
       });
     });
@@ -298,6 +320,7 @@ describe('AttendanceConfigPage', () => {
             scopeType: 'course',
             scopeId: 'course-1',
           }),
+          expect.anything(),
         );
       });
     });
@@ -331,6 +354,7 @@ describe('AttendanceConfigPage', () => {
             scopeType: 'class_group',
             scopeId: 'class-1',
           }),
+          expect.anything(),
         );
       });
     });
@@ -362,8 +386,8 @@ describe('AttendanceConfigPage', () => {
   describe('required fields', () => {
     beforeEach(() => {
       vi.spyOn(configApi, 'listConfigs').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listCourses').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listClassGroups').mockResolvedValue([]);
+      vi.spyOn(coursesApi, 'listCourses').mockResolvedValue([]);
+      vi.spyOn(classGroupsApi, 'listClassGroups').mockResolvedValue([]);
       vi.spyOn(configApi, 'listFactorTypes').mockResolvedValue([]);
     });
 
@@ -392,8 +416,8 @@ describe('AttendanceConfigPage', () => {
   describe('Control A and B coupling', () => {
     beforeEach(() => {
       vi.spyOn(configApi, 'listConfigs').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listCourses').mockResolvedValue([]);
-      vi.spyOn(configApi, 'listClassGroups').mockResolvedValue([]);
+      vi.spyOn(coursesApi, 'listCourses').mockResolvedValue([]);
+      vi.spyOn(classGroupsApi, 'listClassGroups').mockResolvedValue([]);
       vi.spyOn(configApi, 'listFactorTypes').mockResolvedValue([]);
     });
 
@@ -426,6 +450,7 @@ describe('AttendanceConfigPage', () => {
             minAccumulatedFrequencyPercentage: expect.any(Number),
             accumulatedFrequencyPeriod: expect.any(String),
           }),
+          expect.anything(),
         );
       });
     });

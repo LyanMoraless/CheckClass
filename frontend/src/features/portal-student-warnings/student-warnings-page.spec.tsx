@@ -1,10 +1,46 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { act } from 'react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StudentWarningsPage } from './student-warnings-page';
 import * as warningsApi from './student-warnings-api';
 import * as noticesApi from '../portal-student-justifications/absence-justification-notice-api';
 import * as scheduleApi from '../portal-student/student-schedule-api';
+
+// waitFor() and vi.useFakeTimers() don't mix in this project's
+// testing-library setup: @testing-library/dom only auto-detects *Jest's*
+// fake timers (it checks for a global `jest`, which Vitest never defines),
+// so under vi.useFakeTimers() its usual setInterval-based retry loop
+// silently never fires — every waitFor() call just hangs until Vitest's own
+// wall-clock test timeout kills the test. The two helpers below replace
+// waitFor() for the handful of specs in this file that poll under fake
+// timers (see the "polling behavior" and "first-access badge" describes).
+async function flushMicrotasks() {
+  // Drains pending microtasks (e.g. an already in-flight mocked fetch
+  // promise) without requiring any timer to be scheduled yet — wrapped in
+  // act() so any resulting React state update commits to the DOM.
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+}
+
+async function flushNextTimer() {
+  // Advances the fake clock to whatever timer is due next (the refetch
+  // interval, here) rather than jumping straight to a target elapsed time
+  // — wrapped in act(). A single advanceTimersByTimeAsync(intervalMs) jump
+  // can land exactly on the boundary of react-query's own notifyManager
+  // hop (a *further*, separately-scheduled zero-delay timer fired only
+  // once the refetch's promise resolves, which is what actually flips this
+  // component's rendered state) and miss firing it; advancing to "whatever
+  // timer is due next" instead reliably drains that whole chain in one go.
+  //
+  // Deliberately does NOT loop: every extra call after the first one lands
+  // squarely on react-query's *next* 60s recurrence (there is nothing else
+  // scheduled in between) and would trigger another, unwanted fetch.
+  await act(async () => {
+    await vi.advanceTimersToNextTimerAsync();
+  });
+}
 
 // Test page component for student warnings (RULE-FREQ-04 items 1/2, RULE-FREQ-08.3)
 // and, since Frente 07, the RULE-JUST-21/22 justification-notice merge into
@@ -26,6 +62,19 @@ describe('StudentWarningsPage', () => {
     // one individually; tests that care about notices override it below.
     vi.spyOn(noticesApi, 'listMyJustificationNotices').mockResolvedValue([]);
     vi.spyOn(scheduleApi, 'listMySchedule').mockResolvedValue([]);
+  });
+
+  // Belt-and-suspenders cleanup: if a test below that calls
+  // vi.useFakeTimers() throws before reaching its own vi.useRealTimers(),
+  // fake timers would otherwise leak into every subsequent test in this
+  // file. @testing-library/dom's waitFor() only auto-detects *Jest's* fake
+  // timers (it checks for a global `jest`, which Vitest never defines), so
+  // under a leaked Vitest fake-timer clock, waitFor()'s own polling
+  // interval silently never fires and every later test hangs until
+  // Vitest's real 5000ms test timeout kills it — exactly the cascading
+  // failure this guard prevents.
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   function renderPage() {
@@ -107,7 +156,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Cálculo I',
           warningType: 'below_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 68,
           presentCount: 27,
           consideredCount: 40,
@@ -135,7 +184,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Cálculo I',
           warningType: 'approaching_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 78,
           presentCount: 31,
           consideredCount: 40,
@@ -162,7 +211,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Cálculo I',
           warningType: 'below_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 68,
           presentCount: 27,
           consideredCount: 40,
@@ -178,7 +227,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-2',
           subjectName: 'Física II',
           warningType: 'approaching_minimum',
-          warningTypeSince: new Date('2026-09-02'),
+          warningTypeSince: '2026-09-02T00:00:00.000Z',
           frequencyPercentage: 80,
           presentCount: 32,
           consideredCount: 40,
@@ -222,7 +271,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Cálculo I',
           warningType: 'below_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 68,
           presentCount: 27,
           consideredCount: 40,
@@ -236,16 +285,12 @@ describe('StudentWarningsPage', () => {
 
       renderPage();
 
-      await waitFor(() => {
-        expect(mockListMyWarnings).toHaveBeenCalledTimes(1);
-      });
+      await flushMicrotasks();
+      expect(mockListMyWarnings).toHaveBeenCalledTimes(1);
 
-      // Advance time by 60s
-      vi.advanceTimersByTime(60000);
-
-      await waitFor(() => {
-        expect(mockListMyWarnings).toHaveBeenCalledTimes(2);
-      });
+      // Advance time by 60s to trigger the refetch interval.
+      await flushNextTimer();
+      expect(mockListMyWarnings).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -262,7 +307,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Cálculo I',
           warningType: 'below_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 68,
           presentCount: 27,
           consideredCount: 40,
@@ -289,14 +334,14 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Cálculo I',
           warningType: 'below_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 68,
           presentCount: 27,
           consideredCount: 40,
           minPercentageApplied: 75,
           periodStartDate: '2026-08-01',
           periodEndDate: '2026-09-30',
-          seenAt: new Date('2026-09-01T10:00:00Z'), // Already seen
+          seenAt: '2026-09-01T10:00:00.000Z', // Already seen
         },
       ]);
 
@@ -320,7 +365,7 @@ describe('StudentWarningsPage', () => {
             subjectId: 'subject-1',
             subjectName: 'Cálculo I',
             warningType: 'below_minimum',
-            warningTypeSince: new Date('2026-09-01'),
+            warningTypeSince: '2026-09-01T00:00:00.000Z',
             frequencyPercentage: 68,
             presentCount: 27,
             consideredCount: 40,
@@ -339,14 +384,14 @@ describe('StudentWarningsPage', () => {
             subjectId: 'subject-1',
             subjectName: 'Cálculo I',
             warningType: 'below_minimum',
-            warningTypeSince: new Date('2026-09-01'),
+            warningTypeSince: '2026-09-01T00:00:00.000Z',
             frequencyPercentage: 68,
             presentCount: 27,
             consideredCount: 40,
             minPercentageApplied: 75,
             periodStartDate: '2026-08-01',
             periodEndDate: '2026-09-30',
-            seenAt: new Date('2026-09-01T10:00:00Z'),
+            seenAt: '2026-09-01T10:00:00.000Z',
           },
         ]);
 
@@ -355,20 +400,15 @@ describe('StudentWarningsPage', () => {
 
       renderPage();
 
-      // First render: should show "Novo"
-      await waitFor(() => {
-        expect(screen.getByText('Novo')).toBeInTheDocument();
-      });
+      // First render: should show "Novo".
+      await flushMicrotasks();
+      expect(screen.getByText('Novo')).toBeInTheDocument();
 
-      // Advance 60s for the refetch
-      vi.advanceTimersByTime(60000);
+      // Advance past the 60s refetch and let its result reach the DOM.
+      await flushNextTimer();
 
       // After refetch: "Novo" badge should be gone
-      await waitFor(() => {
-        expect(screen.queryByText('Novo')).not.toBeInTheDocument();
-      });
-
-      vi.useRealTimers();
+      expect(screen.queryByText('Novo')).not.toBeInTheDocument();
     });
   });
 
@@ -385,7 +425,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Cálculo I',
           warningType: 'below_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 68,
           presentCount: 27,
           consideredCount: 40,
@@ -426,7 +466,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Português',
           warningType: 'approaching_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 80,
           presentCount: 32,
           consideredCount: 40,
@@ -442,7 +482,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-2',
           subjectName: 'Cálculo I',
           warningType: 'below_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 65,
           presentCount: 26,
           consideredCount: 40,
@@ -533,7 +573,7 @@ describe('StudentWarningsPage', () => {
           subjectId: 'subject-1',
           subjectName: 'Cálculo I',
           warningType: 'below_minimum',
-          warningTypeSince: new Date('2026-09-01'),
+          warningTypeSince: '2026-09-01T00:00:00.000Z',
           frequencyPercentage: 68,
           presentCount: 27,
           consideredCount: 40,
@@ -598,7 +638,10 @@ describe('StudentWarningsPage', () => {
       fireEvent.click(dismissButton);
 
       await waitFor(() => {
-        expect(mockDismiss).toHaveBeenCalledWith('notice-1');
+        // TanStack Query v5 invokes mutationFn as fn(variables, context) —
+        // the second arg (client/meta/mutationKey) isn't under this page's
+        // control, so only the notice id (the actual variable) is asserted.
+        expect(mockDismiss).toHaveBeenCalledWith('notice-1', expect.anything());
       });
     });
   });
