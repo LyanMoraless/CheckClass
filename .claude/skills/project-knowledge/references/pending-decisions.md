@@ -3592,6 +3592,26 @@ novo de análise).
 aprovadas exatamente como recomendadas pelo Tech Decision Agent, sem
 ressalva.
 
+> **Nota de atualização (2026-09-11) — GAP-10 deixa de estar "sem
+> mecanismo e sem direção"; tecnologia decidida e aprovada, implementação
+> ainda não começou:** o Tech Decision Agent propôs, e o usuário aprovou
+> exatamente como recomendado, a tecnologia de detecção de rede
+> institucional para RULE-DEV-14/GAP-10 — allowlist de IP/CIDR por
+> instituição (biblioteca `ipaddr.js`), compartilhada entre a Frente 12
+> (já fechada) e a Frente 13 (ainda não iniciada). Ver "Decisão de
+> tecnologia — Detecção de rede institucional / GAP-10 (2026-09-11)" em
+> `project-knowledge/references/architecture-overview.md` para o desenho
+> completo, e a nota equivalente em RULE-DEV-14
+> (`business-rules/references/institutional-device-binding-rules.md`).
+> Isto **não fecha GAP-10 por completo** — nenhuma linha de código foi
+> escrita; Database e Backend ainda precisam construir a tabela/config por
+> tenant e o `InstitutionalNetworkService` antes de a detecção existir na
+> prática. GAP-10 passa de "sem nenhuma direção" para "com direção de
+> tecnologia aprovada, não implementado".
+> **Source of confirmation:** Usuário, 2026-09-11, aprovação exatamente
+> como recomendada pelo Tech Decision Agent, sem ressalva ou pedido de
+> mudança.
+
 ### Resolvido — Frente 12 implementada (Database + Backend + Frontend); cadeia pausada antes de Testing a pedido do usuário (2026-09-10)
 
 Sexta, sétima e oitava etapas da cadeia da Frente 12 concluídas, sobre a

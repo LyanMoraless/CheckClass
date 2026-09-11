@@ -4137,6 +4137,77 @@ independentemente.
 Agent, 2026-09-11; verificação independente da sessão principal no mesmo
 dia. Ver fechamento correspondente em `pending-decisions.md`.
 
+## Decisão de tecnologia — Detecção de rede institucional / GAP-10 (2026-09-11)
+
+Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como
+recomendada, sem nenhuma ressalva ou pedido de mudança — mesmo padrão das
+três decisões de tecnologia anteriores da Frente 12 (biblioteca WebAuthn,
+mecanismo de checkout, detecção de capability — ver "Decisão de
+tecnologia — Vínculo de Dispositivo Institucional (Frente 12)
+(2026-09-10)" acima). Preenche com tecnologia concreta o gap que a
+arquitetura e a tecnologia da Frente 12 deixaram deliberadamente em
+aberto: **GAP-10**, como o sistema decide que uma requisição veio "de
+dentro da rede da instituição" (RULE-DEV-14,
+`business-rules/references/institutional-device-binding-rules.md`).
+Compartilhado entre a Frente 12 (vínculo de dispositivo, já fechada) e a
+Frente 13 (verificação facial no login, ainda não iniciada) — RULE-DEV-14
+nomeia explicitamente os dois alvos. **Apenas o desenho de tecnologia é
+aprovado nesta entrada — nenhuma implementação foi feita.**
+
+**Alternativa escolhida — Allowlist de IP/CIDR por instituição.** O
+backend compara o IP de origem da requisição contra uma lista de faixas
+CIDR cadastrada pela própria instituição (self-service, mesmo padrão de
+configuração por tenant já usado em `DeviceBindingConfigService`/
+RULE-DEV-15 — uma linha por instituição, editável pelo admin, gate de
+autoridade por Direção/Reitoria). Biblioteca recomendada: `ipaddr.js`
+(Node.js, ativamente mantida), para o match de IP contra CIDR.
+
+**Estrutura de implementação recomendada (desenho aprovado, ainda não
+implementado):**
+- Nova tabela/config por tenant guardando uma ou mais faixas CIDR, mesmo
+  padrão de `DeviceBindingConfigEntity`.
+- Um serviço pequeno e compartilhado (ex.: `InstitutionalNetworkService`),
+  chamado explicitamente em dois pontos já identificados — **nunca** como
+  guard/middleware global: (1) `DeviceBindingService.createBinding`
+  (`backend/src/modules/device-binding/device-binding.service.ts`, linhas
+  52-60, onde já existe um comentário GAP-10 marcando o ponto exato); (2)
+  o futuro fluxo de decisão de login da Frente 13 (ainda não existe).
+- **Default quando a instituição não configurou nenhuma faixa:** tratar
+  como **fora da rede** — vínculo de dispositivo continua bloqueado (mesmo
+  comportamento de hoje) e login nunca exige facial (CPF+senha sempre
+  funciona) até a instituição configurar seu range. Nunca trava ninguém
+  por configuração ausente.
+
+**Alternativas descartadas (parte do histórico de decisão):**
+- **Beacon de rede local** — mais infraestrutura nova por instituição; o
+  precedente real mais próximo (Duo Trusted Endpoints) foi descontinuado
+  por limitação de navegador; Chrome também restringe ativamente esse
+  padrão (Private Network Access).
+- **Gateway VPN institucional** — exigiria a instituição operar VPN e cada
+  pessoa instalar cliente, atrito com um fluxo hoje 100% navegador.
+- **mTLS/certificado de dispositivo** — já rejeitado antes no projeto para
+  o problema adjacente de autenticação de dispositivo; aqui o motivo é
+  mais direto ainda: prova identidade de dispositivo, não localização de
+  rede.
+
+**Ressalvas registradas, não decisões novas:**
+- Funciona independente de onde o backend será hospedado (decisão de
+  hospedagem continua pendente, não decidida por esta escolha).
+- Se a hospedagem final envolver proxy reverso/load balancer, será preciso
+  configurar `trust proxy` corretamente no deploy (tarefa padrão de
+  DevOps, não uma nova decisão de arquitetura) — sinalizado para não ser
+  presumido silenciosamente depois.
+
+**Não tocado nesta rodada:** nenhuma implementação em código
+(`backend/`, `frontend/`) — construir a tabela/config por tenant e o
+`InstitutionalNetworkService` fica para o Database Agent e o Backend
+Agent, próxima etapa quando a Frente 12 (integração no ponto já marcado)
+ou a Frente 13 (ainda não formalizada) retomarem este trabalho.
+
+**Source of confirmation:** Usuário, 2026-09-11, aprovação exatamente como
+recomendada pelo Tech Decision Agent, sem ressalva ou pedido de mudança —
+mesmo padrão das três decisões anteriores de tecnologia da Frente 12.
+
 ## Escopo NÃO formalizado — Frente 13 (verificação facial no login)
 
 A Frente 13 (Bloco B do registro de 2026-09-10 — cadastro biométrico,

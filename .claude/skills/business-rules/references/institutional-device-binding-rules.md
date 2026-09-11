@@ -442,6 +442,28 @@ texto original); Usuário, 2026-09-10, sessão de fechamento de gaps
 (GAP-10 confirmado como intencionalmente em aberto, "Deixar totalmente em
 aberto por agora").
 
+**Nota de atualização (2026-09-11) — GAP-10 deixa de estar "sem nenhuma
+direção"; tecnologia decidida e aprovada, implementação ainda não
+começou:** o Tech Decision Agent propôs e o usuário aprovou, exatamente
+como recomendado, a tecnologia de detecção de rede institucional para
+este gap — allowlist de IP/CIDR por instituição (biblioteca `ipaddr.js`),
+compartilhada entre a Frente 12 (já fechada) e a Frente 13 (ainda não
+iniciada). Ver "Decisão de tecnologia — Detecção de rede institucional /
+GAP-10 (2026-09-11)" em
+`project-knowledge/references/architecture-overview.md` para o desenho
+completo (estrutura recomendada, alternativas descartadas, default seguro
+quando a instituição não configurou nenhuma faixa, ressalva de `trust
+proxy` para deploy futuro). **Isto não altera o Statement desta regra**
+(RULE-DEV-14 continua sendo sobre O QUE se aplica — a restrição de rede
+alcançando o vínculo de dispositivo — não sobre COMO detectar) e **não
+fecha GAP-10 por completo**: nenhuma linha de código foi escrita ainda —
+Database e Backend precisam construir a tabela/config por tenant e o
+`InstitutionalNetworkService` antes de a regra ser implementável na
+prática. GAP-10 passa de "sem nenhuma direção" para "com direção de
+tecnologia aprovada, ainda não implementado".
+**Source of confirmation:** Usuário, 2026-09-11, aprovação exatamente como
+recomendada pelo Tech Decision Agent, sem ressalva ou pedido de mudança.
+
 ---
 
 ## Bloco G — Administração de inventário, titular de visualização e BYOD (segunda rodada, 2026-09-10)
