@@ -1,0 +1,11 @@
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.actionsCell {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

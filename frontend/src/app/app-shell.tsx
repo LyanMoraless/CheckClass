@@ -20,6 +20,7 @@ import {
   Link2,
   LogOut,
   Monitor,
+  Network,
   Presentation,
   ShieldCheck,
   SlidersHorizontal,
@@ -123,6 +124,11 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/institutional-machines', label: 'Máquinas institucionais', icon: Monitor },
       { to: '/device-bindings', label: 'Vínculos de dispositivo', icon: Link2 },
       { to: '/device-bindings-config', label: 'Configuração de vínculo', icon: Timer },
+      // GAP-10 (RULE-DEV-14): allowlist de rede institucional. Same
+      // Direção/Reitoria-only audience/mechanism as institutional-machines
+      // above (roleContext.isDirection, gated inside the page), so it
+      // shares this group rather than starting a new one.
+      { to: '/institutional-network-ranges', label: 'Rede institucional', icon: Network },
     ],
   },
   {

@@ -20,6 +20,7 @@ import { ActiveBindingsPage } from './features/device-binding/active-bindings-pa
 import { DeviceBindingConfigPage } from './features/device-binding/device-binding-config-page';
 import { HolidaysPage } from './features/holidays/holidays-page';
 import { InstitutionOnboardingPage } from './features/institution-onboarding/institution-onboarding-page';
+import { InstitutionalNetworkRangesPage } from './features/institutional-network/institutional-network-ranges-page';
 import { MyPendingReviewsPage } from './features/pending-reviews/my-pending-reviews-page';
 import { PendingReviewsPage } from './features/pending-reviews/pending-reviews-page';
 import { PermissionGroupsPage } from './features/permission-groups/permission-groups-page';
@@ -75,6 +76,10 @@ export function App() {
         <Route path="my-device" element={<MyPersonalDevicePage />} />
         <Route path="device-bindings" element={<ActiveBindingsPage />} />
         <Route path="device-bindings-config" element={<DeviceBindingConfigPage />} />
+        {/* GAP-10 (RULE-DEV-14) — allowlist de rede institucional. Same
+            Direção/Reitoria-only gate INSIDE the page as institutional-machines
+            above (roleContext.isDirection, no dedicated Permission code). */}
+        <Route path="institutional-network-ranges" element={<InstitutionalNetworkRangesPage />} />
         <Route path="attendance-config" element={<AttendanceConfigPage />} />
         <Route path="register" element={<AttendanceRegisterPage />} />
         <Route path="pending-reviews" element={<PendingReviewsPage />} />
