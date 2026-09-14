@@ -4495,12 +4495,16 @@ compartilhada, dois consumidores diferentes:
      consumida por `AppCheckinService`.
    - `evaluateDepartureFromClassLocation(tenantId, personId, classSessionId, coordinates)`
      — RULE-PRES-09, consumida pelo monitor de sala do app mobile durante
-     a aula. **Desenhada atrás de uma interface de "geometria de
-     referência por sessão"**, não de uma distância fixa hardcoded — a
-     implementação concreta (raio da instituição reaproveitado, sinal de
-     curto alcance por sala, ou outra) é o que o gap aberto de RULE-PRES-09
-     ainda precisa decidir; o ponto de extensão já existe e não trava em
-     nenhuma das saídas.
+     a aula. **Resolvido (2026-09-14):** o usuário optou por reaproveitar
+     o mesmo raio configurável da instituição de RULE-PRES-01, em vez de
+     uma segunda distância ou de um dispositivo de curto alcance por sala
+     (ver addendum de RULE-PRES-09 em
+     `attendance-presence-flow-rules.md`). Na prática,
+     `evaluateDepartureFromClassLocation` reusa internamente
+     `isWithinInstitutionalRadius` como sua checagem geométrica — não é
+     mais uma segunda implementação a ser escolhida depois, é o mesmo
+     cálculo aplicado a um segundo momento do fluxo (contagem de tempo
+     fora do raio, em vez de gate binário no login).
    - Cruza a distância acumulada contra o tempo configurado (RULE-PRES-09,
      15 min = valor de referência, não constante) e emite um evento
      "afastamento prolongado detectado" quando os dois limiares configuram
@@ -4696,40 +4700,53 @@ aula, só eventos discretos) mas não substitui a decisão jurídica pendente.
 
 ### Open questions
 
-1. **[Bloqueante para Backend] "Login" de RULE-PRES-01/02/03/05 é o mesmo
-   mecanismo de `POST /v1/app-checkin` (`APP_CHECKIN`), ou a autenticação
-   (`POST /login/mobile`)?** Este desenho assume o primeiro — ver
-   justificativa em "Componentes afetados". Preciso de confirmação antes
-   de qualquer DTO/endpoint ser tocado.
-2. **RULE-PRES-09 é uma segunda fonte para a hora de saída (RULE-PRES-08,
-   Candidato A) ou um override direto de "ausente" independente do cálculo
-   de percentual de RULE-ATT-04 (Candidato B)?** O texto da regra
-   ("a aula é contabilizada como ausência") admite as duas leituras.
-   Candidato A reaproveita 100% do Motor de Regras já existente; Candidato
-   B exige um branch de decisão novo. Recomendo A por simplicidade, mas
-   não decido — é leitura de regra de negócio, não de arquitetura.
+> **Atualização (2026-09-14):** as 5 perguntas abaixo foram levadas ao
+> usuário. 1, 2 e 5 estão respondidas. 3 não precisava de decisão do
+> usuário (detalhe de organização interna, fica com o Backend). 4 está
+> parcialmente encaminhada — ver detalhamento item a item na lista de
+> gaps de `attendance-presence-flow-rules.md`, que agora é a fonte
+> corrente desses status (dois gaps fechados, um adiado, dois roteados a
+> Tech Decision, um segue adiado sem mudança).
+
+1. ~~**[Bloqueante para Backend] "Login" de RULE-PRES-01/02/03/05...**~~
+   **RESPONDIDO.** É o mesmo mecanismo de `POST /v1/app-checkin`
+   (`APP_CHECKIN`) já existente, não a autenticação. **Source of
+   confirmation:** Usuário, 2026-09-14 ("Sim, é o mesmo").
+2. ~~**RULE-PRES-09 é uma segunda fonte para a hora de saída (Candidato
+   A) ou um override direto de "ausente" (Candidato B)?**~~
+   **RESPONDIDO — Candidato A confirmado.** O afastamento prolongado
+   fecha o intervalo de permanência (mesmo papel de tag-saída/logout em
+   RULE-PRES-08); a decisão de presença continua sendo o cálculo de
+   percentual mínimo já existente (RULE-ATT-04/08), somando todos os
+   intervalos da sessão. Sem branch de decisão novo. Detalhe completo no
+   addendum de RULE-PRES-09 em `attendance-presence-flow-rules.md`.
+   **Source of confirmation:** Usuário, 2026-09-14 ("O correto é o jeito
+   A mesmo. Precisa fazer o cálculo").
 3. **Quem é o dono da orquestração da cadeia de precedência de saída
    (RULE-PRES-08)** — proposto aqui como responsabilidade de
    `room-presence.getSessionProjectedInterval`, que por sua vez lê
    `location-verification` e o logout explícito. Alternativa (não
    escolhida): deixar essa orquestração dentro do próprio
    `PresenceIntervalService`. Ambas funcionam; a diferença é só onde a
-   regra de precedência mora — sinalizado para Backend escolher com base
-   em ergonomia de teste, não é decisão que muda o desenho geral.
-4. Todos os 7 gaps já listados no final de
-   `attendance-presence-flow-rules.md` continuam abertos e **não são
-   resolvidos por este desenho** — cada um foi mapeado a um ponto de
-   extensão específico acima (distância de RULE-PRES-09 →
-   `location-verification`'s interface de geometria; Wi-Fi institucional
-   obrigatório → fora do sistema, é requisito operacional; VPN residual →
-   mesma limitação já aceita para `InstitutionalNetworkService`; GPS
-   falsificado → Tech Decision; consentimento/retenção → Security +
-   Database antes de qualquer schema de localização; tecnologia de câmera
-   → Tech Decision + Computer Vision; divisão do "em sala" por aula →
-   adiada, já refletida no desenho de `room-presence` como "não faz isso
-   agora").
-5. Forma exata de audit trail (se algum) para tentativas de check-in que
-   falham no gate de rede/geolocalização (RULE-PRES-01) — hoje o desenho
-   simplesmente não grava nada no pipeline de atendimento quando falha;
-   se houver necessidade de investigação de fraude/auditoria, precisa de
-   um mecanismo de log separado, não decidido aqui.
+   regra de precedência mora — **confirmado que não é decisão do
+   usuário**, fica com o Backend escolher com base em ergonomia de teste
+   quando esta frente for implementada.
+4. Dos 7 gaps já listados no final de `attendance-presence-flow-rules.md`:
+   **distância de RULE-PRES-09 fechada** (reaproveita
+   `isWithinInstitutionalRadius`, ver nota acima em "Estrutura proposta");
+   **Wi-Fi institucional obrigatório fechado como fora do escopo do
+   sistema** (requisito operacional da instituição); **VPN residual
+   explicitamente adiado**, não tratar agora; **GPS falsificado e
+   tecnologia de câmera roteados ao Tech Decision** a pedido do usuário
+   (ver agente acionado em 2026-09-14); **consentimento/retenção
+   encaminhado** — vai por termo de consentimento, mas o texto exato e se
+   integra o registro LGPD geral ou um registro dedicado (padrão
+   RULE-FACE-09) ainda precisa de addendum formal do Business
+   Analyst/Security antes do Database desenhar schema; **divisão do "em
+   sala" por aula segue adiada**, sem mudança.
+5. ~~Forma exata de audit trail (se algum) para tentativas de check-in que
+   falham no gate de rede/geolocalização...~~ **RESPONDIDO — não guardar
+   nada.** Decisão explícita e consciente: nenhum registro de tentativas
+   reprovadas no gate de RULE-PRES-01, mesmo sem trilha para investigação
+   futura de fraude. **Source of confirmation:** Usuário, 2026-09-14
+   ("Não. Não quero guardar nada").

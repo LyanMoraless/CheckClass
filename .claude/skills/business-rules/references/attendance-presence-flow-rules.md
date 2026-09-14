@@ -72,6 +72,18 @@ funciona isolado).
 > e o aplicativo mobile não coleta localização). Todo o lado (b) desta
 > regra é construção nova.
 
+> **Adição (2026-09-14) — sem trilha de auditoria para tentativas
+> reprovadas:** quando o login falha no gate de rede e/ou geolocalização
+> desta regra, o aplicativo continua funcionando normalmente para o aluno
+> (login não é bloqueado) e **nenhum registro é gravado** sobre a
+> tentativa que falhou — nem para investigação futura de fraude, nem para
+> auditoria. Decisão explícita: não guardar nada. Se no futuro surgir
+> necessidade de investigar padrões de fraude (ex.: aluno tentando logar
+> de fora repetidamente), não haverá dado histórico disponível — risco
+> aceito conscientemente, não esquecido.
+> **Source of confirmation:** Usuário, 2026-09-14 ("Não. Não quero
+> guardar nada").
+
 ### RULE-PRES-02: Presença nunca é registrada antes do horário de início da aula, e o relógio é o do servidor
 
 **Statement:** Nenhum fator registra presença antes do `scheduled_start`
@@ -257,21 +269,43 @@ afastamento — ver RULE-PRES-08, caso 3 (pendência).
 passo 03, e "a ausência é definida (no mobile) apenas pela
 localização").
 
-> **GAP ABERTO — a distância de 5 metros do desenho original não é
-> construível e continua sem substituto confirmado.** O usuário
-> especificou "mais que 5 metros da sala". Isso não é alcançável com GPS:
-> o GPS de celular tem precisão de ±5m no melhor caso a céu aberto, e
-> dentro de prédio, através de laje, fica em ±20–50m quando há sinal.
-> Salas vizinhas ficam a 3–8m uma da outra, distância que o GPS nunca
-> distingue. Um raio de 5m em volta de uma sala geraria falso positivo
-> constante (aluno sentado na sala marcado como afastado). **Não
-> inventar um valor.** As saídas possíveis, nenhuma escolhida ainda:
-> (a) usar o mesmo raio da instituição de RULE-PRES-01 (~50m), já que
-> com a tag como mecanismo primário a localização só precisa responder
-> "saiu do prédio", não "saiu da sala"; (b) adotar o dispositivo de sinal
-> de curto alcance por sala (opção B, descartada como mecanismo primário
-> mas não avaliada como fonte só da distância); (c) outra abordagem a
-> definir. Decisão pendente com o usuário.
+> **GAP FECHADO (2026-09-14) — a distância de 5 metros do desenho
+> original não era construível com GPS** (precisão de ±20–50m dentro de
+> prédio; salas vizinhas ficam a 3–8m uma da outra, distância que o GPS
+> nunca distingue; um raio de 5m geraria falso positivo constante, aluno
+> sentado na própria sala marcado como afastado). Apresentadas as três
+> saídas possíveis, **o usuário optou pela opção (a): reaproveitar o
+> mesmo raio configurável da instituição de RULE-PRES-01 (valor de
+> referência: 50 metros)**. Não é um parâmetro novo — é o mesmo raio,
+> mesmo escopo por instituição, usado para dois propósitos diferentes:
+> em RULE-PRES-01 responde "o aparelho está perto o suficiente da
+> instituição para o login contar como presença", aqui responde "o
+> aluno se afastou da instituição o suficiente para iniciar a contagem
+> de afastamento". Coerente com o fato de a tag (RULE-PRES-04) já ser o
+> mecanismo primário que prova "está nesta sala especificamente" — a
+> localização, aqui, só precisa provar "saiu do prédio", não "saiu da
+> sala".
+> **Source of confirmation:** Usuário, 2026-09-14 ("Reaproveitar raio da
+> instituição (~50m)", em resposta às três opções apresentadas depois de
+> reiterar a inviabilidade técnica dos 5m).
+
+> **Adição (2026-09-14) — mecanismo de contabilização confirmado (não é
+> veredito isolado, é fechamento de intervalo):** quando o contador de
+> afastamento desta regra estoura, isso é tratado como **mais uma fonte
+> de encerramento do intervalo de permanência** — o mesmo papel que a tag
+> de saída e o logout explícito já têm em RULE-PRES-08. Não existe uma
+> segunda decisão de "ausente" independente: fechado o intervalo, o
+> cálculo de percentual mínimo de permanência já existente (RULE-ATT-04,
+> soma de intervalos de RULE-ATT-08) decide presença normalmente,
+> somando **todos** os intervalos do aluno naquela sessão — os de antes e
+> os de depois do afastamento incluídos. Um aluno que se afasta 16
+> minutos mas acumula tempo suficiente no resto da aula para bater o
+> mínimo configurado **pode passar**; reprova quem, somado tudo, não
+> bate o mínimo — mas reprova pelo cálculo de sempre, não por uma regra
+> de exceção separada. Sem componente novo de decisão: reaproveita o
+> motor de regras já existente (RULE-ATT-04/08), sem branch novo.
+> **Source of confirmation:** Usuário, 2026-09-14 ("O correto é o jeito A
+> mesmo. Precisa fazer o cálculo").
 
 ---
 
@@ -361,35 +395,55 @@ resposta à pergunta sobre bloqueio duro versus pendência).
 
 ## Gaps abertos desta frente
 
-Nenhum destes foi decidido. Não presumir resposta a partir deste arquivo.
+> **Atualização (2026-09-14):** dos 7 gaps originais, 3 foram fechados ou
+> explicitamente encaminhados nesta rodada (itens 1, 2, 5 abaixo mudam de
+> status), 1 foi explicitamente adiado por decisão do usuário (item 3), 2
+> foram roteados para Tech Decision (itens 4 e 6, ver chamada em
+> `project-knowledge/references/architecture-overview.md`), e 1 permanece
+> adiado sem mudança (item 7). Nenhum item sem "Source of confirmation"
+> abaixo deve ter resposta presumida a partir deste arquivo.
 
-1. **Distância do gatilho de afastamento (RULE-PRES-09).** Os 5 metros do
-   desenho original não são construíveis com GPS. Sem substituto
-   confirmado. Detalhe completo na nota de RULE-PRES-09.
-2. **Exigência de Wi-Fi institucional em toda sala de aula.**
-   RULE-PRES-01 exige estar na rede institucional. Aluno em dado móvel
-   (4G) reprova mesmo sentado na sala. Isso transforma "ter Wi-Fi
-   institucional com cobertura em toda sala, e o aluno conectado a ele"
-   em **requisito operacional da instituição**, não em algo que o
-   sistema resolve. Precisa ser decidido como se comunica e se cobra isso
-   da instituição.
+1. ~~**Distância do gatilho de afastamento (RULE-PRES-09).**~~
+   **FECHADO (2026-09-14).** Reaproveita o raio configurável da
+   instituição de RULE-PRES-01 (~50m), mesmo parâmetro, dois usos. Ver
+   nota completa em RULE-PRES-09. **Source of confirmation:** Usuário,
+   2026-09-14.
+2. ~~**Exigência de Wi-Fi institucional em toda sala de aula.**~~
+   **FECHADO (2026-09-14) como fora do escopo do sistema.** Confirmado:
+   garantir cobertura de Wi-Fi institucional em toda sala é **requisito
+   operacional da instituição**, não uma responsabilidade que o CheckClass
+   assume ou resolve tecnicamente. Nenhuma modelagem ou funcionalidade
+   nova decorre deste item. **Source of confirmation:** Usuário,
+   2026-09-14 ("Mas não está no seu alcance. Isso é algo que a faculdade
+   precisa fazer").
 3. **VPN como vetor residual de RULE-PRES-01.** Um aluno em casa com
    acesso VPN à rede da instituição apareceria como "dentro da rede".
    Buraco estreito (exige acesso concedido e fica registrado), mas real.
-   Mitigação não decidida.
+   **Adiado explicitamente — não tratar agora.** **Source of
+   confirmation:** Usuário, 2026-09-14 ("Por hora não trataremos isso").
 4. **Detecção de GPS falsificado.** Existem mecanismos de plataforma para
-   detectar localização simulada e aparelho comprometido. Nenhum foi
-   avaliado ou escolhido — é decisão de tecnologia, cabe ao Tech
-   Decision quando esta frente for implementada.
+   detectar localização simulada e aparelho comprometido. Decisão de
+   tecnologia — **roteado ao Tech Decision Agent em 2026-09-14** a pedido
+   explícito do usuário. Continua sem escolha até o retorno dessa
+   consulta.
 5. **Consentimento e retenção de localização contínua (LGPD).**
    Rastrear a localização de aluno durante a aula é dado pessoal
    sensível, de peso jurídico maior que qualquer dado que o projeto
-   coleta hoje. Precisa de base legal, consentimento formal, política de
-   retenção e limitação de finalidade. Interface com a Frente 10
-   (retenção) e com RULE-FACE-09 (consentimento biométrico assinado),
-   que é o precedente mais próximo já fechado no projeto.
-6. **Tecnologia da contagem por câmera.** Continua em aberto, a cargo de
-   Tech Decision + Computer Vision. Ver RULE-SEC-05 e sua nota de
-   2026-09-14.
+   coleta hoje. **Encaminhado (2026-09-14): o usuário determinou que este
+   item seja adicionado ao termo de consentimento do aluno.** Isso decide
+   o *caminho* (vai por consentimento formal, não por outra base legal),
+   mas **não fecha o gap por completo** — ainda falta formalizar o texto
+   exato do item de consentimento, decidir se ele integra o registro geral
+   de consentimento LGPD já existente no sistema ou um registro dedicado
+   (mesmo padrão de RULE-FACE-09, que trata consentimento biométrico à
+   parte do LGPD geral), e fechar política de retenção/finalidade. Cabe a
+   Business Analyst/Security formalizar como addendum próprio antes da
+   implementação. **Source of confirmation:** Usuário, 2026-09-14
+   ("Coloque para adicionar no termo de consentimento").
+6. **Tecnologia da contagem por câmera.** Decisão de tecnologia —
+   **roteado ao Tech Decision Agent em 2026-09-14** junto com o item 4, a
+   pedido explícito do usuário. Continua sem escolha até o retorno dessa
+   consulta.
 7. **Divisão do status "em sala" por aula.** O usuário adiou
-   explicitamente (RULE-PRES-06).
+   explicitamente (RULE-PRES-06) e reconfirmou o adiamento em 2026-09-14
+   ("ok").

@@ -96,13 +96,22 @@ Configuráveis:
 
 - **Raio da instituição para o login contar como presença** (RULE-PRES-01).
   Os 50 metros citados pelo usuário são **valor de referência**, não
-  constante. Escopo: por instituição.
+  constante. Escopo: por instituição. **Mesmo parâmetro também usado por
+  RULE-PRES-09** (ver item abaixo) — não duplicar em dois campos.
 - **Tempo de afastamento antes de contabilizar ausência** (RULE-PRES-09).
   Os 15 minutos citados pelo usuário são **valor de referência**, não
   constante.
 - **Faixas de rede institucional** (RULE-PRES-01) — já configuráveis hoje,
   N faixas por tenant, `institutional_network_range`. Nada novo a fazer;
   listado só para deixar explícito que RULE-PRES-01 se apoia nelas.
+
+**Fechado (2026-09-14) — distância do gatilho de afastamento
+(RULE-PRES-09):** não é um parâmetro novo. O usuário decidiu reaproveitar
+o mesmo raio configurável da instituição já listado acima (RULE-PRES-01),
+em vez de criar um segundo campo de distância. Um único valor por
+instituição serve aos dois propósitos: "está perto o suficiente para o
+login contar como presença" (RULE-PRES-01) e "afastou-se o suficiente
+para iniciar a contagem de afastamento" (RULE-PRES-09).
 
 **NÃO configuráveis** (fixos, iguais para todas as instituições — não
 modelar como configuração):
@@ -113,14 +122,6 @@ modelar como configuração):
   contagens consecutivas** (RULE-PRES-11). O usuário fixou o número; não
   foi pedido escopo por instituição. Se surgir necessidade de variar por
   instituição, é decisão nova, não presumir a partir deste arquivo.
-
-**Ainda sem valor definido — NÃO inventar:**
-
-- **Distância de afastamento da sala** (RULE-PRES-09). Os 5 metros do
-  desenho original do usuário **não são construíveis com GPS** (precisão
-  de ±20–50m dentro de prédio) e não têm substituto confirmado. Gap
-  aberto registrado em RULE-PRES-09 e na lista de gaps de
-  `attendance-presence-flow-rules.md`.
 
 Ao implementar qualquer uma dessas regras, o agente responsável (Backend,
 Database, etc.) deve modelar o valor como configuração (por
