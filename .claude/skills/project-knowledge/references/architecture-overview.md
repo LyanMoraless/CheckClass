@@ -4363,3 +4363,373 @@ ela começar: Product Definition → Business Analyst → Security → Solution
 Architect → Tech Decision → ... (ver
 `project-knowledge/references/pending-decisions.md`, seção "As duas
 frentes novas").
+
+## Decisão de arquitetura — Fluxo de Chamada Redesenhado, RULE-PRES-01 a 13 (PROPOSTA — 2026-09-14, aguardando Tech Decision + aprovação do usuário)
+
+> Desenho do Solution Architect Agent a partir de
+> `business-rules/references/attendance-presence-flow-rules.md`
+> (RULE-PRES-01 a 13). Nenhuma tecnologia escolhida (Tech Decision),
+> nenhuma migration (Database), nenhuma implementação. Cobre os quatro
+> blocos do fluxo (login, tag, permanência, contagem por câmera) e onde
+> cada um se encaixa nos componentes já existentes do núcleo
+> (`architecture-overview.md`, "Decisão de arquitetura — Núcleo do
+> CheckClass") e da Frente 12 (`device-binding`/`InstitutionalNetworkService`).
+
+### Contexto
+
+O fluxo de chamada existente (Gateway → Identificação → Dedup → Motor de
+Regras, RULE-ATT-01..15) já cobre check-in por tag/facial/app e soma de
+intervalos de permanência. RULE-PRES-01..13 não substitui esse núcleo —
+adiciona: (a) um gate de rede+geolocalização sobre o fator de login/app
+check-in, (b) uma semântica de "em sala" derivada da grade em vez de
+per-sessão, (c) uma cadeia de precedência de três fontes para a hora de
+saída, e (d) um cruzamento de auditoria por câmera que só alerta, nunca
+decide. Nenhuma das duas checagens de geolocalização (instituição, sala)
+existe hoje — confirmado por leitura de código: `RoomEntity` só tem
+`name`/`areaId`, `TenantEntity` só tem endereço textual (rua/CEP/etc, sem
+coordenada), e o app mobile não coleta localização.
+
+### Necessidade de modelagem de dados — geolocalização (apontamento, não decisão de schema)
+
+- **`tenant`/institution precisa de coordenada de referência + raio
+  configurável.** RULE-PRES-01 é regra fechada (não é gap) — a checagem
+  (b) "dentro do raio da instituição" precisa de um ponto de referência
+  geográfico por tenant e de um raio configurável (valor de referência do
+  usuário: 50m, não constante — ver `configurable-parameters.md`). Isso é
+  modelagem **obrigatória e nova** para esta frente, no mesmo padrão
+  self-service já usado para `institutional_network_range`
+  (RULE-DEV-15/RULE-ACC-08: editável pela Direção/Reitoria). Forma exata
+  (coluna lat/long em `tenant`, ou tabela satélite `institution_location`)
+  é decisão do Database Agent — o que não é opcional é a **existência** do
+  dado.
+- **`room` NÃO deve ganhar coordenada agora, de forma especulativa.** A
+  distância de RULE-PRES-09 é gap aberto com três saídas possíveis, uma
+  das quais (opção b, dispositivo de curto alcance por sala) não usa
+  coordenada GPS nenhuma — usaria antes um vínculo parecido com `device`.
+  Adicionar lat/long em `room` hoje seria apostar numa das saídas do gap
+  antes do usuário decidir. Ver "Estrutura proposta" abaixo — o desenho
+  isola essa incerteza atrás de uma interface, não de uma coluna.
+- **Consentimento/retenção de localização contínua (LGPD, gap aberto)**
+  precisa de um registro por pessoa antes de o app poder monitorar
+  localização durante a aula (RULE-PRES-09) — mesma forma de
+  RULE-FACE-09 (consentimento biométrico assinado) é o precedente mais
+  próximo já fechado no projeto, mas **não decidido** aqui: Security +
+  Business Rules precisam fechar isso antes do Database desenhar o
+  schema de consentimento.
+
+### Componentes afetados
+
+- **`AppCheckinService`/`AppCheckinDto`
+  (`backend/src/modules/app-checkin/`)** — ganha dois gates síncronos
+  novos antes de gravar o evento bruto (ver Estrutura proposta). Mapeamento
+  assumido por este desenho, não confirmado no texto das regras: **"login"
+  de RULE-PRES-01/02/03/05 é o mesmo mecanismo já existente de "app
+  check-in"** (`POST /v1/app-checkin`, fator `APP_CHECKIN`), não a chamada
+  de autenticação (`POST /login/mobile`). Justificativa: o cabeçalho do
+  arquivo de regras liga RULE-PRES explicitamente a RULE-ATT-06, que é
+  exatamente sobre "check-in via app"; tratar toda autenticação (que
+  acontece várias vezes ao dia) como evento de presença seria estranho ao
+  modelo de "um fator por sessão" já existente. **Sinalizado como
+  ambiguidade a confirmar antes do Backend implementar** — ver Open
+  Questions.
+- **`IdentificationService.resolveClassSession`
+  (`backend/src/modules/identification/`)** — hoje amarra cada evento
+  `ROOM_ENTRY`/`ROOM_EXIT` a **uma única** `class_session` pela janela de
+  horário que contém o `capturedAt`. RULE-PRES-06 exige que uma única
+  passagem de tag cubra **todas** as aulas do aluno naquela sala naquele
+  dia — contradiz esse acoplamento 1:1 atual. Mudança real proposta, não
+  apenas extensão — ver "Checagem de consistência".
+- **`PresenceIntervalService.rebuildForPerson`
+  (`backend/src/modules/attendance-rules/`)** — hoje lê `identification_checkin`
+  filtrado por `class_session_id` para parear `ROOM_ENTRY`/`ROOM_EXIT`.
+  Precisa passar a ler do novo módulo `room-presence` (abaixo), que projeta
+  o estado "em sala" (dia inteiro) sobre a janela de uma sessão específica
+  — mesmo contrato de saída (`closedIntervals`/`hasOpenInterval`), fonte
+  diferente.
+- **`AttendanceRulesEngineService.evaluatePerson`** — ganha uma segunda
+  regra de "satisfação composta" para o fator `APP_CHECKIN` (RULE-PRES-05):
+  não basta existir `identification_checkin`, precisa também que
+  `room-presence` confirme status "em sala" cobrindo a sessão. Mesma
+  família de mudança já feita para `DEVICE_BINDING_FACTOR_CODE` na Frente
+  12, mas de natureza diferente — aqui não é um terceiro estado
+  (`not_applicable`), é uma condição adicional dentro do já existente
+  present/ausente (ver Checagem de consistência).
+- **`InstitutionalNetworkService`
+  (`backend/src/modules/institutional-network/`)** — reusado tal como
+  está, chamado de um terceiro ponto (além dos dois já documentados em
+  "Decisão de tecnologia — Detecção de rede institucional / GAP-10"):
+  `AppCheckinService.submit`.
+- **`device`/leitor de sala** — **não é tocado**. `device.roomId` já é
+  exatamente o vínculo que RULE-PRES-04 exige; nenhuma modelagem nova aqui.
+- **`CAMERA_COUNT` (já existe em `IngestionEventType`) e a câmera fixa já
+  aprovada para Segurança de Intrusão** — reusados como estão; ganham um
+  novo consumidor (Serviço de Cruzamento, abaixo), sem alterar o contrato
+  de ingestão.
+- **Portal de Autoatendimento Web (self-service)** — ganha uma nova tela
+  de alerta para o professor (RULE-PRES-10/11), no mesmo padrão de
+  superfície já usado para pendências/avisos existentes, não um canal novo.
+- **App Mobile (`mobile/src/features/checkin`, `.../auth`)** — ganha
+  captura de coordenadas no check-in e um monitor de localização de
+  duração limitada (ver Estrutura proposta).
+
+### Estrutura proposta
+
+**1. Extensão de `AppCheckinService` — gate de rede + geolocalização
+(RULE-PRES-01/02), sem componente novo dedicado.** Antes do insert em
+`raw_identification_event`: chama `InstitutionalNetworkService` (rede) e
+uma nova primitiva `LocationVerificationService.isWithinInstitutionalRadius`
+(geo). **AND estrito, nunca fundidos numa única primitiva** — preserva a
+independência dos dois sinais que é a própria razão de ser de
+RULE-PRES-01. Se qualquer um falhar: o endpoint continua respondendo
+sucesso (login "funciona normalmente"), mas o evento **não** é inserido no
+pipeline de atendimento — não gera fator satisfeito, não passa por
+Identificação/Dedup/Motor de Regras. Avaliado e persistido **no momento do
+check-in**, não recalculado depois — mesmo motivo técnico de
+RULE-DEV-14/GAP-10: as duas primitivas respondem sobre "agora", não têm
+como reconstruir retroativamente o IP/localização de um instante passado
+quando o Motor de Regras avaliar a sessão, dias ou minutos depois.
+
+**2. Novo módulo `location-verification`** — dois papéis, uma primitiva
+compartilhada, dois consumidores diferentes:
+   - `isWithinInstitutionalRadius(tenantId, coordinates)` — RULE-PRES-01(b),
+     consumida por `AppCheckinService`.
+   - `evaluateDepartureFromClassLocation(tenantId, personId, classSessionId, coordinates)`
+     — RULE-PRES-09, consumida pelo monitor de sala do app mobile durante
+     a aula. **Desenhada atrás de uma interface de "geometria de
+     referência por sessão"**, não de uma distância fixa hardcoded — a
+     implementação concreta (raio da instituição reaproveitado, sinal de
+     curto alcance por sala, ou outra) é o que o gap aberto de RULE-PRES-09
+     ainda precisa decidir; o ponto de extensão já existe e não trava em
+     nenhuma das saídas.
+   - Cruza a distância acumulada contra o tempo configurado (RULE-PRES-09,
+     15 min = valor de referência, não constante) e emite um evento
+     "afastamento prolongado detectado" quando os dois limiares configuram
+     a condição — consumido por RULE-PRES-08 (fonte de saída) e,
+     possivelmente, por RULE-PRES-09 diretamente (ver Open Questions,
+     ambiguidade A x B).
+
+**3. Novo módulo `room-presence`** — papel estrutural equivalente a
+`device-binding` (Frente 12): primitiva de leitura dedicada, dona do
+próprio estado, nunca escreve em `identification_checkin`. Responsável
+pelo Bloco 2/3 inteiro:
+   - Consome os eventos brutos `ROOM_ENTRY`/`ROOM_EXIT` **pós-dedup**
+     (direto de `raw_identification_event`/resultado de Deduplicação, não
+     de `identification_checkin` — mesma fronteira já adotada para
+     `device-binding` "não escreve em `identification_checkin`", aplicada
+     aqui por analogia forte, não decidida antes). Resolve pessoa via
+     `WristbandIdentityService`, como hoje.
+   - Mantém o estado "em sala" por **(pessoa, sala, dia calendário)**, não
+     por sessão: tag-in abre, tag-out ou logout explícito fecha
+     (RULE-PRES-07/08); validade default até o fim da última sessão do dia
+     daquele aluno naquela sala, derivada de `class_session`/
+     `class_group_schedule_slot` (RULE-PRES-06).
+   - Expõe duas leituras: `isPresentForSession(personId, classSessionId)`
+     (consumida pela extensão do Motor de Regras, RULE-PRES-05) e
+     `getSessionProjectedInterval(personId, classSessionId)` (o estado do
+     dia inteiro recortado na janela `[scheduledStart, scheduledEnd]`
+     daquela sessão especificamente — é isso que `PresenceIntervalService`
+     passa a consumir no lugar da query direta a `identification_checkin`
+     para esses dois códigos de fator).
+   - Implementa a cadeia de precedência de saída (RULE-PRES-08) como parte
+     de `getSessionProjectedInterval`: tag-out (dado próprio) > sinal de
+     `location-verification`/logout explícito (leitura, mão única) >
+     nenhum (intervalo fica aberto — o mesmo caminho `missing_exit`/
+     pendência que `AttendanceRulesEngineService` já trata hoje para
+     RULE-ATT-09, sem mecanismo novo).
+
+**4. Novo módulo `classroom-headcount-reconciliation`** (Bloco 4,
+RULE-PRES-10/11/12) — job de tempo (não de requisição), mesma família do
+`attendance-retention` da Frente 10 (script CLI, agendamento é tarefa de
+DevOps, intervalo fixo de 15 min não configurável, RULE-SEC-05/PRES-11).
+A cada janela, para cada sessão em andamento: lê a contagem `CAMERA_COUNT`
+mais recente, a contagem de fatores `APP_CHECKIN` satisfeitos, e a
+contagem de "em sala" ativas via `room-presence` — todos como **leitura**,
+nenhuma escrita em `session_attendance_consolidation`/
+`attendance_pending_review`. Se a diferença ≥5 pessoas se repetir em duas
+janelas seguidas (RULE-PRES-11), dispara alerta com os três números para
+o professor — canal exato (nova rota no Portal de Autoatendimento Web,
+reusando a superfície de notificação já existente) é detalhe do Frontend/
+Backend, não decidido aqui.
+
+**5. App Mobile — duas capacidades novas, sem novo canal de comunicação
+(reusa o mesmo backend HTTPS já em uso):**
+   - Captura de coordenadas no momento do check-in (`AppCheckinDto` ganha
+     `latitude`/`longitude`) — mesma disciplina já usada para `tagCode`:
+     dado espacial aceito do cliente, mas a decisão temporal continua
+     sendo sempre do servidor (RULE-PRES-02, sem mudança na disciplina já
+     implementada).
+   - Monitor de localização de vida curta, ativo **somente** enquanto uma
+     sessão em que a pessoa está "presente por login" está em andamento —
+     nunca contínuo em segundo plano fora desse contexto (limite
+     arquitetural deliberado para reduzir a superfície do gap de LGPD, não
+     resolve o gap, só evita agravá-lo além do necessário).
+   - Tela/fluxo de consentimento como pré-requisito para o monitor rodar —
+     conteúdo/base legal é gap aberto (Security/Business Rules), mas o
+     **ponto de extensão** (gate antes de ligar o monitor) já fica
+     desenhado aqui.
+
+### Integrações
+
+```
+Bloco 1 (login/APP_CHECKIN):
+  App Mobile --(coords + tap)--> AppCheckinService
+      --check--> InstitutionalNetworkService (rede)
+      --check--> LocationVerificationService (raio da instituição)
+      --se ambos OK--> pipeline existente (Ingestão -> Identificação -> Dedup)
+      --se falhar qualquer um--> 200 OK, sem evento de presença
+
+Bloco 2/3 (tag em sala):
+  Leitor de sala (device.roomId) --ROOM_ENTRY/ROOM_EXIT--> Gateway
+      --> Identificação (resolve pessoa via wristband) --> Dedup
+      --> room-presence (novo: consome pós-dedup, NÃO grava em identification_checkin)
+      --> [estado "em sala" por pessoa+sala+dia]
+
+Avaliação de sessão (Motor de Regras, ao fim de scheduled_end):
+  AttendanceRulesEngineService.evaluatePerson
+      --APP_CHECKIN satisfeito?--> identification_checkin (existente)
+                                    AND room-presence.isPresentForSession (novo)
+      --intervalo de permanência?--> PresenceIntervalService
+                                    <- room-presence.getSessionProjectedInterval (novo,
+                                       no lugar da query direta a identification_checkin
+                                       para ROOM_ENTRY/ROOM_EXIT)
+
+Bloco 4 (câmera, a cada 15 min, sessão em andamento):
+  classroom-headcount-reconciliation --lê--> CAMERA_COUNT (raw), room-presence,
+      contagem de APP_CHECKIN satisfeitos
+      --se divergência >=5 em 2 janelas seguidas--> alerta ao professor (Portal Web)
+```
+
+**Alternativa rejeitada:** sintetizar o estado "em sala" como mais um
+`identification_checkin` sintético por sessão (replicando a solução já
+adotada e depois rejeitada para `device-binding` na Frente 12). Rejeitada
+pelo mesmo motivo já registrado lá: duplicaria a lógica de projeção em
+dois lugares e daria a `identification_checkin` um segundo modelo de
+"o que uma linha significa" (evento pontual vs. estado com duração).
+
+### Padrão arquitetural aplicado
+
+Monólito modular NestJS síncrono, sem deployable novo, sem broker externo
+— mesma família de todas as frentes anteriores. `room-presence` e
+`location-verification` seguem o mesmo idioma de "primitiva mínima lida
+pelo Motor de Regras, nunca decide sozinha" já estabelecido por
+`device-binding`/`InstitutionalNetworkService`. `classroom-headcount-reconciliation`
+segue o idioma de job de tempo já estabelecido pela Frente 10
+(`attendance-retention`): script CLI, wiring de agendamento é DevOps,
+intervalo fixo por regra de negócio (não configuração).
+
+### Escalabilidade
+
+- `room-presence` cresce com o número de swipes físicos — mesma ordem de
+  grandeza que `identification_checkin` já tem hoje para `ROOM_ENTRY`/
+  `ROOM_EXIT`; não é um salto de volume.
+- **Ponto de atenção real: telemetria de localização contínua.** Se o app
+  mobile transmitir amostras brutas de GPS em alta frequência para todo
+  aluno em toda aula, o volume de escrita cresce muito mais rápido que
+  qualquer outro fluxo já existente no projeto — ordem de grandeza de
+  "evento por minuto por aluno em aula", não "evento por swipe". Recomendo
+  que o mobile envie apenas **transições de estado** (cruzou o limiar de
+  afastamento / voltou), não um stream contínuo — decisão de tecnologia
+  final é do Tech Decision Agent, mas a escolha do formato de dado
+  (evento discreto vs. stream) é uma restrição arquitetural que deveria
+  ser imposta agora, antes de qualquer implementação, para não herdar um
+  problema de volume desnecessário.
+- `classroom-headcount-reconciliation` escala com sessões-em-andamento
+  simultâneas, não com histórico — mesmo raciocínio já usado para
+  Controle B/Frente 06.
+
+### Acoplamento / coesão
+
+Acoplamento novo, todo em mão única, mesma forma já usada em toda frente
+anterior (módulo novo lê do núcleo, núcleo nunca lê do módulo novo):
+`AppCheckinService` → `InstitutionalNetworkService`/`location-verification`;
+Motor de Regras → `room-presence`; `PresenceIntervalService` →
+`room-presence` (substitui a leitura direta de `identification_checkin`
+para esses dois fatores); `classroom-headcount-reconciliation` →
+`room-presence` + fatores consolidados + `CAMERA_COUNT` (só leitura, sem
+volta). `room-presence` e `device-binding` ficam **deliberadamente
+separados**, apesar de serem estruturalmente parecidos (mesma família
+"primitiva lida pelo Motor de Regras") — provam coisas diferentes (qual
+sala física vs. qual máquina), têm ciclo de vida e dados diferentes
+(swipe físico datado vs. credencial WebAuthn), fundir os dois quebraria
+coesão em nome de economizar um módulo.
+
+### Checagem de consistência
+
+**Consistente:** padrão de monólito modular; padrão "primitiva mínima
+compartilhada, nunca guard/middleware global" (`InstitutionalNetworkService`
+reusado tal como está); padrão de job de tempo + CLI + DevOps
+(`classroom-headcount-reconciliation`); disciplina de relógio de servidor
+já estabelecida em `AppCheckinService`; princípio "nunca decide sozinho
+sobre dado incompleto" do Motor de Regras (RULE-PRES-13 não exige
+mecanismo novo — já é o comportamento default de RULE-ATT-07/09).
+
+**Desvio real, sinalizado explicitamente, não resolvido silenciosamente:**
+`IdentificationService.resolveClassSession` e `PresenceIntervalService.rebuildForPerson`
+hoje amarram `ROOM_ENTRY`/`ROOM_EXIT` **1:1 a uma única `class_session`**
+pela janela de horário do `capturedAt`. RULE-PRES-06 exige que uma única
+passagem cubra **todas** as aulas do dia naquela sala — isso não cabe
+dentro do comportamento atual, exige a mudança de fronteira descrita acima
+(essas duas responsabilidades migram de "ler `identification_checkin`
+diretamente" para "ler `room-presence`"). Não é uma contradição introduzida
+por acidente — é a tradução direta da simplificação que o próprio usuário
+aceitou conscientemente em RULE-PRES-06 ("por hora, vamos fazer desse modo
+mais simplificado"), mas precisa de aprovação explícita do Backend/Database
+antes de tocar em código já implementado e testado.
+
+### Trade-offs
+
+Otimiza por reaproveitar ao máximo a infraestrutura de ingestão/dedup/
+identificação de tag já existente (nenhum hardware novo para Bloco 2/3/4 —
+leitor de sala e câmera já existem) e por manter o Motor de Regras como
+único lugar que decide presença (Bloco 4 nunca decide, só alerta). O custo
+real: (a) `room-presence` força uma mudança de fronteira em dois
+componentes já implementados e testados (`IdentificationService`,
+`PresenceIntervalService`), não é aditivo puro; (b) dois módulos novos
+inteiros (`room-presence`, `location-verification`) mais um job
+(`classroom-headcount-reconciliation`) para uma única frente — decisão
+deliberada de coesão (cada um prova uma coisa diferente) sobre economia de
+contagem de módulos, mesmo critério já usado na Frente 12; (c) a captura
+de localização contínua introduz a maior superfície de dado sensível do
+projeto até hoje, sem que consentimento/retenção estejam resolvidos — a
+arquitetura contém o raio de exposição (monitor de vida curta, só durante
+aula, só eventos discretos) mas não substitui a decisão jurídica pendente.
+
+### Open questions
+
+1. **[Bloqueante para Backend] "Login" de RULE-PRES-01/02/03/05 é o mesmo
+   mecanismo de `POST /v1/app-checkin` (`APP_CHECKIN`), ou a autenticação
+   (`POST /login/mobile`)?** Este desenho assume o primeiro — ver
+   justificativa em "Componentes afetados". Preciso de confirmação antes
+   de qualquer DTO/endpoint ser tocado.
+2. **RULE-PRES-09 é uma segunda fonte para a hora de saída (RULE-PRES-08,
+   Candidato A) ou um override direto de "ausente" independente do cálculo
+   de percentual de RULE-ATT-04 (Candidato B)?** O texto da regra
+   ("a aula é contabilizada como ausência") admite as duas leituras.
+   Candidato A reaproveita 100% do Motor de Regras já existente; Candidato
+   B exige um branch de decisão novo. Recomendo A por simplicidade, mas
+   não decido — é leitura de regra de negócio, não de arquitetura.
+3. **Quem é o dono da orquestração da cadeia de precedência de saída
+   (RULE-PRES-08)** — proposto aqui como responsabilidade de
+   `room-presence.getSessionProjectedInterval`, que por sua vez lê
+   `location-verification` e o logout explícito. Alternativa (não
+   escolhida): deixar essa orquestração dentro do próprio
+   `PresenceIntervalService`. Ambas funcionam; a diferença é só onde a
+   regra de precedência mora — sinalizado para Backend escolher com base
+   em ergonomia de teste, não é decisão que muda o desenho geral.
+4. Todos os 7 gaps já listados no final de
+   `attendance-presence-flow-rules.md` continuam abertos e **não são
+   resolvidos por este desenho** — cada um foi mapeado a um ponto de
+   extensão específico acima (distância de RULE-PRES-09 →
+   `location-verification`'s interface de geometria; Wi-Fi institucional
+   obrigatório → fora do sistema, é requisito operacional; VPN residual →
+   mesma limitação já aceita para `InstitutionalNetworkService`; GPS
+   falsificado → Tech Decision; consentimento/retenção → Security +
+   Database antes de qualquer schema de localização; tecnologia de câmera
+   → Tech Decision + Computer Vision; divisão do "em sala" por aula →
+   adiada, já refletida no desenho de `room-presence` como "não faz isso
+   agora").
+5. Forma exata de audit trail (se algum) para tentativas de check-in que
+   falham no gate de rede/geolocalização (RULE-PRES-01) — hoje o desenho
+   simplesmente não grava nada no pipeline de atendimento quando falha;
+   se houver necessidade de investigação de fraude/auditoria, precisa de
+   um mecanismo de log separado, não decidido aqui.
