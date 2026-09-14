@@ -45,6 +45,22 @@ mensais individuais deixam de ser necessários após essa consolidação.
 **Exceptions:** Nenhuma.
 **Source of confirmation:** Confirmado pelo usuário em 2026-08-21.
 
+> **Nota — janela de consolidação: ano-calendário, não janela rolante
+> (2026-09-11).** Resolve a Open Question 6 do Solution Architect
+> (`project-knowledge/references/architecture-overview.md`, "Decisão de
+> arquitetura — Conformidade LGPD e retenção, Frente 10"), que havia
+> assumido provisoriamente janela rolante (cardinalidade, sem calendário)
+> como leitura mais literal da regra, sem confirmação. O usuário confirmou
+> que os "12 fechamentos mensais" seguem o **ano-calendário** (janeiro a
+> dezembro), não uma janela rolante de 12 meses corridos contados a partir
+> de qualquer mês de início. A consolidação anual dispara alinhada ao
+> calendário civil, cobrindo sempre o ano anterior fixo (ex.: em janeiro do
+> ano N, consolida os fechamentos de janeiro a dezembro de N-1). A
+> condição técnica exata do gatilho do job de consolidação fica para o
+> Backend Agent quando a implementação avançar — este registro fecha
+> apenas a regra de negócio.
+> **Source of confirmation:** Usuário, 2026-09-11.
+
 ### RULE-RET-03: Deduplicação de eventos — janelas de tempo por tipo de fator
 
 **Statement:** A deduplicação de RULE-ATT-10 ("mesmo período, leitura
@@ -109,8 +125,66 @@ exclusivamente para fins de auditoria/depuração técnica. A hierarquia
 pedagógica não tem acesso a dado bruto no fluxo normal — apenas ao dado
 consolidado.
 **Applies to:** Controle de acesso ao núcleo de chamada.
-**Exceptions:** Detalhamento fino deste papel (quem o atribui, se há
+**Exceptions:** ~~Detalhamento fino deste papel (quem o atribui, se há
 mais de um por instituição) ainda não foi definido — tratar como gap
 menor a esclarecer quando o gerenciamento institucional (prioridade 2)
-for trabalhado.
+for trabalhado.~~ **Resolvido (2026-09-11)** — ver nota abaixo.
 **Source of confirmation:** Confirmado pelo usuário em 2026-08-21.
+
+> **Nota — detalhamento fino do papel, resolvido (2026-09-11):** a
+> **Direção/Reitoria atribui** o papel de administrador técnico da
+> instituição, e é um **papel único por instituição** — no máximo **um**
+> titular ativo por tenant a qualquer momento. Fecha o gap "detalhamento
+> fino" sinalizado pelo Solution Architect (Open Question 8 de "Decisão de
+> arquitetura — Conformidade LGPD e retenção, Frente 10",
+> `project-knowledge/references/architecture-overview.md`) e replicado em
+> `project-knowledge/references/pending-decisions.md`. Mecanismo técnico
+> de atribuição/troca de titular (endpoint dedicado, tela administrativa,
+> validação de unicidade em runtime, etc.) não decidido aqui — cabe ao
+> Solution Architect/Backend quando a implementação avançar.
+> **Source of confirmation:** Usuário, 2026-09-11.
+
+### RULE-RET-05: Quem pode baixar/ler o documento de fechamento completo (mensal ou anual)
+
+**Statement:** O acesso de download/leitura ao **documento de fechamento
+completo** (mensal ou anual, RULE-RET-01/RULE-RET-02) é restrito a
+**Direção/Reitoria** — mesmo padrão institucional já usado em outras
+permissões aditivas do projeto (ex. RULE-ACC-07, permissões de câmera de
+Segurança de Intrusão). Nenhum outro papel tem acesso ao documento
+completo por esta regra: nem o administrador técnico da instituição
+(RULE-RET-04, cujo acesso é a **dado bruto de dispositivo** para
+auditoria/depuração técnica, não ao documento de fechamento consolidado em
+si), nem a Coordenação.
+**Applies to:** Endpoint(s) de download do documento de fechamento
+(`attendance_closure_document`) — item 5 de "Estrutura proposta" em
+"Decisão de arquitetura — Conformidade LGPD e retenção, Frente 10"
+(`project-knowledge/references/architecture-overview.md`).
+**Exceptions:** Nenhuma. Distinto de RULE-RET-06 (indicador "arquivado"
+em `/v1/me/attendance`), que é mais amplo — não confundir os dois.
+**Source of confirmation:** Usuário, 2026-09-11 — fecha a Open Question 4
+do Solution Architect (mesmo documento de arquitetura acima).
+
+### RULE-RET-06: Indicador "arquivado" em `/v1/me/attendance` — visível ao próprio titular
+
+**Statement:** O indicador booleano de "arquivado" devolvido por
+`/v1/me/*` (self-service, item 6 de "Estrutura proposta" em "Decisão de
+arquitetura — Conformidade LGPD e retenção, Frente 10") **deve** ser
+visível ao próprio titular do registro — a pessoa consultando sua própria
+presença/histórico. Esta é uma checagem pontual, distinta de RULE-RET-05
+(download do documento completo): o titular não baixa nem lê o conteúdo do
+documento de fechamento, apenas enxerga que aquele período específico já
+foi arquivado. Precisa de uma **política RLS interativa separada e mais
+restrita**, específica para esta checagem — não a mesma política de quem
+baixa o documento completo (RULE-RET-05).
+**Applies to:** `AttendanceRetentionArchiveLookupService` e a política RLS
+de leitura de `attendance_closure_document` usada por `/v1/me/attendance`.
+**Exceptions:** Nenhuma.
+**Nota de consequência técnica:** fecha o achado do Project Guardian
+(2026-09-10) de que `archived: true` nunca dispara hoje na prática, porque
+`attendance_closure_document` só é visível ao GUC do job não-assistido
+(`app.attendance_retention_job`) — sem política RLS interativa nenhuma,
+nem para o titular nem para Direção/Reitoria. Esta regra fecha a lacuna de
+negócio; a política RLS em si (nova, distinta da de RULE-RET-05) e o
+mecanismo exato de checagem (ex.: `EXISTS` restrito ao `person_id` do
+requisitante) ficam para o Database/Backend Agent implementar.
+**Source of confirmation:** Usuário, 2026-09-11.

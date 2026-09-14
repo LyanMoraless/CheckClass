@@ -157,6 +157,34 @@ institucional (prioridade 2) for trabalhado — não deve ser assumido.
 > fechado — ver "Hierarquia de liderança — Faculdade" acima. Continua em
 > aberto, sem alteração, para escola e empresa.
 
+## Secretaria (confirmado em 2026-09-11, escopo restrito à Frente 13)
+
+O gap acima ("Papéis não totalmente detalhados") citava "secretaria" apenas
+como **exemplo** de papel administrativo ainda não detalhado. No contexto
+da Frente 13 (Verificação Facial no Login), o usuário confirmou
+**"Secretaria"** como ator operacional concreto, com duas atribuições
+específicas desta feature:
+
+- Gerenciar o **cadastro biométrico presencial** — conduzir a captura da
+  foto/template e coletar o consentimento assinado no ato (ver
+  `RULE-FACE-05`, `business-rules/references/facial-verification-rules.md`).
+- Conduzir o **desbloqueio presencial** de uma pessoa bloqueada por excesso
+  de tentativas de verificação facial (ver `RULE-FACE-06`, mesmo arquivo).
+
+Papel **operacional**, distinto do administrador técnico da instituição
+(`RULE-RET-04`, `business-rules/references/data-retention-rules.md`) e de
+Direção/Reitoria — não integra a hierarquia de liderança pedagógica
+descrita acima, nem a administração de inventário de máquinas (RULE-DEV-15,
+`business-rules/references/institutional-device-binding-rules.md`).
+
+**Isto não fecha o gap geral acima** ("Papéis não totalmente detalhados")
+para escola/faculdade — confirma apenas a existência do papel "Secretaria"
+e estas duas atribuições específicas da Frente 13. Outras responsabilidades
+eventuais do papel, sua posição exata na hierarquia institucional (quem a
+supervisiona, se tem outras permissões) e sua existência nos demais tipos
+de instituição continuam não detalhadas.
+**Source of confirmation:** Usuário, 2026-09-11.
+
 > **Atualização (2026-09-02):** "empresa" foi desqualificada definitivamente
 > como tipo de instituição (ver
 > `business-domain/references/domain-overview.md`) — a ressalva acima

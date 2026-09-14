@@ -93,6 +93,7 @@
     <div class="overview-box lead">
       <p>Levantamento feito em <strong>2026-09-11</strong> vasculhando o projeto inteiro — código real de <code>backend/</code>, <code>frontend/</code> e <code>mobile/</code>, cruzado com <code>.claude/skills/business-rules/</code> e <code>.claude/skills/project-knowledge/references/pending-decisions.md</code> — para separar o que é <strong>pendência de curto prazo</strong> (itens pequenos, não-bloqueantes, deixados para trás em frentes já entregues) do que é <strong>feature nova de longo prazo</strong> (ver <a href="checkclass-novas-features.html">documento irmão</a>).</p>
       <p>Nenhum item aqui bloqueia o funcionamento das frentes onde aparece — são gaps conhecidos, registrados pelos próprios agentes que implementaram (Backend, Frontend, QA, Project Guardian) no momento da entrega, nunca escondidos.</p>
+      <p><b>Atualização 2026-09-11:</b> cinco decisões de negócio que estavam em aberto neste levantamento foram fechadas pelo usuário no mesmo dia (janela ano-calendário da consolidação anual, política de leitura do documento de fechamento, papel único de administrador técnico via RULE-RET-04/05/06, e inventário de máquinas institucionais ampliado para Coordenação). Registro formal em <code>.claude/skills/business-rules/</code> e <code>.claude/skills/project-knowledge/references/pending-decisions.md</code>. Itens já resolvidos foram removidos deste documento.</p>
     </div>
   </section>
 
@@ -137,26 +138,12 @@
 
   <section id="frente-10">
     <h2 class="section-title">Frente 10 — LGPD e Retenção</h2>
-    <p>Cadeia completa rodou: Solution Architect → Tech Decision → Database → Backend → Testing → QA → Project Guardian. Veredito Consistente. Os itens abaixo são os que a própria cadeia deixou registrados como não-bloqueantes.</p>
+    <p>Cadeia completa rodou: Solution Architect → Tech Decision → Database → Backend → Testing → QA → Project Guardian. Veredito Consistente. Três decisões de negócio que a própria cadeia deixou em aberto foram fechadas pelo usuário em 2026-09-11 (janela ano-calendário para os 12 fechamentos, política de leitura do documento de fechamento via RULE-RET-05/06, e papel único de administrador técnico via RULE-RET-04 — ver <code>data-retention-rules.md</code>). Resta um item, de revisão técnica, não de decisão de negócio.</p>
 
-    <div class="item">
-      <h3><span class="frente-tag">Gap</span> Política de leitura do documento de fechamento<span class="effort">Backend + Security</span></h3>
-      <p class="desc">"Open Question 4" do Solution Architect ("quem pode baixar/ler o documento de fechamento") nunca foi respondida. Consequência concreta, já observada pelo Project Guardian: <code>attendance_closure_document</code> não tem política RLS interativa de leitura — só o GUC do job não-assistido enxerga a linha — então o indicador <code>archived: true</code> em <code>/v1/me/attendance</code> nunca dispara na prática hoje.</p>
-      <p class="why"><b>Por quê isso importa:</b> não é um bug — degrada com segurança (o endpoint cai no formato silencioso pré-existente) — mas o recurso "ver que meu período está arquivado" simplesmente não aparece para ninguém até essa política existir.</p>
-      <p class="refs">Confirmado: comentário em <code>backend/src/modules/self-service/me.controller.ts</code>; <code>AttendanceRetentionArchiveLookupService</code>.</p>
-    </div>
     <div class="item">
       <h3><span class="frente-tag">Gap</span> Revisão de segurança dos GUCs de escopo de job<span class="effort">Security, pequeno</span></h3>
       <p class="desc">Dois GUCs de escopo de job não revisados pelo Security Agent: <code>app.absence_justification_retention_job</code> (Frente 07) e <code>app.attendance_retention_job</code> (Frente 10). A própria arquitetura já recomenda revisar os dois numa única passagem.</p>
       <p class="refs">Ver "Decisão de arquitetura — Conformidade LGPD e retenção, Frente 10" em <code>architecture-overview.md</code>.</p>
-    </div>
-    <div class="item">
-      <h3><span class="frente-tag">Gap</span> RULE-RET-04 — detalhamento fino do papel de administrador técnico<span class="effort">Pequeno</span></h3>
-      <p class="desc">O código de permissão aditivo já está reservado; falta apenas o detalhamento fino do papel. Não bloqueou a Frente 10 nem a Frente 12 (break-glass).</p>
-    </div>
-    <div class="item">
-      <h3><span class="frente-tag">Gap</span> Janela rolante vs. ano-calendário para os 12 fechamentos<span class="effort">Decisão de negócio</span></h3>
-      <p class="desc">Não decidido: se os "12 fechamentos mensais" que disparam a consolidação anual seguem uma janela rolante (últimos 12 meses) ou o ano-calendário. E dimensionamento do job de retenção para tenants de alto volume — nenhuma avaliação de carga feita ainda, sem evidência de que seja necessária hoje.</p>
     </div>
   </section>
 
@@ -164,10 +151,6 @@
     <h2 class="section-title">Frente 12 — Vínculo de Dispositivo Institucional</h2>
     <p>Tecnicamente encerrada em 2026-09-11 (Testing 1005/1005, QA aprovado, Project Guardian: Consistente). GAP-10 (rede institucional) também fechado na mesma data. Os itens abaixo foram sinalizados pelos próprios agentes de implementação e pelo QA, nenhum bloqueante.</p>
 
-    <div class="item">
-      <h3><span class="frente-tag">Revisão</span> Coordenação não vê o inventário de máquinas institucionais<span class="effort">Decisão de negócio</span></h3>
-      <p class="desc"><code>InstitutionalMachineController</code> (list/get) está restrito a Direção/Reitoria — conservadorismo do Backend Agent, não uma regra confirmada. <code>VIEW_DEVICE_BINDINGS</code> (RULE-DEV-16) é mais amplo e já inclui coordenação. Candidato a revisão do usuário, não um erro já confirmado.</p>
-    </div>
     <div class="item">
       <h3><span class="frente-tag">Gap</span> RULE-DEV-18 sem UI — revogação administrativa de BYOD<span class="effort">Backend + Frontend, pequeno</span></h3>
       <p class="desc">Falta endpoint de busca de dispositivo pessoal por <code>personId</code> — a listagem de vínculos só expõe <code>deviceIdentityId</code> cru, sem tela de revogação administrativa. Autosserviço (o próprio dono revogando o próprio BYOD) já funciona integralmente hoje; só a revogação feita por um administrador em nome de outra pessoa está sem caminho de UI.</p>

@@ -267,6 +267,19 @@ acima devem ficar marcados como não-implementáveis até resposta.
   máquinas: Direção/Reitoria (RULE-DEV-15) — ver também addendum em
   `business-rules/references/access-control-rules.md` (RULE-ACC-08) sobre
   não haver código de permissão dedicado para essa administração.
+
+  > **Addendum (2026-09-11) — visualização (list/get) do inventário de
+  > máquinas ampliada para Coordenação.** Depois da implementação real da
+  > Frente 12, o QA sinalizou que o endpoint de listagem/leitura do
+  > inventário de máquinas institucionais havia sido restrito a
+  > Direção/Reitoria pelo próprio Backend Agent, por conservadorismo — não
+  > por regra confirmada (RULE-DEV-15 só cobre administração/CRUD). O
+  > usuário confirmou ampliar para Coordenação também, alinhando com o
+  > titular de `VIEW_DEVICE_BINDINGS`/RULE-DEV-16. Ver nota em RULE-DEV-15
+  > (`business-rules/references/institutional-device-binding-rules.md`) e
+  > o fechamento correspondente em
+  > `project-knowledge/references/pending-decisions.md`.
+  > **Source of confirmation:** Usuário, 2026-09-11.
 - **AC-28 (GAP-10) continua bloqueado — sem mudança de conteúdo, apenas
   de status.** O usuário confirmou explicitamente que quer deixar a
   detecção de rede institucional em aberto por ora, sem nenhuma direção
@@ -279,3 +292,35 @@ acima devem ficar marcados como não-implementáveis até resposta.
 - **F.7 e F.8 (lacunas novas sinalizadas por este agente) seguem sem
   resposta** — não fizeram parte da sessão de fechamento de gaps do
   usuário; continuam exatamente como estavam.
+
+---
+
+## Addendum (2026-09-11) — F.5 (GAP-12) fechado por completo, incluindo o lado facial (Frente 13)
+
+> Nota curta do Product Definition Agent. O addendum de 2026-09-10 acima
+> já havia desbloqueado **AC-18** apenas quanto ao efeito da expiração de
+> token sobre o **vínculo de dispositivo** (RULE-DEV-06, 4º gatilho de
+> checkout). Esta entrada fecha o restante de **F.5**: o mesmo evento
+> (expiração de token de sessão) também dispara uma consequência do lado
+> da **Frente 13** (verificação facial), que não fazia parte do escopo da
+> Frente 12 e por isso não podia ser fechada por aquele addendum.
+
+**F.5 — Efeito de expiração/refresh de token de sessão sobre o vínculo
+(GAP-12) está agora fechado em ambas as frentes que ele cruza:**
+- **Vínculo de dispositivo (Frente 12):** expiração do token encerra o
+  vínculo imediatamente — 4º gatilho de checkout, `RULE-DEV-06`
+  (já fechado em 2026-09-10, sem alteração aqui).
+- **Verificação facial (Frente 13):** expiração do token exige **nova
+  verificação facial completa** no login seguinte — sessão expirada é
+  tratada como um novo ciclo de autenticação, nunca como refresh
+  silencioso. Ver `RULE-FACE-10` em
+  `business-rules/references/facial-verification-rules.md`.
+
+As duas consequências são **complementares, não conflitantes** — mesmo
+evento disparador (expiração de token), efeitos em domínios distintos
+(ciclo de vida do vínculo de dispositivo vs. exigência de reautenticação
+facial). Nenhum critério de aceite adicional além do já existente AC-18
+depende diretamente deste lado facial nesta análise (a Frente 13 ainda não
+teve sua própria decomposição de critérios de aceite pelo Business
+Analyst).
+**Source of confirmation:** Usuário, 2026-09-11.

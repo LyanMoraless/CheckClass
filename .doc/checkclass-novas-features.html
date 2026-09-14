@@ -121,37 +121,27 @@
       </ul>
       <p style="font-size: 13.5px; color: var(--muted);">Cadeia prevista: Product Definition → Business Analyst → <b>Security</b> → Solution Architect → Tech Decision → Database → Backend + Frontend → Testing → QA → Project Guardian.</p>
 
-      <h3 style="margin-top:22px;">12 gaps abertos — nenhum perguntado ao usuário ainda</h3>
+      <h3 style="margin-top:22px;">10 de 11 gaps fechados pelo usuário em 2026-09-11</h3>
+      <p style="font-size: 13.8px; color: var(--muted); margin: 0 0 10px;">Formalizados em <code>business-rules/references/facial-verification-rules.md</code> (RULE-FACE-01 a RULE-FACE-10). Resumo: nunca armazenar o quadro capturado (GAP-01); template retido enquanto o vínculo estiver ativo (GAP-02); revogação de consentimento bloqueia acesso de dentro da rede até novo consentimento presencial (GAP-03); divergência dispositivo×pulseira gera incidente automático (GAP-04); Secretaria gerencia o cadastro biométrico (GAP-05); 3 tentativas com recuperação via Secretaria (GAP-06); BYOD segue o autosserviço já existente, sem limite extra (GAP-08); máquina sem TPM/WebAuthn bloqueia o login (GAP-09); consentimento formal de todos (maiores e responsáveis), registro dedicado (GAP-11); sessão expirada exige nova facial (GAP-12).</p>
       <ul class="gap-list">
-        <li><span class="tag">GAP-01</span>Armazenar ou não o quadro capturado a cada login (proposto: nunca armazenar, só resultado/confiança/timestamp — não confirmado).</li>
-        <li><span class="tag">GAP-02</span>Retenção do template facial e dos registros de vínculo — as regras <code>RULE-RET-*</code> da Frente 10 não previram biometria.</li>
-        <li><span class="tag">GAP-03</span>Revogação do consentimento biométrico pelo titular — conflito real: facial obrigatória + direito de revogar pode significar bloqueio permanente.</li>
-        <li><span class="tag">GAP-04</span>Validação cruzada vínculo de dispositivo × pulseira (divergência de local = possível fraude?).</li>
-        <li><span class="tag">GAP-05</span>Onde ficam as permissões de "administrar inventário" e "gerenciar cadastro biométrico" — não receberam código próprio ainda.</li>
-        <li><span class="tag">GAP-06</span>Quantas tentativas antes do bloqueio, e como o aluno bloqueado se recupera.</li>
-        <li><span class="tag">GAP-07</span>Tecnologia de reconhecimento facial e de liveness — decisão de Tech Decision, não tomada.</li>
-        <li><span class="tag">GAP-08</span>Como o BYOD é matriculado para este fluxo (limite por pessoa, quem revoga).</li>
-        <li><span class="tag">GAP-09</span>Máquina sem TPM ou navegador sem WebAuthn — nenhum caminho de degradação definido.</li>
-        <li><span class="tag">GAP-11</span>Registro do consentimento — onde vive, validade, revogação, e se maiores também precisam consentir formalmente.</li>
-        <li><span class="tag">GAP-12</span>O que acontece com o vínculo quando o token de sessão expira.</li>
+        <li><span class="tag">GAP-07</span>Tecnologia de reconhecimento facial e de liveness — <b>segue aberto</b>, decisão de Tech Decision + Research, ainda não tomada.</li>
       </ul>
-      <p style="font-size: 13px; color: var(--faint);">Fonte: <code>pending-decisions.md</code>, seção "Feature nova confirmada em escopo... Vínculo de dispositivo institucional + verificação facial no login (2026-09-10)". GAP-10 (rede institucional) já saiu desta lista — fechado pela Frente 12.</p>
+      <p style="font-size: 13px; color: var(--faint);">Fonte: <code>pending-decisions.md</code>, seção "Resolvido — 10 gaps da Frente 13 (verificação facial no login) fechados pelo usuário (2026-09-11)". GAP-10 (rede institucional) já tinha saído desta lista antes — fechado pela Frente 12.</p>
     </div>
   </section>
 
   <section id="frente-09">
     <div class="front">
       <div class="num">09</div>
-      <h3 class="title">App Mobile <span class="st pausado">Pausado por decisão do usuário</span></h3>
-      <p class="desc">Confirmado por código: <b>nenhuma tela nova desde 01/09/2026</b> — o único commit posterior a essa data que toca <code>mobile/</code> é um ajuste de texto no README (03/09). Enquanto isso, o portal web (<code>frontend/</code>) recebeu commits até hoje e já ultrapassou o escopo original do mobile.</p>
+      <h3 class="title">App Mobile <span class="st escopo-fechado">Retomado em 2026-09-11 — reimplementação nativa</span></h3>
+      <p class="desc">Desenvolvimento retomado por decisão do usuário em 2026-09-11 (a condição de pausa — portal web pronto — já estava cumprida desde 2026-09-03). O mecanismo de "refletir" o portal web no mobile também foi decidido: <b>reimplementação nativa</b> das telas que faltam, não WebView. Stack já aprovada (React Native/Expo) não muda.</p>
       <ul class="scope">
         <li><b>O que o mobile tem hoje (6 telas):</b> login, presença/faltas, cronograma, check-in, resolução de pendências (professor), conta (só logout).</li>
-        <li><b>O que o portal web já tem e o mobile não:</b> justificativa de faltas, avisos de frequência, portal de coordenação/direção, Área de Provas inteira (e por decisão de produto <i>nunca vai existir no mobile</i> — depende de conceitos de navegador para monitoramento).</li>
-        <li><b>Condição da pausa</b> (Portal web pronto) foi cumprida em 2026-09-03 — retomar é decisão do usuário, não automática.</li>
-        <li><b>Escopo confirmado, arquitetura pendente:</b> conteúdo de app mobile para Faculdade — hoje o mobile só cobre conteúdo Escola/Aluno.</li>
+        <li><b>A construir nativamente:</b> justificativa de faltas, avisos de frequência, portal de coordenação/direção — hoje só existem no portal web (<code>frontend/</code>). Área de Provas inteira continua fora do mobile por decisão de produto anterior (depende de conceitos de navegador para monitoramento) — isso não muda.</li>
+        <li><b>Ainda em aberto, não fechado por esta decisão:</b> arquitetura/tecnologia de conteúdo de app mobile para Faculdade — hoje o mobile só cobre conteúdo Escola/Aluno; precisa passar por Solution Architect + Tech Decision Agent.</li>
         <li><b>Adiado, não rejeitado:</b> conteúdo "Atividades" (Escola); paginação/filtro de data no cronograma (sem evidência de volume real que justifique).</li>
       </ul>
-      <p style="font-size: 13px; color: var(--faint);">Retomar exige decidir primeiro: reimplementar as telas que faltam nativamente, ou usar WebView do portal — nenhuma das duas foi escolhida.</p>
+      <p style="font-size: 13px; color: var(--faint);">Fonte: <code>pending-decisions.md</code>, seção "Resolvido — App Mobile (Frente 09): retomada de desenvolvimento e mecanismo de reflexão nativo (2026-09-11)".</p>
     </div>
   </section>
 

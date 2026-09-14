@@ -1467,6 +1467,34 @@ provas, faltas etc e o mobile apenas reflita isso"):
   para o professor em faculdade — ver "Decisão de arquitetura — App Mobile
   para Faculdade" acima) mais a Área de Provas já desenhada
   (`business-rules/references/exam-rules.md`, RULE-EXAM-01 a 17).
+
+  > **RESOLUÇÃO (2026-09-11) — mecanismo técnico de "refletir" o portal
+  > web no mobile decidido diretamente pelo usuário: reimplementação
+  > nativa, não WebView.** O usuário decidiu, sem precisar do Tech
+  > Decision Agent: o App Mobile vai **reimplementar nativamente** as
+  > telas que faltam, refletindo o mesmo backend/conteúdo do Portal Web —
+  > **não** via WebView do portal. Telas identificadas como faltantes hoje
+  > (`.doc/checkclass-novas-features.html`, Frente 09): justificativa de
+  > faltas, avisos de frequência, portal de coordenação/direção. A **Área
+  > de Provas nunca vai para o mobile** — decisão de produto já tomada
+  > antes (depende de conceitos de navegador para monitoramento) — isso
+  > não muda.
+  >
+  > A stack já aprovada logo acima (React Native/Expo) **continua
+  > valendo** — esta é uma decisão sobre o mecanismo de reflexão (nativo
+  > vs. WebView), não uma nova escolha de tecnologia base. Ver também a
+  > "RESOLUÇÃO (2026-09-11) — desenvolvimento do App Mobile retomado" no
+  > bullet de cronograma, mais abaixo nesta mesma seção.
+  >
+  > **Fora de escopo desta decisão:** o gap "Escopo confirmado,
+  > arquitetura/tecnologia pendente — App Mobile para Faculdade
+  > (2026-08-31)" (`pending-decisions.md`) **não** foi resolvido por isto —
+  > continua exigindo Solution Architect + Tech Decision Agent antes de
+  > virar trabalho de implementação; hoje o mobile só cobre conteúdo
+  > Escola/Aluno.
+  >
+  > **Source of confirmation:** Usuário, 2026-09-11, via pergunta direta
+  > sobre nativo vs. WebView.
 - **Coordenador de Curso** (ator já existente para faculdade — ver
   `business-domain/references/actors.md`) passa também a ter presença
   própria neste portal — escopo exato do que essa área contém é gap (ver
@@ -1558,6 +1586,28 @@ autoatendimento web"):
 depois:** mecanismo técnico exato de "refletir" o mobile (WebView vs.
 reimplementação nativa vs. outra abordagem) — segue não decidido, mas não
 bloqueia o restante do pivot.
+
+> **RESOLUÇÃO (2026-09-11) — desenvolvimento do App Mobile retomado.** A
+> condição de pausa acima (Portal web pronto) foi cumprida em 2026-09-03,
+> mas retomar dependia de decisão explícita do usuário, não automática.
+> O usuário confirmou agora: **retomar o desenvolvimento do App Mobile
+> imediatamente.**
+>
+> O ponto "explicitamente não bloqueante" logo acima também foi decidido
+> nesta mesma data, diretamente pelo usuário (sem precisar do Tech
+> Decision Agent): **reimplementação nativa das telas que faltam, não
+> WebView.** Ver o registro completo — com a lista de telas faltantes e a
+> stack que continua valendo — na "RESOLUÇÃO (2026-09-11)" junto ao bullet
+> "A Decisão de tecnologia — App Mobile (React Native/Expo) não é
+> descartada..." mais acima nesta mesma seção.
+>
+> **Não afeta** o gap separado "Escopo confirmado, arquitetura/tecnologia
+> pendente — App Mobile para Faculdade (2026-08-31)" (`pending-decisions.md`)
+> — cobertura de conteúdo Faculdade no mobile continua exigindo Solution
+> Architect + Tech Decision Agent; a decisão de hoje trata apenas do
+> mecanismo de reflexão do conteúdo Escola/Aluno já existente.
+>
+> **Source of confirmation:** Usuário, 2026-09-11.
 
 **Source of confirmation:** Usuário, 2026-09-02.
 
@@ -3225,30 +3275,35 @@ por isso vira Open Question em vez de proposta fechada.
    que sua sessão já passou dos 60 dias)? O registro consolidado nasce "já
    elegível para expurgo" no momento em que é criado. Não presumido — nem
    RULE-RET-01 nem RULE-ATT-11 respondem isto.
-4. **Quem pode baixar o documento de fechamento (mensal e anual)?** Não
+4. ~~**Quem pode baixar o documento de fechamento (mensal e anual)?** Não
    definido pelas regras de negócio. Candidatos óbvios (Direção/Reitoria,
    o novo administrador técnico de RULE-RET-04) não foram confirmados como
-   exclusivos ou conjuntos.
+   exclusivos ou conjuntos.~~ **RESOLVIDO (2026-09-11):** só
+   Direção/Reitoria — ver RESOLUÇÃO logo após as Open Questions/APROVAÇÃO
+   abaixo, e RULE-RET-05.
 5. **Formato/local de armazenamento do artefato de fechamento** (coluna
    `jsonb` vs. arquivo com referência + checksum) — deixado para Tech
    Decision; a arquitetura recomenda um artefato copiável/baixável de
    verdade, dado que RULE-RET-01 fala explicitamente em "copiar para mídia
    física própria".
-6. **"12 fechamentos mensais" (RULE-RET-02) é ano-calendário fixo ou
+6. ~~**"12 fechamentos mensais" (RULE-RET-02) é ano-calendário fixo ou
    janela rolante por tenant?** Esta arquitetura assume janela rolante
    (cardinalidade, não calendário) por ser a leitura mais literal da regra
-   — não confirmado.
+   — não confirmado.~~ **RESOLVIDO (2026-09-11):** ano-calendário — ver
+   RULE-RET-02.
 7. **Dimensionamento do job de lote** para tenants de alto volume
    (paginação interna do script vs. execução única) — sinalizado ao Tech
    Decision, não resolvido aqui.
-8. **RULE-RET-04 (papel de administrador técnico), gap "detalhamento
+8. ~~**RULE-RET-04 (papel de administrador técnico), gap "detalhamento
    fino"** — a conclusão da Frente 05 (gerenciamento institucional) não
    fecha automaticamente este gap (eixos diferentes: administração
    técnica/infraestrutura vs. hierarquia pedagógica). Recomenda-se flagar
    separadamente para o Business Analyst como rodada pequena e dedicada
    (quem atribui o papel, se há mais de um por instituição) — não bloqueia
    esta frente; o expurgo/fechamento só precisa de um código de permissão
-   aditivo reservado (item 5 de "Estrutura proposta"), já contemplado.
+   aditivo reservado (item 5 de "Estrutura proposta"), já contemplado.~~
+   **RESOLVIDO (2026-09-11):** Direção/Reitoria atribui; papel único por
+   instituição — ver RULE-RET-04.
 
 **Ready for technical design? Sim.**
 
@@ -3394,6 +3449,40 @@ janela rolante vs. ano-calendário para os 12 fechamentos, dimensionamento
 do job em lote para tenants de alto volume, detalhamento do papel de
 RULE-RET-04) seguem em aberto para Business Analyst/Security/DevOps, sem
 bloquear o desenho de schema.
+
+> **RESOLUÇÃO (2026-09-11) — três Open Questions não-bloqueantes
+> fechadas pelo usuário:**
+> - **Item 4 (quem baixa o documento de fechamento):** **só
+>   Direção/Reitoria** — mesmo padrão institucional já usado em outras
+>   permissões aditivas (ex. RULE-ACC-07). Não inclui o administrador
+>   técnico de RULE-RET-04 nem a Coordenação. Formalizado como
+>   **RULE-RET-05** em
+>   `business-rules/references/data-retention-rules.md`.
+> - **Item 6 (janela rolante vs. ano-calendário para os 12
+>   fechamentos):** **ano-calendário** (jan-dez), não janela rolante. A
+>   consolidação anual dispara alinhada ao calendário civil, cobrindo o
+>   ano anterior fixo. A suposição provisória de janela rolante registrada
+>   acima está **superada**. Ver nota em **RULE-RET-02**
+>   (`business-rules/references/data-retention-rules.md`).
+> - **Item 8 (RULE-RET-04, detalhamento fino do papel de administrador
+>   técnico):** a **Direção/Reitoria atribui** o papel, e é **papel único
+>   por instituição** (no máximo um titular ativo por tenant). Ver nota em
+>   **RULE-RET-04**, mesmo arquivo.
+>
+> **Decisão nova, não era uma das Open Questions listadas acima, mas
+> resolve diretamente o achado do Project Guardian sobre `archived: true`
+> nunca disparar hoje (ver "Implementação — Retenção/Anonimização de
+> Dados, Frente 10" e o achado registrado em
+> `project-knowledge/references/pending-decisions.md`):** o indicador
+> "arquivado" de `/v1/me/attendance` **deve** ser visível ao próprio
+> titular — precisa de uma **política RLS interativa separada e mais
+> restrita**, específica para essa checagem pontual, distinta da política
+> de quem baixa o documento completo (RULE-RET-05). Formalizado como
+> **RULE-RET-06**, mesmo arquivo. Implementação real da política RLS
+> (Database) e o wiring em `AttendanceRetentionArchiveLookupService`
+> (Backend) ainda não feitos — este registro fecha só a regra de negócio.
+>
+> **Source of confirmation:** Usuário, 2026-09-11.
 
 ## Escopo confirmado (arquitetura ainda pendente) — Frente 12: Vínculo de dispositivo institucional (2026-09-10)
 
@@ -3997,13 +4086,21 @@ sem verificação de assinatura). Verificação: `npx tsc --noEmit` limpo;
 
 ### Itens sinalizados pelos agentes de implementação — não são decisões fechadas
 
-1. **Inventário de máquinas institucionais (list/get) foi gated a
+1. ~~**Inventário de máquinas institucionais (list/get) foi gated a
    Direção/Reitoria pelo próprio Backend Agent**, por conservadorismo:
    GAP-05a só confirmou quem **administra** o inventário (cadastra,
    edita, dá baixa), não quem apenas **lista/vê** — diferente do titular
    de `VIEW_DEVICE_BINDINGS` (RULE-DEV-16), que é mais amplo (coordenação
    + diretoria/reitoria). Vale revisão do usuário se coordenação também
-   precisar enxergar o inventário sem poder editá-lo.
+   precisar enxergar o inventário sem poder editá-lo.~~ **RESOLVIDO
+   (2026-09-11):** o usuário confirmou ampliar a visualização (list/get)
+   do inventário para Coordenação também, alinhando com o titular de
+   `VIEW_DEVICE_BINDINGS`/RULE-DEV-16. Administração (CRUD) permanece
+   exclusiva de Direção/Reitoria (RULE-DEV-15, sem alteração). Ver nota em
+   RULE-DEV-15
+   (`business-rules/references/institutional-device-binding-rules.md`).
+   Ajuste real do guard do endpoint ainda não implementado — fica para o
+   Backend Agent.
 2. **RULE-DEV-18 (revogação administrativa de BYOD) não tem UI no
    Frontend.** Não existe endpoint de busca de BYOD por `personId`, e a
    listagem de vínculos só expõe `deviceIdentityId` cru, sem indicação

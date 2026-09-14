@@ -523,11 +523,35 @@ Faculdade": Professor → Coordenador de Curso → Direção/Reitoria) e já
 usado por RULE-ATT-12 (`business-rules/references/attendance-rules.md`).
 **Applies to:** Controle de acesso ao CRUD de inventário de máquina
 institucional (RULE-DEV-04).
-**Exceptions:** Nenhuma. A ressalva de RULE-ATT-12 sobre nomes/níveis de
-cargo ainda não totalmente detalhados para "escola" (fora de "faculdade")
-também se aplica aqui, pelo mesmo motivo.
+**Exceptions:** A ressalva de RULE-ATT-12 sobre nomes/níveis de cargo
+ainda não totalmente detalhados para "escola" (fora de "faculdade")
+também se aplica aqui, pelo mesmo motivo. Ver também a nota abaixo
+(2026-09-11): esta regra cobre apenas **administração** (cadastrar,
+editar, dar baixa) — a partir de 2026-09-11, **visualização (list/get)**
+do inventário passa a ter titularidade mais ampla, não restrita a este
+papel.
 **Source of confirmation:** Usuário, 2026-09-10 (fechamento de GAP-05,
 primeira pergunta — "Direção/Reitoria").
+
+> **Nota — visualização do inventário (list/get) ampliada para Coordenação
+> também (2026-09-11):** distinto de **administrar** o inventário (CRUD,
+> que permanece exclusivo de Direção/Reitoria por esta regra, sem
+> alteração), o Backend Agent implementou a **listagem/leitura** do
+> inventário de máquinas institucionais restrita a Direção/Reitoria por
+> conservadorismo próprio — RULE-DEV-15 nunca havia confirmado essa
+> restrição de leitura como regra de negócio, apenas a de administração.
+> QA sinalizou o ponto como item não-bloqueante para rodada futura (ver
+> `project-knowledge/references/pending-decisions.md`). O usuário
+> confirmou: a **visualização** (list/get, sem editar) do inventário de
+> máquinas institucionais passa a incluir também a **Coordenação**,
+> alinhando com o titular de `VIEW_DEVICE_BINDINGS`/RULE-DEV-16 (visualizar
+> vínculos ativos e histórico), que já inclui coordenação. Ou seja: a
+> partir desta confirmação, o titular de leitura do inventário de máquinas
+> passa a ser o **mesmo conjunto de papéis de RULE-DEV-16** — coordenação e
+> diretoria/reitoria — enquanto a administração (RULE-DEV-15, acima)
+> continua exclusiva de Direção/Reitoria. Implementação real desta mudança
+> (ajuste do guard do endpoint list/get) fica para o Backend Agent.
+> **Source of confirmation:** Usuário, 2026-09-11.
 
 ### RULE-DEV-16: Titular padrão de visualização de vínculos ativos e histórico — coordenação e diretoria/reitoria
 

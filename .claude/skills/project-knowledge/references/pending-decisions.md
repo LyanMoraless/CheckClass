@@ -785,6 +785,16 @@ passar por Solution Architect + Tech Decision Agent, com aprovação
 explícita do usuário, antes de virar trabalho de Business Analyst ou
 implementação.
 
+> **Nota de esclarecimento (2026-09-11) — este gap NÃO foi resolvido pela
+> retomada do App Mobile.** O usuário confirmou em 2026-09-11 retomar o
+> desenvolvimento do App Mobile e decidiu que a reflexão do portal web no
+> mobile será nativa (não WebView) — ver "Resolvido — App Mobile (Frente
+> 09): retomada de desenvolvimento e mecanismo de reflexão nativo
+> (2026-09-11)" mais abaixo nesta mesma skill. Nenhuma dessas duas decisões
+> resolve arquitetura/tecnologia para conteúdo de **Faculdade** no mobile —
+> continua exigindo Solution Architect + Tech Decision Agent, como
+> registrado acima.
+
 ## Resolvido — Sobreposição de turmas simultâneas no check-in via app (2026-09-01)
 
 Atualiza o gap "Gap — Sobreposição de turmas simultâneas no check-in via
@@ -1211,6 +1221,13 @@ canal primário de Aluno/Professor/Coordenador (2026-09-02)"
   vezes ao mesmo tempo. Ver addendum em "Pivot — Portal de
   autoatendimento..." (`architecture-overview.md`).
 
+  > **RESOLVIDO (2026-09-11):** a condição de pausa foi cumprida em
+  > 2026-09-03 e o usuário confirmou agora a retomada. Ver "Resolvido —
+  > App Mobile (Frente 09): retomada de desenvolvimento e mecanismo de
+  > reflexão nativo (2026-09-11)" mais abaixo nesta mesma skill, e a
+  > "RESOLUÇÃO (2026-09-11)" correspondente em `architecture-overview.md`
+  > junto ao bullet de cronograma da mesma seção do pivot.
+
 **Source of confirmation:** Usuário, 2026-09-02.
 
 <details>
@@ -1239,6 +1256,12 @@ fluxos/telas:
 Não bloqueante, fica para o Tech Decision Agent depois (não é gap de
 escopo/regra de negócio): mecanismo técnico exato de "refletir" o mobile
 (WebView do portal vs. reimplementação nativa vs. outra abordagem).
+
+> **RESOLVIDO (2026-09-11), fora do fluxo do Tech Decision Agent — o
+> usuário decidiu diretamente:** reimplementação nativa, não WebView. Ver
+> "Resolvido — App Mobile (Frente 09): retomada de desenvolvimento e
+> mecanismo de reflexão nativo (2026-09-11)" mais abaixo nesta mesma
+> skill.
 
 </details>
 
@@ -2915,27 +2938,34 @@ construída, migração Matéria feita, acesso auto-restrito implementado em
     — comentário já corrigido para documentar isso explicitamente.
 
     **Pendências que continuam em aberto, não bloquearam esta frente:**
-    - **Open Question 4 do Solution Architect** ("quem pode baixar/ler o
+    - ~~**Open Question 4 do Solution Architect** ("quem pode baixar/ler o
       documento de fechamento") — sem isso, o indicador "arquivado" em
       `/v1/me/attendance` nunca dispara na prática (ver achado do Project
       Guardian acima). Resolve-se sozinho quando essa Open Question ganhar
       uma política RLS interativa — nenhuma mudança de código necessária
-      neste endpoint quando isso acontecer.
+      neste endpoint quando isso acontecer.~~ **RESOLVIDO (2026-09-11):**
+      ver "Resolvido — Cinco decisões de negócio pendentes fechadas pelo
+      usuário (2026-09-11)" mais abaixo nesta skill.
     - **Os dois GUCs de escopo de job**
       (`app.absence_justification_retention_job` da Frente 07,
       `app.attendance_retention_job` desta frente) seguem sem revisão do
       Security Agent — a própria arquitetura já recomenda revisar os dois
       numa única passagem, em vez de acumular uma terceira instância não
       revisada no futuro.
-    - **RULE-RET-04** (papel de administrador técnico, gap de
+    - ~~**RULE-RET-04** (papel de administrador técnico, gap de
       "detalhamento fino") — gap menor já registrado, não bloqueou esta
       frente; o expurgo/fechamento só precisava de um código de permissão
-      aditivo reservado, já contemplado.
-    - Demais Open Questions não-bloqueantes do Solution Architect
+      aditivo reservado, já contemplado.~~ **RESOLVIDO (2026-09-11):** ver
+      mesma seção referenciada acima.
+    - ~~Demais Open Questions não-bloqueantes do Solution Architect
       (pendência resolvida tardiamente, janela rolante vs. ano-calendário
       para os 12 fechamentos, dimensionamento do job para tenants de alto
       volume) — seguem em aberto, sem dono designado além do que já está
-      registrado em `architecture-overview.md`.
+      registrado em `architecture-overview.md`.~~ **Parcialmente
+      resolvido (2026-09-11):** a janela rolante vs. ano-calendário está
+      fechada (ver mesma seção). Pendência resolvida tardiamente e
+      dimensionamento do job para tenants de alto volume **continuam em
+      aberto**, sem alteração.
     **Source of confirmation:** código verificável no repositório
     (2026-09-10); decisões documentadas em
     `project-knowledge/references/architecture-overview.md` ("Decisão de
@@ -3278,39 +3308,155 @@ sensível** (LGPD, Art. 11). Ver GAP-02 e GAP-03.
 
 ### GAPS que continuam EM ABERTO — não perguntados ao usuário, NÃO presumir resposta
 
-- **GAP-01 — Armazenar ou não o quadro capturado a cada login.** Foi
+> **Nota de atualização (2026-09-11) — 10 dos 12 gaps abaixo estão
+> FECHADOS.** Ver "Resolvido — 10 gaps da Frente 13 (verificação facial no
+> login) fechados pelo usuário (2026-09-11)" logo após esta lista para o
+> fechamento formal de GAP-01, 02, 03, 04, 05, 06, 08, 09, 11 e 12. A lista
+> original abaixo é preservada como registro histórico do estado em que
+> cada gap foi levantado; os textos riscados marcam os itens fechados.
+> **GAP-07 permanece explicitamente ABERTO** (decisão de tecnologia, não de
+> negócio — Tech Decision + Research). **GAP-10 já havia sido fechado
+> separadamente antes desta rodada** (ver "Resolvido — GAP-10 fechado:
+> detecção de rede institucional implementada, testada e ratificada
+> (2026-09-11)" mais abaixo nesta skill).
+
+- ~~**GAP-01 — Armazenar ou não o quadro capturado a cada login.** Foi
   *proposto* (nunca armazenar a imagem; guardar apenas resultado do match,
   confiança e timestamp, preservando o espírito da decisão de 2026-08-21) mas
-  **não foi perguntado nem confirmado**.
-- **GAP-02 — Retenção do template facial e dos registros de vínculo.** Por
-  quanto tempo, com que expurgo, e sob quais das regras `RULE-RET-*`.
-- **GAP-03 — Revogação do consentimento biométrico pelo titular.** Conflito
+  **não foi perguntado nem confirmado**.~~ **FECHADO, 2026-09-11.**
+- ~~**GAP-02 — Retenção do template facial e dos registros de vínculo.** Por
+  quanto tempo, com que expurgo, e sob quais das regras `RULE-RET-*`.~~
+  **FECHADO, 2026-09-11.**
+- ~~**GAP-03 — Revogação do consentimento biométrico pelo titular.** Conflito
   real e não resolvido: se a facial é obrigatória (B2/B4) e o titular exerce o
   direito de revogar/excluir o dado biométrico, ele fica permanentemente
-  bloqueado do sistema.
-- **GAP-04 — Validação cruzada vínculo × pulseira.** Proposto (logado na A101
+  bloqueado do sistema.~~ **FECHADO, 2026-09-11.**
+- ~~**GAP-04 — Validação cruzada vínculo × pulseira.** Proposto (logado na A101
   mas a pulseira registrou entrada em outro bloco → divergência), não
-  perguntado.
-- **GAP-05 — Onde ficam "administrar inventário" e "gerenciar cadastro
-  biométrico"** já que não receberam código próprio (ver F2).
-- **GAP-06 — Quantas tentativas de facial antes do bloqueio**, e qual o
+  perguntado.~~ **FECHADO, 2026-09-11.**
+- ~~**GAP-05 — Onde ficam "administrar inventário" e "gerenciar cadastro
+  biométrico"** já que não receberam código próprio (ver F2).~~ **A parte
+  "administrar inventário" já estava fechada desde 2026-09-10 (Frente 12,
+  RULE-DEV-15/coordenação — não tocado nesta rodada). A parte "gerenciar
+  cadastro biométrico" está FECHADA, 2026-09-11.**
+- ~~**GAP-06 — Quantas tentativas de facial antes do bloqueio**, e qual o
   caminho de recuperação do aluno bloqueado (fila na secretaria? destravamento
-  por quem?).
+  por quem?).~~ **FECHADO, 2026-09-11.**
 - **GAP-07 — Tecnologia de reconhecimento facial** (biblioteca/serviço/modelo)
-  e de liveness — decisão de Tech Decision, não tomada.
-- **GAP-08 — Como o BYOD é matriculado.** Credencial WebAuthn no notebook
+  e de liveness — decisão de Tech Decision, não tomada. **PERMANECE
+  EXPLICITAMENTE ABERTO** — não faz parte deste fechamento; é decisão de
+  tecnologia, não de negócio. Segue para a cadeia Tech Decision + Research
+  quando a implementação desta frente começar.
+- ~~**GAP-08 — Como o BYOD é matriculado.** Credencial WebAuthn no notebook
   pessoal do aluno em autosserviço? Limite de dispositivos pessoais por
-  pessoa? Quem revoga?
-- **GAP-09 — Máquina sem TPM ou navegador sem WebAuthn.** Nenhum mecanismo de
-  degradação foi definido.
+  pessoa? Quem revoga?~~ **Limite e revogação já fechados para a Frente 12
+  em 2026-09-10 (RULE-DEV-17/18). Para o fluxo facial especificamente:
+  FECHADO, 2026-09-11** — reaproveita o mesmo fluxo, sem regra extra.
+- ~~**GAP-09 — Máquina sem TPM ou navegador sem WebAuthn.** Nenhum mecanismo de
+  degradação foi definido.~~ **Para o fator de vínculo de dispositivo
+  (Frente 12), já fechado em 2026-09-10 (RULE-DEV-02). Para o login em si,
+  dentro da rede institucional, sob o fluxo obrigatório de facial (Frente
+  13): FECHADO, 2026-09-11** — respostas distintas para perguntas
+  distintas, não contraditórias entre si (ver nota em RULE-FACE-08,
+  `business-rules/references/facial-verification-rules.md`).
 - **GAP-10 — Como o sistema decide que a requisição veio "de dentro da rede da
   instituição".** Faixa de IP, cabeçalho de proxy, outro sinal — e como isso
-  resiste a spoofing, já que B2 e C-C penduram nessa detecção.
-- **GAP-11 — Registro do consentimento:** onde vive, por quanto tempo vale,
+  resiste a spoofing, já que B2 e C-C penduram nessa detecção. **Já fechado
+  separadamente em 2026-09-11, antes desta rodada** — ver "Resolvido —
+  GAP-10 fechado..." mais abaixo. Não faz parte deste fechamento.
+- ~~**GAP-11 — Registro do consentimento:** onde vive, por quanto tempo vale,
   como é revogado, e se maiores de idade também precisam consentir
-  formalmente (C-B só tratou de menores).
-- **GAP-12 — O que acontece com o vínculo quando o token de sessão expira.** O
-  vínculo sobrevive a um refresh de token? Morre junto? D1 não cobre este caso.
+  formalmente (C-B só tratou de menores).~~ **FECHADO, 2026-09-11** (quanto
+  a onde vive e se maiores também consentem; ponto residual sobre validade
+  temporal do próprio consentimento não foi endereçado — ver nota em
+  RULE-FACE-09).
+- ~~**GAP-12 — O que acontece com o vínculo quando o token de sessão expira.** O
+  vínculo sobrevive a um refresh de token? Morre junto? D1 não cobre este caso.~~
+  **Para o vínculo de dispositivo (Frente 12), já fechado em 2026-09-10
+  (RULE-DEV-06, 4º gatilho de checkout). Para a exigência de nova
+  verificação facial (Frente 13): FECHADO, 2026-09-11** — complementar,
+  não conflitante, mesmo evento disparador. Também fecha F.5 em
+  `institutional-device-binding-requirements-analysis.md`.
+
+### Resolvido — 10 gaps da Frente 13 (verificação facial no login) fechados pelo usuário (2026-09-11)
+
+Sessão de perguntas e respostas dedicada aos gaps ainda abertos da Frente
+13, separada da sessão original de 2026-09-10. O usuário respondeu
+objetivamente a 10 dos 12 gaps do registro original (GAP-01, 02, 03, 04,
+05, 06, 08, 09, 11, 12). **GAP-07 foi deixado explicitamente de fora** —
+decisão de tecnologia, não de negócio. **GAP-10 já estava fechado antes
+desta rodada**, por uma sessão anterior no mesmo dia (ver "Resolvido —
+GAP-10 fechado..." mais abaixo nesta skill).
+
+Formalização completa, com Statement/Applies to/Exceptions/Source por
+regra, em
+**`business-rules/references/facial-verification-rules.md`** (arquivo
+novo, criado nesta rodada) — RULE-FACE-01 a RULE-FACE-10, uma para cada
+gap fechado:
+
+- **RULE-FACE-01 (GAP-01):** o quadro/imagem capturado nunca é
+  persistido; apenas resultado do match, confiança e timestamp.
+- **RULE-FACE-02 (GAP-02):** o template facial e os registros de vínculo
+  ficam retidos **enquanto o vínculo da pessoa com a instituição estiver
+  ativo** — não é prazo fixo como `RULE-RET-01` (60 dias); apagado no
+  desligamento/desmatrícula. `RULE-RET-*` da Frente 10 não cobrem
+  biometria.
+- **RULE-FACE-03 (GAP-03):** revogação do consentimento biométrico
+  bloqueia o acesso **de dentro da rede** até novo consentimento
+  presencial — mesma lógica de "menor sem consentimento não acessa o
+  sistema" (C-B). Fora da rede, CPF+senha continua funcionando.
+- **RULE-FACE-04 (GAP-04):** divergência entre local do vínculo de
+  dispositivo e local da pulseira/RFID gera alerta/incidente de
+  segurança automático, reaproveitando o pipeline de RULE-SEC-01/07.
+  Distinto de RULE-DEV-09 (divergência dispositivo × sala de aula, que
+  não gera alerta).
+- **RULE-FACE-05 (GAP-05, parte "gerenciar cadastro biométrico"):** a
+  **Secretaria** (papel operacional novo) gerencia o cadastro biométrico
+  presencial (captura + consentimento assinado). Distinto do
+  administrador técnico (RULE-RET-04) e de Direção/Reitoria. A parte
+  "administrar inventário" de máquinas **não foi tocada aqui** — já
+  estava fechada desde 2026-09-10 via RULE-DEV-15 (Direção/Reitoria).
+- **RULE-FACE-06 (GAP-06):** **3 tentativas** antes do bloqueio;
+  recuperação via **desbloqueio presencial pela Secretaria** (mesmo ponto
+  operacional de RULE-FACE-05). Distinto do break-glass (B5, restrito ao
+  administrador técnico).
+- **RULE-FACE-07 (GAP-08):** BYOD para o fluxo facial reaproveita o mesmo
+  fluxo de autosserviço já existente (RULE-DEV-02/17/18), sem limite
+  adicional específico. Não resolve nem reabre o gap geral F.2 de BYOD.
+- **RULE-FACE-08 (GAP-09):** máquina sem TPM/navegador sem WebAuthn
+  **bloqueia o login** dentro da rede institucional — tratado como
+  qualquer outra falha (consistente com B4, "falha bloqueia o login, sem
+  exceção"). Sem fallback para CPF+senha dentro da rede. **Nota
+  importante:** isto é uma pergunta diferente da já fechada em
+  `RULE-DEV-02` (Frente 12) para o fator de vínculo de dispositivo — as
+  duas coexistem sem se contradizerem (ver nota completa em
+  RULE-FACE-08).
+- **RULE-FACE-09 (GAP-11):** todos assinam formalmente — maiores assinam
+  consentimento próprio, responsáveis assinam pelos menores — no ato do
+  cadastro presencial. Registro dedicado de consentimento biométrico,
+  distinto do consentimento LGPD geral. Ponto residual não endereçado:
+  validade temporal do próprio consentimento.
+- **RULE-FACE-10 (GAP-12):** expiração do token de sessão exige **nova
+  verificação facial completa** no login seguinte — sessão expirada é um
+  novo ciclo de autenticação, não refresh silencioso. Complementar ao já
+  fechado RULE-DEV-06 (4º gatilho de checkout do vínculo de dispositivo).
+  Fecha também F.5 em
+  `business-rules/references/institutional-device-binding-requirements-analysis.md`.
+
+**Addendum também registrado** em
+`business-domain/references/actors.md` — "Secretaria" introduzida como
+ator concreto, escopo restrito às atribuições de RULE-FACE-05/06 (não
+fecha o gap geral de papéis administrativos internos para escola).
+
+**Não tocado nesta rodada:** GAP-07 (permanece aberto, tecnologia); as
+decisões centrais do Bloco B (B1–B6) e do escopo institucional (C-A/C-B)
+confirmadas em 2026-09-10, cuja formalização como regras `RULE-FACE-*`
+próprias continua **pendente** como próxima etapa de Product Definition
+para a Frente 13 (ver nota de escopo no topo de
+`facial-verification-rules.md`); nenhuma decisão de arquitetura,
+tecnologia ou implementação; nenhum código-fonte.
+**Source of confirmation:** Usuário, 2026-09-11 — 10 respostas literais
+citadas na sessão de fechamento de gaps desta data.
 
 ### As duas frentes novas
 
@@ -3747,13 +3893,15 @@ Testing + QA + Project Guardian (2026-09-11)". Resumo:
 **Três itens não-bloqueantes levantados pelo QA — não são decisões novas,
 apenas registro de pontos em aberto para rodada futura, sem urgência de
 negócio:**
-1. Confirmar com o usuário, em rodada futura, se coordenação deveria
+1. ~~Confirmar com o usuário, em rodada futura, se coordenação deveria
    também enxergar (list/get, sem editar) o inventário de máquinas
    institucionais — hoje restrito a Direção/Reitoria por conservadorismo
    do Backend Agent (não decidido por nenhuma regra; RULE-DEV-15 só
    fechou quem **administra**). Mesmo item já registrado como ponto 1 em
    "Itens sinalizados pelos agentes de implementação" em
-   `architecture-overview.md`.
+   `architecture-overview.md`.~~ **RESOLVIDO (2026-09-11):** sim, ampliado
+   para Coordenação também — ver "Resolvido — Cinco decisões de negócio
+   pendentes fechadas pelo usuário (2026-09-11)" mais abaixo nesta skill.
 2. Avaliar em rodada futura um endpoint de busca de BYOD por `personId`
    + tela administrativa de revogação (RULE-DEV-18) — hoje só acessível
    via chamada direta de API; autosserviço (revogação pela própria
@@ -3839,3 +3987,150 @@ continua sem addendum formal.
 Agent, 2026-09-11 (implementação e testes); Usuário, 2026-09-11 (as duas
 confirmações acima, exatamente como recomendado pelo Project Guardian, sem
 ressalva).
+
+## Resolvido — Cinco decisões de negócio pendentes fechadas pelo usuário (2026-09-11)
+
+> O usuário confirmou explicitamente, nesta sessão, cinco decisões de
+> negócio que estavam em aberto nesta skill e em
+> `business-rules/references/data-retention-rules.md` e
+> `business-rules/references/institutional-device-binding-requirements-analysis.md`.
+> Nenhuma implementação de código foi feita nesta rodada — apenas registro
+> de decisão de negócio/regra, formalizado nos arquivos oficiais.
+
+1. **Janela dos "12 fechamentos mensais" (RULE-RET, consolidação anual,
+   Frente 10):** segue **ano-calendário** (jan-dez), não janela rolante de
+   12 meses corridos. A consolidação anual dispara alinhada ao calendário
+   civil, cobrindo o ano anterior fixo. Fecha o item 6 das Open Questions
+   não-bloqueantes do Solution Architect. Ver nota em **RULE-RET-02**
+   (`business-rules/references/data-retention-rules.md`) e a resolução
+   correspondente em `project-knowledge/references/architecture-overview.md`
+   ("Decisão de arquitetura — Conformidade LGPD e retenção, Frente 10").
+
+2. **Open Question 4 do Solution Architect — quem pode baixar/ler o
+   documento de fechamento completo (mensal/anual):** **só
+   Direção/Reitoria** — mesmo padrão institucional já usado em outras
+   permissões aditivas (ex. RULE-ACC-07). Não inclui o administrador
+   técnico (RULE-RET-04) nem a Coordenação para o documento completo.
+   Formalizado como **RULE-RET-05**
+   (`business-rules/references/data-retention-rules.md`).
+
+3. **Indicador "arquivado" em `/v1/me/attendance`** (distinto da decisão
+   2): **sim**, o próprio titular deve ver esse indicador booleano —
+   precisa de uma **política RLS interativa separada e mais restrita**,
+   específica para essa checagem pontual (não a mesma política de quem
+   baixa o documento completo, decisão 2). Fecha o achado do Project
+   Guardian de que `archived: true` nunca dispara hoje porque
+   `attendance_closure_document` só é visível ao GUC do job não-assistido.
+   Formalizado como **RULE-RET-06**, mesmo arquivo.
+
+4. **RULE-RET-04 — detalhamento fino do papel de administrador técnico da
+   instituição:** **Direção/Reitoria atribui o papel, e é papel único por
+   instituição** (no máximo um titular ativo por tenant). Fecha o
+   "detalhamento fino" que a regra deixava em aberto (quem atribui, se
+   pode haver mais de um). Ver nota em **RULE-RET-04**, mesmo arquivo.
+
+5. **Frente 12 — Coordenação ver o inventário de máquinas institucionais**
+   (`InstitutionalMachineController`, hoje restrito a Direção/Reitoria por
+   conservadorismo do Backend Agent, não por regra confirmada): **sim,
+   ampliar para Coordenação também** — alinhando com
+   `VIEW_DEVICE_BINDINGS`/RULE-DEV-16, que já inclui coordenação para
+   visualização de vínculos de dispositivo. Administração (CRUD) do
+   inventário permanece exclusiva de Direção/Reitoria (RULE-DEV-15, sem
+   alteração). Ver nota em **RULE-DEV-15**
+   (`business-rules/references/institutional-device-binding-rules.md`) e
+   o addendum correspondente em
+   `business-rules/references/institutional-device-binding-requirements-analysis.md`.
+
+**Arquivos atualizados nesta rodada:**
+- `business-rules/references/data-retention-rules.md` — nota em
+  RULE-RET-02 (decisão 1), nota em RULE-RET-04 (decisão 4), novas
+  RULE-RET-05 (decisão 2) e RULE-RET-06 (decisão 3).
+- `business-rules/references/institutional-device-binding-rules.md` —
+  nota em RULE-DEV-15 (decisão 5).
+- `business-rules/references/institutional-device-binding-requirements-analysis.md`
+  — addendum junto ao fechamento de AC-27 (decisão 5).
+- `project-knowledge/references/architecture-overview.md` — resolução das
+  Open Questions 4, 6 e 8 da "Decisão de arquitetura — Conformidade LGPD e
+  retenção, Frente 10", e do item 1 de "Itens sinalizados pelos agentes de
+  implementação" da Frente 12 (decisão 5).
+- `project-knowledge/references/pending-decisions.md` (este arquivo) —
+  fechamento das entradas correspondentes acima (handoff da Frente 10 e
+  item 1 dos três pontos não-bloqueantes do QA da Frente 12), e este
+  registro consolidado.
+
+**Nenhuma implementação técnica decorrente destas cinco decisões foi
+feita nesta rodada** (ex.: ajuste do guard do endpoint de inventário para
+incluir Coordenação, política RLS nova de RULE-RET-06, mecanismo de
+atribuição/unicidade do papel de RULE-RET-04) — ficam para as próximas
+rodadas de Solution Architect/Backend/Database quando a implementação
+real avançar.
+
+**Source of confirmation:** Usuário, 2026-09-11 (as cinco decisões acima).
+
+## Resolvido — App Mobile (Frente 09): retomada de desenvolvimento e mecanismo de reflexão nativo (2026-09-11)
+
+> Isto é decisão de roadmap/priorização e de mecanismo técnico de reflexão
+> de conteúdo — não uma nova regra de negócio. Nenhuma regra numerada
+> (RULE-XXX) foi criada para isto, mesmo tratamento já dado à decisão
+> original de pausa (2026-09-02). Nenhuma implementação de código foi feita
+> nesta rodada — apenas registro de decisão.
+
+Duas decisões confirmadas diretamente pelo usuário sobre a Frente 09 (App
+Mobile), fechando os dois pontos que seguiam em aberto desde o pivot
+"Portal de autoatendimento (self-service)..." de 2026-09-02:
+
+1. **Retomada do desenvolvimento do App Mobile.** A condição de pausa
+   (Portal web pronto) já havia sido cumprida em 2026-09-03, mas retomar
+   dependia de decisão explícita do usuário, não automática (ver "Resolvido
+   — Gaps do pivot Portal de autoatendimento web (2026-09-02)" acima, e a
+   "RESOLUÇÃO (2026-09-11)" correspondente em
+   `project-knowledge/references/architecture-overview.md`, seção "Pivot —
+   Portal de autoatendimento...", junto ao bullet de cronograma).
+   **Confirmado: retomar o desenvolvimento do App Mobile imediatamente.**
+
+2. **Mecanismo técnico de "refletir" o portal web no mobile: reimplementação
+   nativa, não WebView.** Estava registrado como "explicitamente não
+   bloqueante, fica para o Tech Decision Agent depois" (ver o mesmo
+   histórico acima nesta skill, e `architecture-overview.md`). O usuário
+   decidiu diretamente, sem precisar do Tech Decision Agent: **reimplementar
+   nativamente** as telas que faltam no mobile, refletindo o mesmo
+   backend/conteúdo do portal web — não usar WebView do portal web. Telas
+   identificadas como faltantes hoje, segundo
+   `.doc/checkclass-novas-features.html` (Frente 09): justificativa de
+   faltas, avisos de frequência, portal de coordenação/direção. **Área de
+   Provas nunca vai para o mobile** (decisão de produto já tomada antes,
+   depende de conceitos de navegador para monitoramento) — isso não muda.
+   A stack já aprovada (React Native/Expo) continua valendo — a decisão de
+   hoje é sobre o mecanismo de reflexão (nativo vs. WebView), não uma nova
+   escolha de tecnologia base. Ver o registro formal completo em
+   `architecture-overview.md`, junto ao bullet "A Decisão de tecnologia —
+   App Mobile (React Native/Expo) não é descartada...", na mesma seção do
+   pivot.
+
+**O que NÃO foi decidido nesta rodada, permanece em aberto:**
+- **App Mobile para Faculdade (arquitetura/tecnologia pendente):** ver
+  "Escopo confirmado, arquitetura/tecnologia pendente — App Mobile para
+  Faculdade (2026-08-31)" acima nesta skill. Hoje o mobile só cobre
+  conteúdo Escola/Aluno; cobertura de Faculdade no mobile continua exigindo
+  Solution Architect + Tech Decision Agent. As duas decisões desta rodada
+  não resolvem esse gap.
+- **Paginação/filtro de data no cronograma do App Mobile:** ver "Gap novo,
+  explicitamente adiado — Paginação/filtro de data no cronograma do App
+  Mobile (2026-09-01)" acima nesta skill — segue adiada, sem evidência de
+  volume, não decidida agora.
+
+**Arquivos atualizados nesta rodada:**
+- `project-knowledge/references/architecture-overview.md` — duas notas
+  "RESOLUÇÃO (2026-09-11)" na seção "Pivot — Portal de autoatendimento
+  (self-service)...", junto ao bullet da Decisão de tecnologia — App Mobile
+  e junto ao bullet de Cronograma de desenvolvimento/linha "não bloqueante".
+- `project-knowledge/references/pending-decisions.md` (este arquivo) —
+  fechamento dos espelhos em "Resolvido — Gaps do pivot Portal de
+  autoatendimento web (2026-09-02)" (cronograma) e no conteúdo histórico da
+  mesma seção (mecanismo técnico), nota de esclarecimento em "Escopo
+  confirmado, arquitetura/tecnologia pendente — App Mobile para Faculdade
+  (2026-08-31)", e este registro consolidado.
+
+**Source of confirmation:** Usuário, 2026-09-11, via pergunta direta sobre
+nativo vs. WebView (decisão 2) e confirmação direta de retomada (decisão
+1).
