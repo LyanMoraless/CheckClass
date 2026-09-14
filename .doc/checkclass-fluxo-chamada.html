@@ -18,6 +18,9 @@
     --warn: #7a3b12;
     --warn-bg: #fdf4ec;
     --warn-line: #e8cdb4;
+    --ok: #2d6a3e;
+    --ok-bg: #eef6f0;
+    --ok-line: #bfe0c8;
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: 'Montserrat', sans-serif; color: var(--text); background: var(--bg); line-height: 1.6; }
@@ -65,6 +68,25 @@
   th { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em; font-size: 14px; border-bottom: 2px solid var(--text); font-weight: normal; }
   td.num { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 0.04em; white-space: nowrap; }
   .table-wrap { overflow-x: auto; }
+  .flow-legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 14px 0 20px; font-size: 12.5px; color: var(--muted); }
+  .flow-legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .flow-legend i { display: inline-block; width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; }
+  .flow-legend i.lg-box { background: #fff; border: 1.5px solid var(--text); }
+  .flow-legend i.lg-decision { background: var(--panel); border: 1.5px dashed var(--text); }
+  .flow-legend i.lg-ok { background: var(--ok-bg); border: 1.5px solid var(--ok); }
+  .flow-legend i.lg-warn { background: var(--warn-bg); border: 1.5px solid var(--warn); }
+  .flow-wrap { overflow-x: auto; margin: 6px 0 4px; border: 1px solid var(--line); border-radius: 6px; background: #fdfdfc; }
+  .flowchart { position: relative; width: 1000px; height: 2200px; }
+  .flowchart svg { position: absolute; top: 0; left: 0; width: 1000px; height: 2200px; overflow: visible; }
+  .fc-stage-line { position: absolute; left: 0; width: 1000px; height: 0; border-top: 1px solid var(--line); }
+  .fc-stage-label { position: absolute; left: 20px; font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 0.08em; color: var(--faint); }
+  .fc-node { position: absolute; border-radius: 6px; padding: 8px 12px; font-size: 12px; line-height: 1.38; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .fc-box { background: #fff; border: 1.5px solid var(--text); }
+  .fc-decision { background: var(--panel); border: 1.5px dashed var(--text); }
+  .fc-ok { background: var(--ok-bg); border: 1.5px solid var(--ok); color: var(--ok); font-weight: 600; }
+  .fc-warn { background: var(--warn-bg); border: 1.5px solid var(--warn); color: var(--warn); font-weight: 600; }
+  .fc-rule { display: block; margin-top: 4px; font-size: 10px; font-weight: 400; opacity: 0.65; letter-spacing: 0.03em; }
+  .fc-caption { position: absolute; font-size: 11px; font-style: italic; color: var(--muted); max-width: 220px; }
   footer { border-top: 3px solid var(--text); padding: 22px 48px 40px; font-size: 12.5px; color: var(--muted); max-width: 1016px; margin: 0 auto; }
   footer code { font-size: 11.5px; }
   @media print {
@@ -152,6 +174,115 @@
       <p class="desc">O alerta <strong>mostra os três números</strong>, não apenas o aviso de que há algo errado, para que o professor julgue em segundos: "30 logins, 30 tags, 27 vistos" sugere gente escondida atrás de outra; "30 logins, 25 tags" é problema real.</p>
       <p class="desc"><strong>A contagem nunca marca, desmarca ou altera a presença de ninguém.</strong> Ela levanta suspeita para um humano conferir — e só.</p>
       <p class="rules-line">RULE-PRES-10, RULE-PRES-11, RULE-PRES-12</p>
+    </div>
+  </section>
+
+  <section id="fluxograma">
+    <h2 class="section-title">O Fluxograma Completo</h2>
+    <p>A mesma lógica das quatro etapas, agora com <strong>todas as decisões e todos os desvios</strong> desenhados — inclusive os que levam a "sem presença" ou "pendência". É o diagrama que a análise de fraude produziu, não uma simplificação dele.</p>
+
+    <div class="flow-legend">
+      <span><i class="lg-box"></i> passo / estado</span>
+      <span><i class="lg-decision"></i> decisão (tracejado)</span>
+      <span><i class="lg-ok"></i> resolve — presença ou permanência contam</span>
+      <span><i class="lg-warn"></i> sem presença, pendência ou alerta</span>
+    </div>
+
+    <div class="flow-wrap">
+      <div class="flowchart">
+        <svg viewBox="0 0 1000 2200">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#1c1c1c"/>
+            </marker>
+          </defs>
+          <g fill="none" stroke="#1c1c1c" stroke-width="1.6" marker-end="url(#arrow)">
+            <line x1="490" y1="80" x2="490" y2="130"/>
+            <line x1="410" y1="250" x2="140" y2="310"/>
+            <line x1="490" y1="250" x2="490" y2="310"/>
+            <line x1="490" y1="370" x2="490" y2="410"/>
+            <line x1="490" y1="470" x2="490" y2="510"/>
+            <line x1="410" y1="610" x2="140" y2="670"/>
+            <line x1="490" y1="610" x2="490" y2="670"/>
+            <line x1="490" y1="730" x2="490" y2="770"/>
+            <line x1="490" y1="840" x2="490" y2="950"/>
+            <line x1="580" y1="1040" x2="860" y2="1100"/>
+            <line x1="490" y1="1040" x2="490" y2="1100"/>
+            <line x1="580" y1="1220" x2="860" y2="1280"/>
+            <line x1="490" y1="1220" x2="490" y2="1280"/>
+            <path d="M860,1180 L860,1430 L600,1430 L600,1450"/>
+            <path d="M860,1360 L860,1440 L650,1440 L650,1450"/>
+            <line x1="490" y1="1370" x2="490" y2="1450"/>
+            <line x1="490" y1="1520" x2="490" y2="1560"/>
+            <line x1="490" y1="1620" x2="490" y2="1660"/>
+            <line x1="410" y1="1800" x2="140" y2="1860"/>
+            <line x1="490" y1="1800" x2="490" y2="1860"/>
+            <line x1="490" y1="1950" x2="490" y2="1990"/>
+            <line x1="490" y1="2050" x2="490" y2="2090"/>
+          </g>
+          <g font-family="Montserrat, sans-serif" font-size="11" font-weight="700" fill="#5a5a5a" style="paint-order: stroke; stroke: #fdfdfc; stroke-width: 4px;">
+            <text x="250" y="285" text-anchor="middle">não</text>
+            <text x="505" y="285" text-anchor="middle">sim</text>
+            <text x="250" y="645" text-anchor="middle">não</text>
+            <text x="505" y="645" text-anchor="middle">sim</text>
+            <text x="730" y="1075" text-anchor="middle">sim</text>
+            <text x="505" y="1075" text-anchor="middle">não</text>
+            <text x="730" y="1255" text-anchor="middle">sim</text>
+            <text x="505" y="1255" text-anchor="middle">não</text>
+            <text x="250" y="1835" text-anchor="middle">não</text>
+            <text x="505" y="1835" text-anchor="middle">sim</text>
+          </g>
+        </svg>
+
+        <div class="fc-stage-line" style="top:0px;"></div>
+        <div class="fc-stage-label" style="top:8px;">01 · LOGIN</div>
+        <div class="fc-stage-line" style="top:400px;"></div>
+        <div class="fc-stage-label" style="top:408px;">02 · TAG</div>
+        <div class="fc-stage-line" style="top:900px;"></div>
+        <div class="fc-stage-label" style="top:908px;">03 · PERMANÊNCIA</div>
+        <div class="fc-stage-line" style="top:1450px;"></div>
+        <div class="fc-stage-label" style="top:1458px;">04 · CONTAGEM</div>
+
+        <div class="fc-node fc-box" style="left:330px;top:20px;width:320px;height:60px;">Aluno abre o app e faz login</div>
+
+        <div class="fc-node fc-decision" style="left:330px;top:130px;width:320px;height:120px;">Está dentro da rede institucional <strong>e</strong> dentro do raio da instituição (ref.: 50m)?<span class="fc-rule">RULE-PRES-01</span></div>
+
+        <div class="fc-node fc-warn" style="left:20px;top:310px;width:240px;height:80px;">Login permitido, mas <strong>sem presença</strong><span class="fc-rule">RULE-PRES-01</span></div>
+        <div class="fc-node fc-box" style="left:330px;top:310px;width:320px;height:60px;">Login válido, aguardando confirmação da tag</div>
+
+        <div class="fc-node fc-box" style="left:330px;top:410px;width:320px;height:60px;">Aluno passa a tag no leitor</div>
+
+        <div class="fc-node fc-decision" style="left:330px;top:510px;width:320px;height:100px;">É o leitor <strong>daquela sala</strong> específica?<span class="fc-rule">RULE-PRES-04</span></div>
+
+        <div class="fc-node fc-warn" style="left:20px;top:670px;width:240px;height:80px;">Tag não conta — sala não confirmada<span class="fc-rule">RULE-PRES-04</span></div>
+        <div class="fc-node fc-box" style="left:330px;top:670px;width:320px;height:60px;">Status "em sala" = 1<span class="fc-rule">RULE-PRES-05</span></div>
+
+        <div class="fc-node fc-ok" style="left:330px;top:770px;width:320px;height:70px;">Login válido + status em sala → <strong>presença confirmada</strong></div>
+
+        <div class="fc-caption" style="left:565px;top:875px;">durante a aula, monitorando a saída</div>
+
+        <div class="fc-node fc-decision" style="left:330px;top:950px;width:320px;height:90px;">Houve tag de saída ao deixar a sala?<span class="fc-rule">RULE-PRES-07</span></div>
+
+        <div class="fc-node fc-ok" style="left:740px;top:1100px;width:240px;height:80px;">Fecha o intervalo pela tag — prioridade 1<span class="fc-rule">RULE-PRES-08</span></div>
+        <div class="fc-node fc-decision" style="left:330px;top:1100px;width:320px;height:120px;">Afastamento contínuo por mais de 15 min pela localização, ou logout explícito?<span class="fc-rule">RULE-PRES-09</span></div>
+
+        <div class="fc-node fc-ok" style="left:740px;top:1280px;width:240px;height:80px;">Fecha o intervalo por localização/logout — prioridade 2<span class="fc-rule">RULE-PRES-08</span></div>
+        <div class="fc-node fc-warn" style="left:330px;top:1280px;width:320px;height:90px;">Vira <strong>pendência</strong> para o professor — prioridade 3, nunca falta automática<span class="fc-rule">RULE-PRES-08 / 13</span></div>
+
+        <div class="fc-node fc-box" style="left:330px;top:1450px;width:320px;height:70px;">Aula encerra — permanência computada ou pendência registrada</div>
+
+        <div class="fc-node fc-box" style="left:330px;top:1560px;width:320px;height:60px;">A cada 15 minutos, a câmera conta pessoas na sala<span class="fc-rule">RULE-PRES-10</span></div>
+
+        <div class="fc-node fc-decision" style="left:330px;top:1660px;width:320px;height:140px;">Diferença de <strong>5 pessoas ou mais</strong> entre vistos, logins e tags, confirmada em <strong>2 contagens seguidas</strong>?<span class="fc-rule">RULE-PRES-11</span></div>
+
+        <div class="fc-node fc-box" style="left:20px;top:1860px;width:240px;height:70px;">Segue normal, nenhuma ação</div>
+        <div class="fc-caption" style="left:20px;top:1935px;width:240px;">(o ciclo se repete a cada 15 min)</div>
+        <div class="fc-node fc-warn" style="left:330px;top:1860px;width:320px;height:90px;"><strong>Alerta ao professor</strong> com os três números — vistos × logins × tags<span class="fc-rule">RULE-PRES-11</span></div>
+
+        <div class="fc-node fc-box" style="left:330px;top:1990px;width:320px;height:60px;">Professor faz a chamada manual para localizar a fraude<span class="fc-rule">RULE-PRES-12</span></div>
+
+        <div class="fc-node fc-ok" style="left:330px;top:2090px;width:320px;height:90px;">A contagem <strong>nunca decide presença sozinha</strong> — apenas aciona um humano<span class="fc-rule">RULE-PRES-10 / 12</span></div>
+      </div>
     </div>
   </section>
 
