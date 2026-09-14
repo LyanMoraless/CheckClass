@@ -9,6 +9,22 @@
 > chama apenas **CheckClass**. As regras abaixo continuam válidas; apenas
 > o nome mudou.
 
+> **Nota de referência cruzada (2026-09-14) — fluxo concreto de chamada
+> redesenhado:** o usuário redesenhou em 2026-09-14 o fluxo concreto de
+> chamada (login com dupla checagem de rede institucional + localização,
+> tag no leitor da própria sala como pré-requisito, saída por segunda
+> passagem da tag, contagem por câmera como cruzamento que alerta o
+> professor). Esse fluxo está formalizado em
+> `business-rules/references/attendance-presence-flow-rules.md`
+> (RULE-PRES-01 a 13). **Nenhuma regra RULE-ATT abaixo foi revogada** —
+> elas continuam definindo o modelo (apuração multifatorial, pendência em
+> vez de falta automática, permanência por soma de intervalos), e o novo
+> fluxo se apoia diretamente nelas: RULE-PRES-03 reusa a tolerância de
+> RULE-ATT-05/14 sem criar parâmetro novo, RULE-PRES-07 alimenta o
+> cálculo de RULE-ATT-08/04, e RULE-PRES-08/13 reafirmam RULE-ATT-07/09/
+> 11/12 para as falhas de hardware do fluxo novo. Implementação do fluxo
+> novo **não aprovada** — apenas a regra de negócio foi fechada.
+
 ### RULE-ATT-01: Apuração multifatorial de presença (não depender de um único sinal)
 
 **Statement:** A presença não deve ser confirmada com base em um único

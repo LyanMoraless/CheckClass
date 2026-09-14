@@ -467,13 +467,13 @@
     <p>Isto cruza dois domínios do projeto que antes eram tratados separadamente — Segurança de Intrusão (esta regra) e o núcleo de Presença/Chamada (RULE-ATT-*, <code>business-rules/references/attendance-rules.md</code>) — uma ponte conceitual nova, não uma regra de negócio fechada em si.</p>
 
     <div class="note">
-      <span class="tag">Gaps novos, não confirmados — não presumir resposta</span>
-      Quatro pontos que esta direção deixa em aberto, sinalizados também em <a href="#gaps">Gaps/Pendências Reais em Aberto</a>:
+      <span class="tag">Gaps fechados em 2026-09-14 — respostas do usuário</span>
+      Os quatro pontos que esta direção deixava em aberto (e que eram sinalizados também em <a href="#gaps">Gaps/Pendências Reais em Aberto</a>) foram respondidos pelo usuário em 2026-09-14. Isto fecha decisão de <strong>produto/regra de negócio</strong> — <strong>não fecha a tecnologia de contagem em si</strong> (biblioteca/método de visão computacional), que continua pendente, a cargo do Tech Decision Agent com apoio do Computer Vision Agent (ver <a href="#gaps">Gaps/Pendências Reais em Aberto</a>).
       <br><br>
-      1. Frequência exata da contagem periódica (o exemplo usa ~5–15 min, mas não foi confirmado como regra geral).<br>
-      2. O que acontece quando a contagem por câmera não bate com a contagem por tag — gera incidente de segurança? alerta ao professor? apenas log de auditoria? quem é notificado?<br>
-      3. Se este mecanismo é específico do contexto "sala de aula/turma" (chamada) ou se também vale para áreas gerais de Segurança de Intrusão (corredores, zonas restritas sem contexto de aula) — o exemplo dado é 100% sala de aula, não presumir generalização.<br>
-      4. Se a câmera de sala de aula é a <strong>mesma</strong> câmera fixa já aprovada para Segurança de Intrusão, ou uma câmera adicional por sala — implicação real de hardware/custo.
+      1. <strong>Frequência da contagem periódica:</strong> fixa em <strong>15 minutos</strong>, não configurável por instituição — mesmo intervalo para todas as instituições.<br>
+      2. <strong>Divergência entre contagem por câmera e contagem por tag:</strong> gera <strong>alerta ao professor</strong>. Não abre incidente de segurança (não segue o ciclo de vida de RULE-SEC-07) e não é apenas um log silencioso para auditoria posterior — é uma notificação ativa dirigida ao professor da turma/sessão em curso.<br>
+      3. <strong>Escopo do mecanismo:</strong> exclusivamente o contexto de sala de aula/turma (chamada). Não se estende a corredores nem a zonas restritas gerais de Segurança de Intrusão — a generalização especulada antes não se confirmou.<br>
+      4. <strong>Câmera usada:</strong> é a <strong>mesma câmera fixa</strong> já aprovada para Segurança de Intrusão (item "Hardware/controle de câmera" acima) — não uma câmera adicional/dedicada por sala. Fecha a dúvida de footprint de hardware/custo.
     </div>
   </section>
 
@@ -502,14 +502,21 @@
     <h2 class="section-title">Gaps/Pendências Reais em Aberto</h2>
     <p>Diferente da seção anterior, estes não são itens adiados por decisão de escopo — são lacunas técnicas que continuam abertas depois da primeira rodada implementada.</p>
     <ul class="gap-list">
-      <li><span class="tag">Gap</span><strong>Tecnologia de contagem de entrada/saída</strong> (RULE-SEC-05). Ver <a href="#contagem">seção dedicada</a> acima — a restrição de precisão está confirmada, e desde 2026-09-02 há uma direção técnica bem mais concreta (câmera vinculada à sala de aula + visão computacional, cruzando com a contagem de tags do leitor da sala), mas a tecnologia final (biblioteca, método) continua não escolhida — a cargo do Tech Decision Agent, agora também com o Computer Vision Agent.</li>
-      <li><span class="tag">Gap</span><strong>Frequência exata da contagem periódica por câmera</strong> (novo, RULE-SEC-05). O exemplo do usuário sugere algo na faixa de 5–15 minutos (aula às 19:00, contagem às 19:15), mas não foi confirmado como regra geral.</li>
-      <li><span class="tag">Gap</span><strong>Comportamento em caso de divergência entre contagem por câmera e contagem por tag</strong> (novo, RULE-SEC-05). Não confirmado se uma divergência gera incidente de segurança, um alerta ao professor, ou apenas um registro de log para auditoria posterior — nem quem seria notificado.</li>
-      <li><span class="tag">Gap</span><strong>Escopo do mecanismo de contagem por câmera — sala de aula ou também áreas gerais</strong> (novo, RULE-SEC-05). O exemplo dado pelo usuário é inteiramente de sala de aula/turma; não presumir que o mesmo mecanismo se estende a corredores ou zonas restritas sem contexto de aula.</li>
-      <li><span class="tag">Gap</span><strong>Mesma câmera ou câmera adicional por sala</strong> (novo, RULE-SEC-05). Não confirmado se a câmera usada para contagem em sala de aula é a mesma câmera fixa já aprovada para Segurança de Intrusão, ou uma câmera adicional dedicada a cada sala — implicação real de hardware/custo, relevante para o Hardware Evaluation Agent.</li>
+      <li><span class="tag">Gap</span><strong>Tecnologia de contagem de entrada/saída</strong> (RULE-SEC-05). Ver <a href="#contagem">seção dedicada</a> acima — a restrição de precisão está confirmada, e desde 2026-09-14 os quatro pontos de produto (frequência, divergência, escopo, câmera — ver nota logo abaixo) também já estão fechados. O que falta é <strong>só a tecnologia final</strong> (biblioteca/método de visão computacional) — a cargo do Tech Decision Agent, com apoio do Computer Vision Agent.</li>
       <li><span class="tag">Gap</span><strong>Software de relay RTSP→HLS/WebRTC</strong> entre câmera e navegador. Necessário para qualquer exibição de vídeo pelo navegador (mesmo a exibição estática de uma única câmera desta rodada), mas nunca foi escolhido — sinalizado apenas como tarefa futura de dimensionamento de IoT/DevOps, sem urgência enquanto vídeo ao vivo continuar adiado.</li>
       <li><span class="tag">Gap</span><strong>Tela de gerenciamento de Áreas/Blocos</strong> (novo, confirmado pelo usuário em 2026-09-02). O backend tem CRUD completo de área (<code>backend/src/modules/area/area.controller.ts</code>) e o frontend já tem o cliente HTTP (<code>frontend/src/features/areas/areas-api.ts</code>), mas <strong>não existe página no painel</strong>. Sem ela a instituição não consegue montar o próprio mapa de blocos e andares, e a Segurança de Intrusão fica inconfigurável pelo usuário final — a autorização por área depende inteiramente desse cadastro. Alocado à frente 08.</li>
     </ul>
+    <div class="note">
+      <span class="tag">Gaps fechados — ratificados em 2026-09-14</span>
+      Os quatro pontos abaixo apareciam nesta lista como gaps abertos de RULE-SEC-05. O usuário respondeu a todos em 2026-09-14 — redação completa em <a href="#contagem">Contagem de Entrada/Saída</a>:
+      <br><br>
+      <strong>Frequência da contagem periódica:</strong> fixa em 15 minutos, não configurável por instituição.<br>
+      <strong>Divergência entre contagem por câmera e contagem por tag:</strong> gera alerta ao professor — não abre incidente de segurança, não é apenas log silencioso.<br>
+      <strong>Escopo do mecanismo:</strong> exclusivamente sala de aula/turma — não se estende a corredores nem a zonas restritas gerais de Segurança de Intrusão.<br>
+      <strong>Câmera usada:</strong> é a mesma câmera fixa já aprovada para Segurança de Intrusão — não uma câmera adicional/dedicada por sala.
+      <br><br>
+      Isto fecha decisão de <strong>produto/regra de negócio</strong>. A tecnologia de contagem em si (biblioteca/método de visão computacional) continua em aberto — ver o item "Tecnologia de contagem de entrada/saída" na lista acima.
+    </div>
     <div class="note">
       <span class="tag">Gap fechado — ratificado em 2026-09-02</span>
       O <strong>vínculo categoria de pulseira → área</strong> (RULE-ACC-02) constava aqui como lacuna de schema. <strong>Não é mais</strong>: a tabela <code>wristband_category_area_permission</code> existe (<code>tenant_id</code>, <code>wristband_category_id</code>, <code>area_id</code>, <code>valid_from</code>, <code>valid_until</code>, migration <code>1755847000000-AddWristbandCategoryAreaPermission</code>). E <strong>"bloco" não é uma coluna</strong>: bloco é modelado como <em>área raiz</em> (<code>parent_area_id IS NULL</code>) numa hierarquia auto-referente de profundidade livre, sendo "área" a área filha (andar, corredor, laboratório). A autorização em nível de bloco já funciona pelo walk de ancestrais implementado em <code>backend/src/modules/area-authorization/</code>.
@@ -533,6 +540,7 @@
           <li>Níveis de vigilância (RULE-SEC-06) desqualificados por completo — 2026-09-02</li>
           <li>Permissão <code>follow_camera_events</code> removida (6 → 5 códigos de câmera) — 2026-09-02</li>
           <li>Nova direção técnica para contagem de entrada/saída (câmera + visão computacional, RULE-SEC-05) — 2026-09-02</li>
+          <li>4 pontos de produto de RULE-SEC-05 fechados — frequência (15 min fixos), divergência (alerta ao professor), escopo (só sala de aula/turma) e câmera (mesma câmera fixa de Segurança de Intrusão) — 2026-09-14</li>
         </ul>
       </div>
       <div class="status-card">
@@ -552,7 +560,7 @@
         <h4>O que ainda não existe</h4>
         <ul>
           <li><strong>Exibição de câmera / vídeo ao vivo</strong> — depende do relay RTSP→HLS/WebRTC, ainda não escolhido e explicitamente adiado</li>
-          <li><strong>Contagem de entrada/saída</strong> (RULE-SEC-05) — tecnologia não escolhida, com 4 gaps abertos (ver <a href="#gaps">Gaps em Aberto</a>)</li>
+          <li><strong>Contagem de entrada/saída</strong> (RULE-SEC-05) — tecnologia não escolhida; os 4 pontos de produto (frequência, divergência, escopo, câmera) já foram fechados em 2026-09-14, resta só a tecnologia (ver <a href="#gaps">Gaps em Aberto</a>)</li>
           <li><strong>Tela de gerenciamento de Áreas/Blocos</strong> — existe API e cliente HTTP, não existe página no painel (frente 08)</li>
           <li><strong>Bloqueio automático de portas</strong> (RULE-SEC-04) — explicitamente adiado</li>
         </ul>

@@ -86,6 +86,42 @@ aviso de proximidade do limite (Controle B, NÃO configurável por administrador
   configuráveis. Não é coluna na tabela, não é variável de ambiente, não é
   campo em `attendance_config` — é apenas uma constante no código.
 
+**Adição (2026-09-14) — fluxo de chamada redesenhado** (ver
+`business-rules/references/attendance-presence-flow-rules.md`,
+RULE-PRES-01 a 13). Feature **não aprovada para implementação**; listada
+aqui para que nenhum destes valores seja tratado como constante quando a
+frente começar.
+
+Configuráveis:
+
+- **Raio da instituição para o login contar como presença** (RULE-PRES-01).
+  Os 50 metros citados pelo usuário são **valor de referência**, não
+  constante. Escopo: por instituição.
+- **Tempo de afastamento antes de contabilizar ausência** (RULE-PRES-09).
+  Os 15 minutos citados pelo usuário são **valor de referência**, não
+  constante.
+- **Faixas de rede institucional** (RULE-PRES-01) — já configuráveis hoje,
+  N faixas por tenant, `institutional_network_range`. Nada novo a fazer;
+  listado só para deixar explícito que RULE-PRES-01 se apoia nelas.
+
+**NÃO configuráveis** (fixos, iguais para todas as instituições — não
+modelar como configuração):
+
+- **Frequência da contagem por câmera: 15 minutos.** Já fechado assim em
+  RULE-SEC-05, addendum de 2026-09-14, item 1.
+- **Limiar do alerta de divergência: 5 pessoas, confirmadas em 2
+  contagens consecutivas** (RULE-PRES-11). O usuário fixou o número; não
+  foi pedido escopo por instituição. Se surgir necessidade de variar por
+  instituição, é decisão nova, não presumir a partir deste arquivo.
+
+**Ainda sem valor definido — NÃO inventar:**
+
+- **Distância de afastamento da sala** (RULE-PRES-09). Os 5 metros do
+  desenho original do usuário **não são construíveis com GPS** (precisão
+  de ±20–50m dentro de prédio) e não têm substituto confirmado. Gap
+  aberto registrado em RULE-PRES-09 e na lista de gaps de
+  `attendance-presence-flow-rules.md`.
+
 Ao implementar qualquer uma dessas regras, o agente responsável (Backend,
 Database, etc.) deve modelar o valor como configuração (por
 instituição/curso/turma/área, conforme o caso), nunca como constante de

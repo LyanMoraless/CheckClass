@@ -78,7 +78,7 @@ Hardware Evaluation, não deve ser assumida como "um sensor IR resolve".
 > (Segurança de Intrusão e o núcleo de Presença/Chamada) — ponte
 > conceitual nova, não uma regra de negócio fechada.
 >
-> **Gaps novos, não confirmados, não presumidos:**
+> ~~**Gaps novos, não confirmados, não presumidos:**
 > - Frequência exata da contagem periódica (exemplo do usuário usa
 >   ~5–15 min, não confirmado como regra geral).
 > - O que acontece quando a contagem por câmera não bate com a contagem
@@ -93,9 +93,29 @@ Hardware Evaluation, não deve ser assumida como "um sensor IR resolve".
 >   Intrusão, primeira rodada", 2026-08-23,
 >   `project-knowledge/references/architecture-overview.md`) ou uma
 >   câmera adicional/diferente vinculada a cada sala — implicação de
->   hardware/custo relevante para o Hardware Evaluation Agent.
+>   hardware/custo relevante para o Hardware Evaluation Agent.~~
 >
 > **Source of confirmation:** Usuário, 2026-09-02.
+
+> **Os 4 gaps acima — RESOLVIDOS em 2026-09-14.** Texto riscado
+> preservado como histórico. Respostas do usuário:
+> - **Frequência:** fixa em 15 minutos, não configurável por instituição.
+> - **Divergência câmera vs. tag:** gera alerta ao professor (não abre
+>   incidente de segurança, não é apenas log silencioso).
+> - **Escopo:** exclusivamente sala de aula/turma (contexto de chamada) —
+>   não se estende a corredores nem a zonas restritas gerais de Segurança
+>   de Intrusão.
+> - **Câmera:** é a mesma câmera fixa já aprovada para Segurança de
+>   Intrusão (item 4, "Decisão de tecnologia — Segurança de Intrusão,
+>   primeira rodada", `architecture-overview.md`) — não uma câmera
+>   adicional/dedicada por sala.
+>
+> **O que isto NÃO fecha:** a tecnologia de contagem em si (biblioteca/
+> método de visão computacional) continua pendente, a cargo do Tech
+> Decision Agent com apoio do Computer Vision Agent — ver addendum
+> completo em RULE-SEC-05
+> (`business-rules/references/security-intrusion-rules.md`).
+> **Source of confirmation:** Usuário, 2026-09-14.
 
 ## Gap — Papéis administrativos internos da instituição
 
@@ -4134,3 +4154,100 @@ Mobile), fechando os dois pontos que seguiam em aberto desde o pivot
 **Source of confirmation:** Usuário, 2026-09-11, via pergunta direta sobre
 nativo vs. WebView (decisão 2) e confirmação direta de retomada (decisão
 1).
+
+---
+
+## Fluxo de chamada redesenhado; contagem por visão computacional rejeitada como mecanismo de apuração (2026-09-14)
+
+**Feature nova confirmada em escopo, implementação NÃO aprovada.**
+
+### O que aconteceu
+
+A sessão começou na cadeia técnica da Frente 08 / RULE-SEC-05 (contagem de
+entrada/saída). Uma proposta de tecnologia foi produzida e apresentada ao
+usuário. **O usuário rejeitou a direção inteira**, em mensagem literal:
+
+> "Não consigo trabalhar com nada que não seja 100%. Vamos excluir
+> completamente essa vertente de contagem."
+
+Em seguida propôs um fluxo de chamada novo, em quatro etapas (login, tag,
+permanência, contagem), e pediu explicitamente análise de lacunas de
+fraude e de simplificação. As decisões saíram dessa análise, uma a uma, na
+mesma sessão.
+
+### Onde ficou registrado
+
+- **Regra de negócio formal:**
+  `business-rules/references/attendance-presence-flow-rules.md`
+  (RULE-PRES-01 a 13), com a lista de gaps abertos no final do arquivo.
+- **Nota cruzada:** `business-rules/references/attendance-rules.md`, no
+  cabeçalho — RULE-ATT-01 a 15 **não foram revogadas**, o fluxo novo se
+  apoia nelas.
+- **Nota cruzada:** `business-rules/references/security-intrusion-rules.md`,
+  addendum de RULE-SEC-05 — registra a rejeição da contagem como mecanismo
+  de apuração, e o relaxamento da exigência de contagem exata **apenas**
+  para o cruzamento de sala de aula (que passa a ter limiar de 5 pessoas).
+  A exigência de contagem exata continua valendo para áreas de Segurança de
+  Intrusão, outro contexto.
+- **Parâmetros:** `business-rules/references/configurable-parameters.md`,
+  adição de 2026-09-14 — separa o que é configurável, o que é fixo, e o que
+  **ainda não tem valor e não deve ser inventado**.
+- **Documentação:** `.doc/checkclass-fluxo-chamada.html`, com ponteiro
+  novo em `.doc/checkclass-visao-geral.html`.
+
+### Direção técnica ABANDONADA — não retomar como aprovada
+
+A proposta de tecnologia para contagem individual de entrada/saída por
+visão computacional (detector + tracker executados em passagem curta
+periódica sobre a câmera já existente), produzida nesta mesma data **antes**
+da rejeição do usuário, está **abandonada**. Ela nunca foi aprovada, não
+deve ser registrada em `architecture-overview.md` como decisão, e as duas
+questões em aberto que a acompanhavam (ângulo de câmera versus precisão;
+semântica do comparador de contagem de tags) ficam sem efeito. Só retomar
+se o usuário reabrir o assunto explicitamente.
+
+### Verificações de código feitas nesta sessão (fatos, não suposições)
+
+- **Não existe nenhuma geolocalização no sistema.** `RoomEntity` tem apenas
+  `name` e `area_id`; não há coordenada em lugar nenhum, e o aplicativo
+  mobile não coleta localização. Todo o lado de localização de RULE-PRES-01
+  e RULE-PRES-09 é construção nova.
+- **A grade já tem tudo que RULE-PRES-06 precisa.** `class_session` guarda
+  `room_id`, `scheduled_start` e `scheduled_end`, e
+  `class_group_schedule_slot` é a grade recorrente. O "cadastro de horário
+  por sala" que o usuário pediu **já existe** — daí a validade do status
+  "em sala" ser derivada da grade em vez de um limite fixo de 4 horas.
+- **`device` já tem `room_id`** — o sistema já sabe qual leitor fica em qual
+  sala, o que RULE-PRES-04 exige.
+- **A tolerância de RULE-PRES-03 já existe pronta** (RULE-ATT-05/14) — o
+  usuário optou por usar a da instituição em vez de criar escopo por sala.
+
+### GAPS que continuam EM ABERTO — NÃO presumir resposta
+
+Lista completa no final de
+`business-rules/references/attendance-presence-flow-rules.md`. Em resumo:
+distância de afastamento da sala (os 5m do desenho original não são
+construíveis com GPS e não têm substituto); exigência operacional de Wi-Fi
+institucional em toda sala; VPN como vetor residual; detecção de GPS
+falsificado; consentimento e retenção de localização contínua sob LGPD;
+tecnologia da contagem por câmera; e divisão do status "em sala" por aula,
+adiada explicitamente pelo usuário.
+
+### Buracos ACEITOS conscientemente pelo usuário
+
+Não são esquecimentos — foram apresentados e mantidos por decisão:
+
+1. **A contagem nunca identifica quem.** Foi oferecida a alternativa de
+   verificação facial 1:1 no momento do swipe, que fecharia a fraude na
+   origem e nomearia a pessoa; foi explicitada a diferença de dificuldade
+   entre comparar um rosto de perto contra uma foto cadastrada e contar
+   pessoas numa sala de longe. O usuário escolheu a contagem ("Forma 02 é o
+   melhor caminho").
+2. **Troca de tags entre dois alunos presentes é indetectável** por
+   qualquer cruzamento de números.
+3. **Um swipe cobre todas as aulas do dia naquela sala** — simplificação
+   temporária que o usuário pretende revisitar.
+
+**Source of confirmation:** Usuário, 2026-09-14, ao longo de uma sessão
+inteira de perguntas e respostas, com cada decisão confirmada
+individualmente.

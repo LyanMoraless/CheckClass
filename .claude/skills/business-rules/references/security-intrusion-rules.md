@@ -351,7 +351,7 @@ Isto cruza dois domínios já existentes no projeto — Segurança de Intrusão
 (esta regra) e o núcleo de Presença/Chamada (RULE-ATT-*) — uma ponte
 conceitual que não existia antes deste addendum.
 
-**Gaps novos, não presumidos, registrados em
+~~**Gaps novos, não presumidos, registrados em
 `project-knowledge/references/pending-decisions.md`:**
 - Frequência exata da contagem periódica (o exemplo do usuário usa
   ~5–15 min, mas não foi confirmado como regra geral).
@@ -365,9 +365,79 @@ conceitual que não existia antes deste addendum.
 - Se a câmera de sala de aula é a MESMA câmera fixa já aprovada para
   Segurança de Intrusão ou uma câmera adicional/diferente vinculada a cada
   sala — implicação de hardware/custo relevante para o Hardware
-  Evaluation Agent.
+  Evaluation Agent.~~
+
+> **Os 4 gaps acima foram FECHADOS pelo usuário em 2026-09-14** — ver
+> addendum logo abaixo. Texto riscado preservado como histórico.
 
 **Source of confirmation:** Usuário, 2026-09-02.
+
+**Addendum — 4 gaps de produto fechados pelo usuário (2026-09-14):** os
+quatro gaps listados acima (frequência, divergência, escopo, câmera) foram
+respondidos pelo usuário. Isto fecha as decisões de **produto/regra de
+negócio** abaixo — **não fecha a tecnologia de contagem em si**
+(biblioteca/método de visão computacional), que continua a cargo do Tech
+Decision Agent com apoio do Computer Vision Agent.
+
+1. **Frequência da contagem periódica por câmera:** fixa em **15
+   minutos**, **não configurável por instituição**. Não é um valor
+   default ajustável por tenant — é o mesmo intervalo para todas as
+   instituições.
+2. **Comportamento em divergência entre contagem por câmera e contagem
+   por tag:** gera **alerta ao professor**. Não abre incidente de
+   segurança (não segue o ciclo de vida de RULE-SEC-07 acima) e não é
+   apenas um log silencioso para auditoria posterior — é uma notificação
+   ativa dirigida ao professor da turma/sessão em curso.
+3. **Escopo do mecanismo:** exclusivamente o contexto de sala de
+   aula/turma (chamada). **Não se estende** a corredores nem a zonas
+   restritas gerais de Segurança de Intrusão — a generalização
+   especulada no addendum anterior não se confirma.
+4. **Câmera usada:** é a **mesma câmera fixa** já aprovada para Segurança
+   de Intrusão ("Decisão de tecnologia — Segurança de Intrusão, primeira
+   rodada", item 4,
+   `project-knowledge/references/architecture-overview.md`) — não uma
+   câmera adicional/dedicada por sala. Fecha a dúvida de footprint de
+   hardware/custo levantada no addendum anterior.
+
+Isto não decide qual biblioteca/método de visão computacional realiza a
+contagem, nem detalhes de implementação do alerta ao professor (canal,
+formato exato) — seguem a cargo dos respectivos agentes técnicos quando a
+implementação real começar.
+
+**Source of confirmation:** Usuário, 2026-09-14.
+
+**Addendum — contagem rejeitada como mecanismo de apuração, e exigência
+de contagem exata relaxada para o uso de sala de aula (2026-09-14, mesmo
+dia, sessão posterior):** ainda em 2026-09-14, depois do fechamento dos 4
+gaps acima, o usuário rejeitou explicitamente a contagem por visão
+computacional como mecanismo de **apuração** de presença: "Não consigo
+trabalhar com nada que não seja 100%. Vamos excluir completamente essa
+vertente de contagem." Duas consequências, ambas restritas ao contexto de
+sala de aula desta regra:
+
+1. **A contagem continua no desenho, mas apenas como cruzamento de dados
+   que alerta um humano** — exatamente o item 2 dos 4 gaps acima, que
+   permanece válido e não é contradito. Ela nunca marca, desmarca ou
+   altera a presença de ninguém. Formalizado em RULE-PRES-10,
+   `business-rules/references/attendance-presence-flow-rules.md`. A
+   direção técnica que estava sendo desenhada para contagem individual de
+   entrada/saída por visão computacional (proposta de detector + tracker
+   em passagem curta periódica, levada ao usuário nesta mesma data) foi
+   **abandonada e não deve ser registrada como aprovada em lugar nenhum**.
+2. **A exigência de contagem exata do primeiro addendum desta regra
+   ("contar exatamente quantas pessoas entraram/saíram, mesmo quando
+   passam em grupo", 2026-09-02) NÃO se aplica a este uso.** O cruzamento
+   de sala de aula passou a ter limiar explícito: alerta só a partir de
+   **5 pessoas de diferença**, confirmadas em **duas contagens
+   consecutivas** (RULE-PRES-11), justamente porque a câmera erra sozinha
+   por oclusão e ângulo, sem fraude nenhuma. Isso supera, para o contexto
+   de sala de aula, tanto a exigência de precisão exata quanto o "alerta
+   em qualquer divergência" do desenho original do usuário. A exigência de
+   contagem exata do addendum de 2026-09-02 **continua valendo** para
+   contagem de entrada/saída em áreas de Segurança de Intrusão, que é
+   outro contexto e não foi tocado por esta decisão.
+
+**Source of confirmation:** Usuário, 2026-09-14.
 
 ### RULE-SEC-06: Níveis de vigilância configuráveis
 

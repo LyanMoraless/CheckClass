@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckClass — Fluxo de Chamada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --text: #1c1c1c;
+    --muted: #5a5a5a;
+    --faint: #8a8a86;
+    --bg: #ffffff;
+    --panel: #f6f6f4;
+    --line: #e2e2df;
+    --pill-core: #1c1c1c;
+    --warn: #7a3b12;
+    --warn-bg: #fdf4ec;
+    --warn-line: #e8cdb4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Montserrat', sans-serif; color: var(--text); background: var(--bg); line-height: 1.6; }
+  header.masthead { display: flex; align-items: center; gap: 20px; padding: 36px 48px 28px; border-bottom: 3px solid var(--text); }
+  header.masthead img { height: 56px; width: auto; }
+  header.masthead .title-block h1 { font-family: 'Archivo Black', sans-serif; font-size: 26px; margin: 0 0 4px; letter-spacing: 0.5px; }
+  header.masthead .title-block p { margin: 0; color: var(--muted); font-size: 14px; }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 48px 80px; }
+  section { margin-bottom: 52px; }
+  h2.section-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 1px; margin: 0 0 18px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
+  h3 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16.5px; margin: 30px 0 4px; display: flex; align-items: center; gap: 10px; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 16.5px; }
+  .overview-box { background: var(--panel); border-left: 4px solid var(--text); padding: 20px 24px; border-radius: 4px; }
+  code { font-family: 'Courier New', monospace; font-size: 12.5px; background: var(--panel); padding: 1px 5px; border-radius: 3px; }
+  .rule-tag {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: #fff;
+    background: var(--pill-core);
+    padding: 2px 9px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .step { border-top: 1px solid var(--line); padding: 22px 0; }
+  .step:last-child { border-bottom: 1px solid var(--line); }
+  .step-num { font-family: 'Bebas Neue', sans-serif; font-size: 34px; line-height: 1; color: var(--faint); letter-spacing: 0.04em; }
+  .step-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .step-head h3 { margin: 0; font-size: 18px; }
+  .step p.desc { font-size: 14px; margin: 6px 0 10px; max-width: 74ch; }
+  .step ul { margin: 6px 0 10px; padding-left: 20px; font-size: 14px; max-width: 74ch; }
+  .step li { margin-bottom: 5px; }
+  .rules-line { font-size: 11.5px; color: var(--faint); margin-top: 10px; }
+  .item { border-top: 1px solid var(--line); padding: 16px 0; }
+  .item:last-child { border-bottom: 1px solid var(--line); }
+  .item p.desc { font-size: 14px; margin: 6px 0; max-width: 74ch; }
+  .item p.why { font-size: 13px; color: var(--muted); margin: 0 0 4px; max-width: 74ch; }
+  .callout { background: var(--warn-bg); border: 1px solid var(--warn-line); border-left: 4px solid var(--warn); padding: 16px 20px; border-radius: 4px; margin: 18px 0; }
+  .callout h4 { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: var(--warn); }
+  .callout p { margin: 0 0 8px; font-size: 13.5px; max-width: 74ch; }
+  .callout p:last-child { margin-bottom: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 14px 0; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em; font-size: 14px; border-bottom: 2px solid var(--text); font-weight: normal; }
+  td.num { font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 0.04em; white-space: nowrap; }
+  .table-wrap { overflow-x: auto; }
+  footer { border-top: 3px solid var(--text); padding: 22px 48px 40px; font-size: 12.5px; color: var(--muted); max-width: 1016px; margin: 0 auto; }
+  footer code { font-size: 11.5px; }
+  @media print {
+    header.masthead { border-bottom: 2px solid #000; }
+    .step, .item, .callout { break-inside: avoid; }
+    section { break-inside: avoid-page; }
+  }
+  @media (max-width: 700px) {
+    header.masthead, main, footer { padding-left: 20px; padding-right: 20px; }
+    .step-head { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <img src="assets/logo.png" alt="LGI Morales">
+  <div class="title-block">
+    <h1>CheckClass — Fluxo de Chamada</h1>
+    <p>Como o sistema passa a interpretar a presença do aluno</p>
+  </div>
+</header>
+
+<main>
+
+  <section id="overview">
+    <h2 class="section-title">O Que É Este Documento</h2>
+    <div class="overview-box lead">
+      <p>Fluxo de chamada redesenhado com o usuário em <strong>2026-09-14</strong>, do zero, em cima de uma pergunta simples: <em>o que, exatamente, prova que o aluno estava na aula?</em></p>
+      <p>O desenho anterior apoiava a resposta em <strong>contagem de pessoas por câmera</strong>. O usuário rejeitou essa direção por não ser exata ("não consigo trabalhar com nada que não seja 100%") e propôs um fluxo novo em quatro etapas, que foi então analisado em busca de formas de burlar. Este documento é o resultado: o fluxo já com as correções, as decisões tomadas uma a uma, <strong>os buracos que ficaram abertos de propósito</strong> e os pontos que ainda não têm resposta.</p>
+      <p>A regra de negócio formal está em <code>.claude/skills/business-rules/references/attendance-presence-flow-rules.md</code> (RULE-PRES-01 a 13). <strong>Nada foi implementado</strong> — nenhuma linha de código foi escrita para esta frente.</p>
+    </div>
+  </section>
+
+  <section id="fluxo">
+    <h2 class="section-title">O Fluxo, Nas Quatro Etapas</h2>
+    <p>As etapas não são independentes: a etapa 2 é pré-requisito da 1, e a 3 depende do registro da 2. A ordem abaixo é a do desenho do usuário, não a ordem cronológica dos eventos.</p>
+
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">01</span>
+        <h3>Login</h3>
+      </div>
+      <p class="desc">O login do aluno no aplicativo conta como fator de presença, mas só quando <strong>as duas</strong> condições valem ao mesmo tempo:</p>
+      <ul>
+        <li>a requisição vem de <strong>dentro da rede institucional</strong> cadastrada; e</li>
+        <li>a localização do aparelho está <strong>dentro do raio da instituição</strong> (referência: 50 metros).</li>
+      </ul>
+      <p class="desc">Faltando qualquer uma, o aluno <strong>loga normalmente</strong> — ele usa o aplicativo — mas não gera presença. Presença também nunca é registrada antes do horário de início da aula, e o relógio que vale é o do servidor, nunca o do aparelho.</p>
+      <p class="rules-line">RULE-PRES-01, RULE-PRES-02, RULE-PRES-03</p>
+    </div>
+
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">02</span>
+        <h3>Tag</h3>
+      </div>
+      <p class="desc">O aluno passa a tag no leitor da mesa do professor, <strong>e precisa ser o leitor daquela sala</strong>. Isso o marca como "em sala". Sem essa passagem, o login da etapa 1 nunca vira presença, mesmo com todo o resto satisfeito.</p>
+      <p class="desc">O status "em sala" vale até o fim da <strong>última aula que aquele aluno tem naquela sala naquele dia</strong>, derivado da grade de horários que o sistema já mantém. Um logout explícito encerra antes. Trocou de sala, passa a tag de novo.</p>
+      <p class="rules-line">RULE-PRES-04, RULE-PRES-05, RULE-PRES-06</p>
+    </div>
+
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">03</span>
+        <h3>Permanência</h3>
+      </div>
+      <p class="desc">Ao sair, o aluno <strong>passa a tag novamente</strong>. Esse segundo registro fecha o intervalo e alimenta o cálculo de permanência que já existe e já funciona no sistema hoje.</p>
+      <p class="desc">Em paralelo, o aplicativo monitora a localização durante a aula. Afastamento prolongado (referência: 15 minutos) conta como ausência. Quando não houve tag de saída, a hora de saída segue esta ordem:</p>
+      <ul>
+        <li><strong>1º — tag na saída.</strong> Prevalece sempre que existir. Registro físico e exato.</li>
+        <li><strong>2º — localização ou logout explícito.</strong> Vale o momento do afastamento, ou o momento em que o aluno apertou "sair".</li>
+        <li><strong>3º — nenhuma das duas.</strong> Vira pendência para o professor resolver. Nunca falta automática.</li>
+      </ul>
+      <p class="desc">Sessão que cai sozinha — bateria, queda de rede, sistema operacional encerrando o aplicativo — <strong>não é logout</strong> e não conta como saída: cai no caso 3.</p>
+      <p class="rules-line">RULE-PRES-07, RULE-PRES-08, RULE-PRES-09</p>
+    </div>
+
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">04</span>
+        <h3>Contagem</h3>
+      </div>
+      <p class="desc">A câmera da sala conta as pessoas a cada 15 minutos e o sistema cruza três números: pessoas vistas, logins registrados e tags passadas. Divergência de <strong>5 pessoas ou mais</strong>, confirmada em <strong>duas contagens seguidas</strong>, dispara alerta para o professor — que então pode fazer a chamada manual.</p>
+      <p class="desc">O alerta <strong>mostra os três números</strong>, não apenas o aviso de que há algo errado, para que o professor julgue em segundos: "30 logins, 30 tags, 27 vistos" sugere gente escondida atrás de outra; "30 logins, 25 tags" é problema real.</p>
+      <p class="desc"><strong>A contagem nunca marca, desmarca ou altera a presença de ninguém.</strong> Ela levanta suspeita para um humano conferir — e só.</p>
+      <p class="rules-line">RULE-PRES-10, RULE-PRES-11, RULE-PRES-12</p>
+    </div>
+  </section>
+
+  <section id="porque">
+    <h2 class="section-title">Por Que Cada Peça Está Aí</h2>
+    <p>O desenho original tinha buracos que a análise de fraude expôs. Cada correção abaixo responde a um deles.</p>
+
+    <div class="item">
+      <h3><span class="rule-tag">PRES-01</span> Por que rede <em>e</em> localização, e não uma só</h3>
+      <p class="desc">Nenhuma das duas funciona sozinha, e elas falham em direções opostas. A localização por GPS é falsificável com aplicativo gratuito, sem root no Android — sozinha, não impede fraude de casa. A rede institucional é difícil de falsificar, mas o alcance do Wi-Fi ultrapassa em muito o tamanho de uma sala — observação levantada pelo próprio usuário.</p>
+      <p class="why">Juntas, uma tapa o buraco da outra: quem falsifica o GPS de casa reprova na rede, e quem está no campus mas fora da sala passa na rede e é pego pela localização. Para enganar as duas, o fraudador precisa estar <b>fisicamente no campus</b> — e aí o ganho se reduz a trocar a sala pela cantina, que é o que as etapas 3 e 4 pegam.</p>
+    </div>
+
+    <div class="item">
+      <h3><span class="rule-tag">PRES-04</span> Por que tem que ser o leitor <em>daquela</em> sala</h3>
+      <p class="desc">Essa exigência é o que mantém a tag provando <strong>qual sala</strong>. A variante avaliada e descartada — aceitar qualquer leitor da instituição — faria a tag provar apenas "veio à faculdade hoje".</p>
+      <p class="why">Nesse cenário, sobraria <b>só o GPS</b> indicando a sala, e o GPS é justamente o sinal falsificável e impreciso dentro de prédio. Os papéis se inverteriam e o desenho inteiro passaria a se apoiar na sua peça mais frágil.</p>
+    </div>
+
+    <div class="item">
+      <h3><span class="rule-tag">PRES-06</span> Por que a validade sai da grade, e não de um limite em horas</h3>
+      <p class="desc">A proposta inicial era um limite fixo de 4 horas mais um cadastro novo de horário por sala. A verificação no código mostrou que <strong>esse cadastro já existe</strong>: cada aula já guarda sala, início e fim, e a grade recorrente já gera as sessões.</p>
+      <p class="why">Além de redundante, o limite fixo tinha um defeito concreto: um turno da manhã de 7:30 às 12:00 dura 4h30 — o status venceria no meio da última aula e viraria pendência para um aluno que não fez nada errado. Derivar da grade nunca vence no meio da aula, nunca sobra além do devido, e acompanha sozinha qualquer mudança de horário.</p>
+    </div>
+
+    <div class="item">
+      <h3><span class="rule-tag">PRES-07</span> Por que a saída é por tag, e não por rastreamento</h3>
+      <p class="desc">Três alternativas foram avaliadas para medir permanência: tag na saída, um dispositivo de sinal de curto alcance instalado em cada sala, e reconferência aleatória acionada pelo professor.</p>
+      <p class="why">A tag venceu por dois motivos. O cálculo de soma de intervalos <b>já está implementado e funcionando</b> — custo de desenvolvimento próximo de zero. E o registro é físico: não é falsificável desligando o aparelho, ao contrário de qualquer sinal que dependa do celular do aluno.</p>
+    </div>
+
+    <div class="item">
+      <h3><span class="rule-tag">PRES-03</span> A tolerância não precisou ser criada</h3>
+      <p class="desc">O desenho pedia "15 minutos após o horário da aula, configurável para as salas". A tolerância de atraso já existe no sistema com exatamente essa semântica, incluindo as três opções fixas de comportamento depois que o prazo passa. A única diferença era o escopo — instituição, não sala.</p>
+      <p class="why">O usuário optou por usar a da instituição. Consequência: <b>esta etapa não exige nenhuma implementação nova.</b></p>
+    </div>
+
+    <div class="item">
+      <h3><span class="rule-tag">PRES-13</span> Falha de equipamento nunca vira falta</h3>
+      <p class="desc">O desenho original dizia "sem o passo 02, ele não é aceito". Isso criaria falta sem recurso para o aluno fisicamente presente cuja pulseira quebrou, ou cujo leitor estava fora do ar.</p>
+      <p class="why">Além de injusto, contrariaria uma regra que o usuário já havia aprovado: fator obrigatório ausente gera pendência de revisão, nunca falta automática. Corrigido explicitamente.</p>
+    </div>
+  </section>
+
+  <section id="aceito">
+    <h2 class="section-title">O Que Fica Aberto De Propósito</h2>
+    <p>Buracos conhecidos, apresentados ao usuário, e mantidos por decisão consciente. Não são esquecimentos.</p>
+
+    <div class="callout">
+      <h4>A contagem nunca diz quem</h4>
+      <p>Foi apresentada a alternativa de <strong>verificação facial no momento em que a tag encosta no leitor</strong> — uma câmera pequena junto do leitor comparando um rosto contra a foto cadastrada do dono da tag. Isso fecharia a fraude na origem e identificaria a pessoa.</p>
+      <p>Foi explicitada a diferença de dificuldade: comparar <em>um</em> rosto frontal, de perto, com boa luz, contra <em>uma</em> foto cadastrada é problema confiável; contar pessoas numa sala inteira, de longe, com gente na frente de gente, não é — e era justamente por isso que o usuário havia rejeitado a contagem como mecanismo de apuração.</p>
+      <p><strong>O usuário optou pela contagem.</strong> Consequência aceita: a câmera acusa que os números não batem, mas nunca diz quem — cabe ao professor descobrir na chamada manual.</p>
+    </div>
+
+    <div class="callout">
+      <h4>Troca de tags entre dois alunos presentes é indetectável</h4>
+      <p>Se dois alunos trocam as tags <strong>entre si</strong>, os dois estão na sala, a contagem de pessoas bate, a contagem de tags bate, e nada é acusado. É o caso que nenhum cruzamento de números consegue pegar, por construção.</p>
+    </div>
+
+    <div class="callout">
+      <h4>Um swipe cobre todas as aulas do dia naquela sala</h4>
+      <p>Simplificação assumida pelo usuário, que registrou a intenção de revisitar depois ("por hora, vamos fazer desse modo mais simplificado, depois pensamos em como dividir isso por aulas").</p>
+      <p>O caso do aluno com aula na mesma sala às 8h e às 14h que vai embora no intervalo <strong>não vira fraude</strong>, porque o monitoramento de localização acusa que ele não estava na aula das 14h. Decidido não complicar a regra por causa dele.</p>
+    </div>
+  </section>
+
+  <section id="gaps">
+    <h2 class="section-title">O Que Ainda Não Tem Resposta</h2>
+    <p>Nenhum destes foi decidido. Não presumir resposta a partir deste documento.</p>
+
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Ponto em aberto</th><th>Por que importa</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num">01</td>
+          <td><strong>Distância de afastamento da sala</strong></td>
+          <td>Os 5 metros do desenho original <strong>não são construíveis com GPS</strong>: ±5m no melhor caso a céu aberto, ±20–50m dentro de prédio, quando há sinal. Salas vizinhas ficam a 3–8m, distância que o GPS nunca distingue. Sem substituto confirmado.</td>
+        </tr>
+        <tr>
+          <td class="num">02</td>
+          <td><strong>Wi-Fi institucional em toda sala</strong></td>
+          <td>Aluno em dado móvel (4G) reprova na checagem de rede mesmo sentado na sala. Isso vira requisito operacional da instituição — cobertura em toda sala e aluno conectado —, não algo que o sistema resolve.</td>
+        </tr>
+        <tr>
+          <td class="num">03</td>
+          <td><strong>VPN como vetor residual</strong></td>
+          <td>Aluno em casa com acesso VPN à rede da instituição apareceria como "dentro da rede". Buraco estreito (exige acesso concedido e fica registrado), mas real. Mitigação não decidida.</td>
+        </tr>
+        <tr>
+          <td class="num">04</td>
+          <td><strong>Detecção de GPS falsificado</strong></td>
+          <td>Existem mecanismos de plataforma para detectar localização simulada e aparelho comprometido. Nenhum foi avaliado — é decisão de tecnologia, não de negócio.</td>
+        </tr>
+        <tr>
+          <td class="num">05</td>
+          <td><strong>Consentimento e retenção de localização (LGPD)</strong></td>
+          <td>Rastrear a localização do aluno durante a aula é dado pessoal sensível, de peso jurídico maior que qualquer dado que o projeto coleta hoje. Precisa de base legal, consentimento formal, retenção e limitação de finalidade.</td>
+        </tr>
+        <tr>
+          <td class="num">06</td>
+          <td><strong>Tecnologia da contagem por câmera</strong></td>
+          <td>Continua a cargo de Tech Decision + Computer Vision. A direção que estava sendo desenhada antes do redesenho foi abandonada e não deve ser retomada como aprovada.</td>
+        </tr>
+        <tr>
+          <td class="num">07</td>
+          <td><strong>Divisão do status "em sala" por aula</strong></td>
+          <td>Adiado explicitamente pelo usuário. Ver a simplificação assumida na seção anterior.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section id="impacto">
+    <h2 class="section-title">O Que Já Existe e o Que É Novo</h2>
+    <p>Levantado por leitura direta do código em 2026-09-14, para dimensionar a frente antes de qualquer decisão de implementação.</p>
+
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Peça</th><th>Situação</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Checagem de rede institucional</td><td><strong>Pronta e ratificada</strong> — <code>InstitutionalNetworkService</code>, faixas CIDR por tenant.</td></tr>
+        <tr><td>Tolerância de atraso e comportamento pós-tolerância</td><td><strong>Pronta</strong> — não exige nada novo (RULE-PRES-03).</td></tr>
+        <tr><td>Soma de intervalos de entrada/saída e corte por percentual mínimo</td><td><strong>Pronta e funcionando</strong> — é o que a etapa 3 passa a alimentar.</td></tr>
+        <tr><td>Pendência de revisão e resolução por hierarquia</td><td><strong>Pronta</strong> — reaproveitada tal como está pelas RULE-PRES-08 e 13.</td></tr>
+        <tr><td>Leitor amarrado à sala</td><td><strong>Já modelado</strong> — a entidade de dispositivo já tem sala.</td></tr>
+        <tr><td>Grade de horários com sala, início e fim por aula</td><td><strong>Já modelada</strong> — é dela que sai a validade do status (RULE-PRES-06).</td></tr>
+        <tr><td>Geolocalização (raio da instituição, afastamento da sala)</td><td><strong>Não existe nada.</strong> A entidade de sala não tem coordenada e o aplicativo não coleta localização. Construção inteiramente nova.</td></tr>
+        <tr><td>Status "em sala" com validade derivada da grade</td><td><strong>Novo.</strong></td></tr>
+        <tr><td>Cruzamento dos três números e alerta ao professor</td><td><strong>Novo.</strong></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Fluxo desenhado e fechado com o usuário em 2026-09-14. Regra de negócio formal em <code>.claude/skills/business-rules/references/attendance-presence-flow-rules.md</code> (RULE-PRES-01 a 13), com notas cruzadas em <code>attendance-rules.md</code>, <code>security-intrusion-rules.md</code> (RULE-SEC-05) e <code>configurable-parameters.md</code>. Situação do código levantada por leitura direta de <code>backend/src/</code> na mesma data. <strong>Implementação não aprovada</strong> — nenhuma linha de código foi escrita para esta frente.
+</footer>
+
+</body>
+</html>
