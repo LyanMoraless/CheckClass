@@ -17,13 +17,16 @@ import { TenantContextService } from '../../database/tenant-context.service';
 // (InitSchema migration), which app.tenant_id alone (already set by
 // TenantContextService.runWithTenant) already satisfies.
 //
-// TODO: pendente revisão de segurança (GUC não revisado) — same flagged
-// status as app.absence_justification_retention_job, and the Frente 10
-// architecture explicitly recommends the Security Agent review both GUCs in
-// one pass rather than accumulate a second unreviewed instance
-// (architecture-overview.md, Frente 10, "Estrutura proposta" item 8). Not
-// blocking Frente 10 per the task handoff — flagged so nobody reads its mere
-// existence as an approved security decision.
+// Revisão de segurança concluída (2026-09-14), junto com
+// app.absence_justification_retention_job, como a arquitetura recomendava
+// (architecture-overview.md, Frente 10, "Estrutura proposta" item 8):
+// aprovado sem ressalvas. set_config usa valor literal fixo (nunca input de
+// usuário) com is_local=true (SET LOCAL), sempre dentro da mesma transação
+// de TenantContextService.runWithTenant — não vaza entre conexões pooled.
+// Só é chamado pelos scripts CLI standalone de Frente 10
+// (attendance-retention-close-month.ts, attendance-retention-consolidate-
+// annual.ts), nunca por controller/interceptor/guard do pipeline HTTP — sem
+// caminho de escalação a partir de uma requisição autenticada normal.
 @Injectable()
 export class AttendanceRetentionRlsContextService {
   constructor(private readonly tenantContext: TenantContextService) {}

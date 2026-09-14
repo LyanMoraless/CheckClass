@@ -30,12 +30,16 @@ export class AbsenceJustificationRlsContextService {
   // src/scripts/absence-justification-attachment-retention-sweep.ts, the
   // only caller.
   //
-  // TODO: pendente revisão de segurança (GUC não revisado). The Database
-  // Agent introduced app.absence_justification_retention_job for this exact
-  // call site (AddAbsenceJustification migration header); the Security
-  // Agent has not reviewed it. Not blocking the rest of Frente 07 per the
-  // task handoff — flagged here so nobody reads its mere existence as an
-  // approved security decision.
+  // Revisão de segurança concluída (2026-09-14), junto com
+  // app.attendance_retention_job, como a arquitetura recomendava
+  // (architecture-overview.md, Frente 10, "Estrutura proposta" item 8):
+  // aprovado sem ressalvas. set_config usa valor literal fixo (nunca input
+  // de usuário) com is_local=true (SET LOCAL), sempre dentro da mesma
+  // transação de TenantContextService.runWithTenant — não vaza entre
+  // conexões pooled. Só é chamado pelo script CLI standalone
+  // absence-justification-attachment-retention-sweep.ts, nunca por
+  // controller/interceptor/guard do pipeline HTTP — sem caminho de
+  // escalação a partir de uma requisição autenticada normal.
   async applyRetentionJobScope(): Promise<void> {
     await this.tenantContext
       .getManager()

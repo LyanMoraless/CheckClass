@@ -94,6 +94,7 @@
       <p>Levantamento feito em <strong>2026-09-11</strong> vasculhando o projeto inteiro — código real de <code>backend/</code>, <code>frontend/</code> e <code>mobile/</code>, cruzado com <code>.claude/skills/business-rules/</code> e <code>.claude/skills/project-knowledge/references/pending-decisions.md</code> — para separar o que é <strong>pendência de curto prazo</strong> (itens pequenos, não-bloqueantes, deixados para trás em frentes já entregues) do que é <strong>feature nova de longo prazo</strong> (ver <a href="checkclass-novas-features.html">documento irmão</a>).</p>
       <p>Nenhum item aqui bloqueia o funcionamento das frentes onde aparece — são gaps conhecidos, registrados pelos próprios agentes que implementaram (Backend, Frontend, QA, Project Guardian) no momento da entrega, nunca escondidos.</p>
       <p><b>Atualização 2026-09-11:</b> cinco decisões de negócio que estavam em aberto neste levantamento foram fechadas pelo usuário no mesmo dia (janela ano-calendário da consolidação anual, política de leitura do documento de fechamento, papel único de administrador técnico via RULE-RET-04/05/06, e inventário de máquinas institucionais ampliado para Coordenação). Registro formal em <code>.claude/skills/business-rules/</code> e <code>.claude/skills/project-knowledge/references/pending-decisions.md</code>. Itens já resolvidos foram removidos deste documento.</p>
+      <p><b>Atualização 2026-09-14:</b> três gaps de curto prazo fechados — tela de Áreas/Blocos (Frente 08, <code>frontend/src/features/areas/areas-page.tsx</code>); revisão de segurança dos dois GUCs de escopo de job (Frente 10), aprovados sem ressalvas; e RULE-DEV-18, UI de revogação administrativa de BYOD (Frente 12, <code>frontend/src/features/device-identity/personal-device-admin-page.tsx</code>). Itens correspondentes removidos deste documento.</p>
     </div>
   </section>
 
@@ -124,37 +125,10 @@
     </div>
   </section>
 
-  <section id="frente-08">
-    <h2 class="section-title">Frente 08 — Segurança de Intrusão</h2>
-    <p>O núcleo (detecção, incidentes, câmeras, permissão de área) está implementado e em produção desde 23 ago. Um item de curto prazo ficou pendente — os itens de tecnologia maiores (vídeo ao vivo, contagem de entrada/saída, bloqueio de portas) são tratados como feature de longo prazo no <a href="checkclass-novas-features.html">documento irmão</a>, por dependerem de decisão de tecnologia ainda não tomada.</p>
-
-    <div class="item">
-      <h3><span class="frente-tag">GAP</span> Tela de gerenciamento de Áreas/Blocos<span class="effort">Frontend, pequeno</span></h3>
-      <p class="desc">Confirmado por código: <code>backend/src/modules/area/area.controller.ts</code> já expõe <code>POST/GET /v1/areas</code> completo. No frontend, <code>features/areas/areas-api.ts</code> só implementa <code>listAreas()</code> (leitura) — não existe <code>areas-page.tsx</code> nem qualquer criar/editar/excluir. O único consumidor hoje é a tela de câmeras, que usa a lista de áreas apenas como um <code>&lt;select&gt;</code> ao registrar uma câmera.</p>
-      <p class="why"><b>Por quê isso importa:</b> sem essa tela, a instituição não consegue montar seu próprio mapa de blocos/andares — hoje isso só entra via backend/seed direto. É a peça que falta para a Segurança de Intrusão ser autoconfigurável pelo cliente final, não apenas pela equipe técnica.</p>
-      <p class="refs">Confirmado: <code>frontend/src/features/areas/</code>; <code>backend/src/modules/area/</code>.</p>
-    </div>
-  </section>
-
-  <section id="frente-10">
-    <h2 class="section-title">Frente 10 — LGPD e Retenção</h2>
-    <p>Cadeia completa rodou: Solution Architect → Tech Decision → Database → Backend → Testing → QA → Project Guardian. Veredito Consistente. Três decisões de negócio que a própria cadeia deixou em aberto foram fechadas pelo usuário em 2026-09-11 (janela ano-calendário para os 12 fechamentos, política de leitura do documento de fechamento via RULE-RET-05/06, e papel único de administrador técnico via RULE-RET-04 — ver <code>data-retention-rules.md</code>). Resta um item, de revisão técnica, não de decisão de negócio.</p>
-
-    <div class="item">
-      <h3><span class="frente-tag">Gap</span> Revisão de segurança dos GUCs de escopo de job<span class="effort">Security, pequeno</span></h3>
-      <p class="desc">Dois GUCs de escopo de job não revisados pelo Security Agent: <code>app.absence_justification_retention_job</code> (Frente 07) e <code>app.attendance_retention_job</code> (Frente 10). A própria arquitetura já recomenda revisar os dois numa única passagem.</p>
-      <p class="refs">Ver "Decisão de arquitetura — Conformidade LGPD e retenção, Frente 10" em <code>architecture-overview.md</code>.</p>
-    </div>
-  </section>
-
   <section id="frente-12">
     <h2 class="section-title">Frente 12 — Vínculo de Dispositivo Institucional</h2>
     <p>Tecnicamente encerrada em 2026-09-11 (Testing 1005/1005, QA aprovado, Project Guardian: Consistente). GAP-10 (rede institucional) também fechado na mesma data. Os itens abaixo foram sinalizados pelos próprios agentes de implementação e pelo QA, nenhum bloqueante.</p>
 
-    <div class="item">
-      <h3><span class="frente-tag">Gap</span> RULE-DEV-18 sem UI — revogação administrativa de BYOD<span class="effort">Backend + Frontend, pequeno</span></h3>
-      <p class="desc">Falta endpoint de busca de dispositivo pessoal por <code>personId</code> — a listagem de vínculos só expõe <code>deviceIdentityId</code> cru, sem tela de revogação administrativa. Autosserviço (o próprio dono revogando o próprio BYOD) já funciona integralmente hoje; só a revogação feita por um administrador em nome de outra pessoa está sem caminho de UI.</p>
-    </div>
     <div class="item">
       <h3><span class="frente-tag">Nota</span> "Titular padrão" de VIEW_DEVICE_BINDINGS não é grant automático<span class="effort">Config, não é bug</span></h3>
       <p class="desc">RULE-DEV-16 (coordenação + diretoria) é diretriz de configuração, não um grant automático do sistema — o admin do tenant precisa criar o <code>permission_group</code> correspondente. Mesmo padrão de todo o enum <code>Permission</code> na plataforma. Registrado aqui só para não ser lido como pendência técnica quando não é.</p>

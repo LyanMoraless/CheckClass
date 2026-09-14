@@ -14,12 +14,10 @@ import { AbsenceJustificationRlsContextService } from '../modules/absence-justif
 // (OS cron, a scheduled container task, etc.) is a DevOps decision, out of
 // this task's scope.
 //
-// TODO: pendente revisão de segurança (GUC não revisado). The Database Agent
-// introduced app.absence_justification_retention_job specifically for this
-// call site (AddAbsenceJustification migration header); the Security Agent
-// has not yet reviewed it. Not blocking the rest of Frente 07 per the task
-// handoff — flagged so nobody reads its existence as a closed security
-// decision.
+// Revisão de segurança do GUC app.absence_justification_retention_job
+// concluída (2026-09-14) — ver a nota completa em
+// AbsenceJustificationRlsContextService.applyRetentionJobScope. Aprovado sem
+// ressalvas.
 async function main() {
   const [tenantId] = process.argv.slice(2);
   if (!tenantId) {

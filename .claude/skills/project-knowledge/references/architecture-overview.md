@@ -3147,10 +3147,16 @@ dispositivo IoT aqui).
    anexos (`app.absence_justification_retention_job`): um GUC de sessão
    dedicado (ex. `app.attendance_retention_job`) dando ao job visibilidade
    sobre as linhas do próprio tenant sem passar pelas políticas RLS
-   pensadas para requisições interativas. **O GUC análogo já existente
-   está marcado no código como pendente de revisão de segurança** —
-   recomenda-se que o Security Agent revise os dois numa única passagem,
-   em vez de acumular uma segunda instância não revisada.
+   pensadas para requisições interativas. **RESOLVIDO (2026-09-14):** os
+   dois GUCs foram revisados numa única passagem, como recomendado —
+   **aprovados sem ressalvas**. `set_config` usa valor literal fixo (nunca
+   input de usuário) com `is_local=true` (`SET LOCAL`), sempre dentro da
+   mesma transação de `TenantContextService.runWithTenant`, sem vazar entre
+   conexões do pool; cada GUC só é lido pelos scripts CLI standalone do
+   próprio job, nunca alcançável a partir do pipeline HTTP — sem caminho de
+   escalação por uma requisição autenticada normal. Ver a nota completa em
+   `AttendanceRetentionRlsContextService.applyRetentionJobScope` e
+   `AbsenceJustificationRlsContextService.applyRetentionJobScope`.
 
 ### Integrações
 
