@@ -52,6 +52,29 @@ export class PersonalDeviceService {
     return manager.getRepository(PersonalDeviceEntity).findOneBy({ personId, revokedAt: IsNull() });
   }
 
+  // RULE-DEV-18 admin flow: the inventory administrator (Direção/Reitoria,
+  // RULE-DEV-15) looks up a person's active BYOD by personId before deciding
+  // whether to revoke it administratively — getMine() only ever resolves the
+  // CALLER's own personId from the JWT, so it can't serve an admin searching
+  // for someone else's device. Same Direção/Reitoria check as revoke()'s
+  // admin branch below (LeadershipScopeService.getCourseScope(...)
+  // .allCourses), not a Permission enum code — RULE-ACC-08 confirms none
+  // exists for inventory administration. Deliberately NOT opened to
+  // Coordenação: RULE-DEV-15's 2026-09-11 widening only reaches
+  // *visualização* of the institutional-machine inventory, never BYOD
+  // administration/revocation.
+  async findByPerson(personId: string, requesterPersonId: string): Promise<PersonalDeviceEntity | null> {
+    const scope = await this.leadershipScope.getCourseScope(requesterPersonId);
+    if (!scope.allCourses) {
+      throw new ForbiddenException(
+        `Person ${requesterPersonId} has no Direção/Reitoria authority to search the personal device inventory (RULE-DEV-15)`,
+      );
+    }
+
+    const manager = this.tenantContext.getManager();
+    return manager.getRepository(PersonalDeviceEntity).findOneBy({ personId, revokedAt: IsNull() });
+  }
+
   // RULE-DEV-18: the owner themself (self-service) OR the inventory
   // administrator (Direção/Reitoria, RULE-DEV-15) — both authorized, neither
   // exclusive.

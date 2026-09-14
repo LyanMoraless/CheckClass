@@ -31,3 +31,12 @@ export async function getMyPersonalDevice(): Promise<PersonalDevice | null> {
 export async function revokePersonalDevice(id: string): Promise<{ id: string; status: 'revoked' }> {
   return api.post(`/v1/device-identity/personal-devices/${id}/revoke`);
 }
+
+// RULE-DEV-18 admin flow: Direção/Reitoria (the inventory administrator,
+// RULE-DEV-15) looks up a person's active BYOD by personId before deciding
+// whether to revoke it — authorized server-side, not by this client.
+// Backend returns null (not 404) when that person has no active personal
+// device, same "not registered" posture as getMyPersonalDevice above.
+export async function findPersonalDeviceByPerson(personId: string): Promise<PersonalDevice | null> {
+  return api.get(`/v1/device-identity/personal-devices/by-person/${personId}`);
+}

@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import { AppShell } from './app/app-shell';
 import { HomePage } from './app/home-page';
 import { ProtectedRoute } from './app/protected-route';
+import { AreasPage } from './features/areas/areas-page';
 import { AttendanceConfigPage } from './features/attendance-config/attendance-config-page';
 import { AttendanceRegisterPage } from './features/attendance-register/attendance-register-page';
 import { LoginPage } from './features/auth/login-page';
@@ -16,6 +17,7 @@ import { ExamsPage } from './features/exams/exams-page';
 import { DevicesPage } from './features/devices/devices-page';
 import { InstitutionalMachinesPage } from './features/device-identity/institutional-machines-page';
 import { MyPersonalDevicePage } from './features/device-identity/my-personal-device-page';
+import { PersonalDeviceAdminPage } from './features/device-identity/personal-device-admin-page';
 import { ActiveBindingsPage } from './features/device-binding/active-bindings-page';
 import { DeviceBindingConfigPage } from './features/device-binding/device-binding-config-page';
 import { HolidaysPage } from './features/holidays/holidays-page';
@@ -76,6 +78,11 @@ export function App() {
         <Route path="my-device" element={<MyPersonalDevicePage />} />
         <Route path="device-bindings" element={<ActiveBindingsPage />} />
         <Route path="device-bindings-config" element={<DeviceBindingConfigPage />} />
+        {/* RULE-DEV-18: administrative BYOD revocation — Direção/Reitoria
+            searches a person's active personal device and revokes it, same
+            "route always reachable, page gates its own content" convention
+            (roleContext.isDirection, no dedicated Permission code). */}
+        <Route path="personal-devices" element={<PersonalDeviceAdminPage />} />
         {/* GAP-10 (RULE-DEV-14) — allowlist de rede institucional. Same
             Direção/Reitoria-only gate INSIDE the page as institutional-machines
             above (roleContext.isDirection, no dedicated Permission code). */}
@@ -91,6 +98,11 @@ export function App() {
         <Route path="security-incidents/:incidentId" element={<SecurityIncidentDetailPage />} />
         <Route path="cameras" element={<CamerasPage />} />
         <Route path="course-coordinator-assignments" element={<CourseCoordinatorAssignmentsPage />} />
+        {/* Frente 08: institution self-service create+list for its own
+            área/bloco structure — gated INSIDE the page
+            (manage_institution_structure), same convention as every other
+            route in this group. */}
+        <Route path="areas" element={<AreasPage />} />
 
         {/* Portal do Aluno/Professor/Coordenador/Direção (self-service) —
             same AppShell/<Outlet/> as every route above, not a separate

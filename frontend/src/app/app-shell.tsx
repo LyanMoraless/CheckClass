@@ -3,6 +3,7 @@ import {
   Backpack,
   BellRing,
   BookOpen,
+  Building2,
   CalendarClock,
   CalendarOff,
   CheckCircle2,
@@ -23,6 +24,7 @@ import {
   Network,
   Presentation,
   ShieldCheck,
+  ShieldOff,
   SlidersHorizontal,
   Timer,
   UserCog,
@@ -105,6 +107,11 @@ const NAV_GROUPS: NavGroup[] = [
       // "Coordenador" portal nav group below, which is what a coordinator
       // sees about their OWN scope, not who gets assigned that role.
       { to: '/course-coordinator-assignments', label: 'Coordenadores de curso', icon: UserCog },
+      // Frente 08: institution self-service create+list for its own
+      // área/bloco structure (bloco -> área/andar/corredor) — gated INSIDE
+      // the page (manage_institution_structure), same convention as every
+      // other item in this group.
+      { to: '/areas', label: 'Áreas / blocos', icon: Building2 },
     ],
   },
   {
@@ -124,6 +131,11 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/institutional-machines', label: 'Máquinas institucionais', icon: Monitor },
       { to: '/device-bindings', label: 'Vínculos de dispositivo', icon: Link2 },
       { to: '/device-bindings-config', label: 'Configuração de vínculo', icon: Timer },
+      // RULE-DEV-18: administrative revocation of a person's BYOD (the
+      // inventory administrator titular, alongside the owner's own
+      // self-service on "Meu dispositivo"). Same Direção/Reitoria-only
+      // gate/mechanism as institutional-machines above, gated INSIDE the page.
+      { to: '/personal-devices', label: 'Revogar BYOD', icon: ShieldOff },
       // GAP-10 (RULE-DEV-14): allowlist de rede institucional. Same
       // Direção/Reitoria-only audience/mechanism as institutional-machines
       // above (roleContext.isDirection, gated inside the page), so it

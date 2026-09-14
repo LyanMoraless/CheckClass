@@ -136,4 +136,36 @@ describe('PersonalDeviceService', () => {
     await expect(service.revoke('device-1', 'random-person')).rejects.toThrow(ForbiddenException);
     expect(deviceRepo.update).not.toHaveBeenCalled();
   });
+
+  // RULE-DEV-18 admin flow: Direção/Reitoria searches a person's active BYOD
+  // by personId — the search itself, not the revoke that may follow.
+  test('test_findByPerson_byDirection_activeDeviceExists_returnsIt', async () => {
+    const { service, deviceRepo } = buildService({ isDirection: true });
+    deviceRepo.findOneBy.mockResolvedValue({ id: 'device-1', personId: 'owner-1', revokedAt: null });
+
+    const result = await service.findByPerson('owner-1', 'direction-1');
+
+    expect(result).toEqual(expect.objectContaining({ id: 'device-1' }));
+    expect(deviceRepo.findOneBy).toHaveBeenCalledWith(expect.objectContaining({ personId: 'owner-1' }));
+  });
+
+  test('test_findByPerson_byDirection_noActiveDevice_returnsNull', async () => {
+    const { service, deviceRepo } = buildService({ isDirection: true });
+    deviceRepo.findOneBy.mockResolvedValue(null);
+
+    const result = await service.findByPerson('owner-1', 'direction-1');
+
+    expect(result).toBeNull();
+  });
+
+  // Deliberately NOT opened to Coordenação (RULE-DEV-15 administration stays
+  // Direção/Reitoria-exclusive, unlike its 2026-09-11 read-only widening for
+  // institutional machines) nor to the device's own owner (this route is the
+  // ADMIN search path, self-service already has getMine()).
+  test('test_findByPerson_notDirection_throwsForbiddenAndNeverQueriesDevice', async () => {
+    const { service, deviceRepo } = buildService({ isDirection: false });
+
+    await expect(service.findByPerson('owner-1', 'random-person')).rejects.toThrow(ForbiddenException);
+    expect(deviceRepo.findOneBy).not.toHaveBeenCalled();
+  });
 });
