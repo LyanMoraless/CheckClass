@@ -393,6 +393,98 @@ resposta à pergunta sobre bloqueio duro versus pendência).
 
 ---
 
+### RULE-PRES-14: Consentimento para monitoramento de localização, em registro dedicado, com bloqueio em caso de recusa
+
+**Statement:** A coleta de localização usada por RULE-PRES-01 (verificação
+pontual no check-in) e RULE-PRES-09 (monitoramento durante a aula, para
+detectar afastamento prolongado) exige consentimento formal do titular
+(ou do responsável legal, para menores, mesmo padrão de RULE-FACE-09),
+registrado em um **registro dedicado**, **distinto** do registro de
+consentimento LGPD geral já existente no sistema — mesmo padrão já usado
+para consentimento biométrico (RULE-FACE-09), pelo mesmo motivo: dado
+pessoal sensível por natureza, que precisa poder ser revogado
+isoladamente, sem afetar nenhum outro consentimento já dado.
+
+Texto proposto do item de consentimento (a ser incluído no termo):
+
+> **Monitoramento de localização durante a aula**
+>
+> Ao aceitar este item, o(a) titular (ou, quando o(a) titular for menor de
+> idade, o(a) responsável legal) autoriza o CheckClass a coletar a
+> localização do aparelho móvel do(a) aluno(a) nos seguintes momentos, e
+> somente neles:
+>
+> 1. **No momento do check-in do aplicativo**, uma única leitura da
+>    localização atual, usada para verificar se o aparelho está dentro do
+>    raio configurado pela instituição ao redor do campus.
+> 2. **Durante o período em que uma sessão de aula em que o(a) aluno(a)
+>    está registrado(a) como presente por check-in estiver em curso**, um
+>    monitoramento que verifica se o aparelho permanece dentro desse
+>    mesmo raio, usado para identificar afastamento prolongado do campus
+>    durante a aula.
+>
+> **Finalidade exclusiva:** apurar presença e ausência do(a) aluno(a) na
+> aula. Não gera perfil de deslocamento, não é compartilhada com
+> terceiros, não é usada fora do contexto de uma aula em curso.
+>
+> **Limite temporal — não é rastreamento contínuo:** a coleta do item 2
+> só ocorre enquanto uma aula em que o(a) aluno(a) está registrado(a) como
+> presente estiver em andamento, dentro do horário programado dessa aula.
+> Fora desse período, o aplicativo não coleta nem monitora a localização
+> do(a) titular. O CheckClass não rastreia a localização do(a) aluno(a) 24
+> horas por dia.
+>
+> **Consequência da recusa:** ver abaixo.
+>
+> **Revogação:** o(a) titular pode revogar este consentimento a qualquer
+> momento, com a mesma consequência da recusa descrita abaixo, a partir do
+> momento da revogação.
+
+**Retenção e finalidade:** o dado bruto de localização (o ponto de GPS ou
+evento de transição, conforme a tecnologia escolhida) **não é retido além
+da avaliação da sessão de aula em que foi coletado** — mais restrito que
+o ciclo padrão de RULE-RET-01 (60 dias), pelo mesmo princípio de
+minimização que já levou RULE-RET-03 a dar prazo mais curto ao anexo de
+atestado médico. Exceção: se o sinal gerar pendência de revisão manual
+(RULE-PRES-13), é retido até a pendência ser resolvida. O resultado
+derivado (intervalo de permanência, presença/ausência) já é coberto pelo
+ciclo padrão existente (RULE-RET-01/02) — nenhuma regra nova necessária
+para ele. A trilha bruta de localização **não compõe** o documento de
+fechamento mensal/anual (mesma exclusão já aplicada ao atestado médico).
+Acesso ao dado bruto, enquanto existir, é restrito ao administrador
+técnico da instituição (RULE-RET-04) — professor/coordenação só veem a
+pendência aberta, nunca a coordenada bruta (mesmo padrão de RULE-PRES-10
+para a câmera).
+
+**Consequência da recusa ou revogação:** o aluno que recusar (ou
+revogar) este consentimento fica **bloqueado do fluxo de chamada por
+login e localização** (RULE-PRES-01) — não há tentativa de contar
+presença por esse caminho sem o sinal de localização consentido. Precisa
+de um **caminho alternativo**, ainda não modelado em detalhe: presença
+apenas por tag física, sem a verificação de proximidade de RULE-PRES-01.
+**A mecânica exata desse caminho alternativo (como ele se relaciona com
+RULE-PRES-04/05/07/08, se gera algum tipo de registro com confiança
+distinta, etc.) fica como item novo a modelar pelo Business Analyst antes
+da implementação — não presumir a partir desta nota.**
+**Applies to:** Consentimento para coleta de localização, RULE-PRES-01 e
+RULE-PRES-09.
+**Exceptions:** Nenhuma quanto à exigência de consentimento. A mecânica
+do caminho alternativo para quem recusa é o que fica em aberto (ver
+acima).
+**Ressalvas para Security, não decisões novas:** (1) classificação formal
+do dado de localização sob o Art. 11 da LGPD (categoria de dado sensível
+em sentido estrito) não foi confirmada — tratado por analogia de risco à
+biometria, não por enquadramento legal automático; (2) extensão do padrão
+de consentimento de menores de RULE-FACE-09 a este item foi assumida por
+analogia, não confirmada explicitamente para este caso específico.
+**Source of confirmation:** Usuário, 2026-09-14 (decide o caminho —
+consentimento formal); Business Analyst Agent, 2026-09-15 (texto do
+termo, decisão de registro dedicado, proposta de retenção); Usuário,
+2026-09-15 (consequência da recusa: bloqueio de uso do app, caminho
+alternativo por tag física).
+
+---
+
 ## Gaps abertos desta frente
 
 > **Atualização (2026-09-14):** dos 7 gaps originais, 3 foram fechados ou
@@ -406,10 +498,13 @@ resposta à pergunta sobre bloqueio duro versus pendência).
 > **Atualização (2026-09-15):** os itens 4 e 6 voltaram do Tech Decision
 > com recomendação e foram **fechados** — o usuário aprovou ambas as
 > tecnologias exatamente como recomendadas ("Aprovado pode prosseguir").
-> Dos 7 gaps originais, restam abertos apenas: item 3 (VPN, adiado sem
-> prazo), item 5 (caminho decidido — vai por termo de consentimento —
-> mas texto exato ainda não formalizado por Business Analyst/Security) e
-> item 7 (divisão "em sala" por aula, adiado sem prazo).
+> O item 5 voltou do Business Analyst e também foi **fechado**, com uma
+> decisão nova do usuário sobre a consequência de recusa do consentimento
+> (bloqueio, ver RULE-PRES-14). Dos 7 gaps originais, restam abertos
+> apenas: item 3 (VPN, adiado sem prazo) e item 7 (divisão "em sala" por
+> aula, adiado sem prazo). A mecânica do caminho alternativo por tag
+> física para quem recusa o consentimento (nascida do fechamento do item
+> 5) é um item novo a modelar, não um gap desta lista original.
 
 1. ~~**Distância do gatilho de afastamento (RULE-PRES-09).**~~
    **FECHADO (2026-09-14).** Reaproveita o raio configurável da
@@ -440,20 +535,19 @@ resposta à pergunta sobre bloqueio duro versus pendência).
    ainda não confirmado com a Talsec. **Source of confirmation:** Tech
    Decision Agent, 2026-09-14 (recomendação); Usuário, 2026-09-15,
    aprovação exatamente como recomendada ("Aprovado pode prosseguir").
-5. **Consentimento e retenção de localização contínua (LGPD).**
-   Rastrear a localização de aluno durante a aula é dado pessoal
-   sensível, de peso jurídico maior que qualquer dado que o projeto
-   coleta hoje. **Encaminhado (2026-09-14): o usuário determinou que este
-   item seja adicionado ao termo de consentimento do aluno.** Isso decide
-   o *caminho* (vai por consentimento formal, não por outra base legal),
-   mas **não fecha o gap por completo** — ainda falta formalizar o texto
-   exato do item de consentimento, decidir se ele integra o registro geral
-   de consentimento LGPD já existente no sistema ou um registro dedicado
-   (mesmo padrão de RULE-FACE-09, que trata consentimento biométrico à
-   parte do LGPD geral), e fechar política de retenção/finalidade. Cabe a
-   Business Analyst/Security formalizar como addendum próprio antes da
-   implementação. **Source of confirmation:** Usuário, 2026-09-14
-   ("Coloque para adicionar no termo de consentimento").
+5. ~~**Consentimento e retenção de localização contínua (LGPD).**~~
+   **FECHADO (2026-09-15).** Texto do termo, decisão de registro dedicado
+   (mesmo padrão de RULE-FACE-09) e política de retenção formalizados;
+   consequência de recusa/revogação decidida (bloqueio do fluxo por
+   login+localização, caminho alternativo por tag física). Detalhe
+   completo em RULE-PRES-14, acima. Duas ressalvas registradas, não
+   decisões novas, não bloqueiam este fechamento: (a) classificação formal
+   do dado sob o Art. 11 da LGPD a confirmar com Security; (b) mecânica
+   exata do caminho alternativo por tag física ainda não modelada — fica
+   como item novo para o Business Analyst antes da implementação.
+   **Source of confirmation:** Usuário, 2026-09-14 (caminho: consentimento
+   formal); Business Analyst Agent, 2026-09-15 (texto, registro, retenção);
+   Usuário, 2026-09-15 (consequência da recusa: bloqueio).
 6. ~~**Tecnologia da contagem por câmera.**~~ **FECHADO (2026-09-15).**
    Tecnologia escolhida: MobileNet-SSD (treinado em COCO), via
    `cv2.dnn`, rodando no Raspberry Pi já aprovado. Detalhe completo em
