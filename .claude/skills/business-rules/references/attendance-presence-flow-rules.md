@@ -163,14 +163,18 @@ sem o passo 02, ele não é aceito").
 
 ### RULE-PRES-06: A validade do status "em sala" sai da grade de horários, não de um limite fixo
 
-**Statement:** O status "em sala" gerado pela tag vale **até o fim da
-última aula que aquele aluno tem naquela sala naquele dia**, derivado da
-grade já cadastrada. Um **logout explícito** encerra o status antes
-disso. Não há limite fixo em horas, e não é criado nenhum cadastro novo
+**Statement:** O status "em sala" gerado pela tag vale **para a aula
+(`class_session`) em que a tag foi passada**, do início ao fim daquela
+sessão específica, derivado da grade já cadastrada. Se o aluno tem mais
+de uma aula na mesma sala no mesmo dia, **cada aula exige sua própria
+passagem de tag** — o status não se estende automaticamente de uma aula
+para a seguinte. Um **logout explícito** encerra o status antes do fim da
+sessão. Não há limite fixo em horas, e não é criado nenhum cadastro novo
 de horário por sala.
 **Applies to:** Ciclo de vida do status "em sala".
 **Exceptions:** Aluno que troca de sala passa a tag novamente no leitor
-da nova sala (consequência direta de RULE-PRES-04).
+da nova sala (consequência direta de RULE-PRES-04); o mesmo vale para
+trocar de aula permanecendo na mesma sala.
 **Histórico da decisão:** o usuário propôs inicialmente um limite fixo de
 4 horas mais um "cadastro por sala do horário". Verificação no código
 mostrou que **o cadastro já existe**: `class_session` já guarda
@@ -189,15 +193,22 @@ derivação da grade após a verificação de código, com "Precisaremos
 delimitar então / Haver algum cadastro por sala do horário para que o
 sistema considere-os nas regras").
 
-> **Simplificação temporária, explicitamente reconhecida pelo usuário:**
-> um único swipe cobre todas as aulas do aluno naquela sala no dia. O
-> usuário registrou que pretende revisitar isso ("Por hora, vamos fazer
-> desse modo mais simplificado, depois pensamos em como dividir isso por
-> aulas"). Caso avaliado e conscientemente aceito: aluno com aula na
-> mesma sala às 8h e às 14h que vai embora no intervalo teria o swipe das
-> 8h cobrindo a aula das 14h — **não vira fraude**, porque o
-> monitoramento de localização (RULE-PRES-07) acusa que ele não estava
-> presente na aula das 14h. Decidido não complicar a regra por esse caso.
+> **Simplificação original, SUPERADA (2026-09-15).** A versão fechada em
+> 2026-09-14 usava um único swipe cobrindo todas as aulas do aluno
+> naquela sala no dia. O usuário já havia registrado a intenção de
+> revisitar isso ("Por hora, vamos fazer desse modo mais simplificado,
+> depois pensamos em como dividir isso por aulas") — esse era o gap 7 da
+> lista de lacunas abertas. Caso que motivava a simplificação: aluno com
+> aula na mesma sala às 8h e às 14h que vai embora no intervalo teria o
+> swipe das 8h cobrindo a aula das 14h; já não virava fraude porque o
+> monitoramento de localização (RULE-PRES-07) acusava a ausência na aula
+> das 14h, mas o registro de presença em si ficava incorreto.
+>
+> **Revisão (2026-09-15) — gap 7 fechado: divisão por aula.** O usuário
+> decidiu fechar esse ponto: cada aula passa a exigir sua própria
+> passagem de tag, mesmo quando sala e aluno são os mesmos (ver Statement
+> e Exceptions acima, já atualizados). **Source of confirmation:**
+> Usuário, 2026-09-15 ("Uma presença por aula").
 
 ---
 
@@ -459,13 +470,9 @@ para a câmera).
 **Consequência da recusa ou revogação:** o aluno que recusar (ou
 revogar) este consentimento fica **bloqueado do fluxo de chamada por
 login e localização** (RULE-PRES-01) — não há tentativa de contar
-presença por esse caminho sem o sinal de localização consentido. Precisa
-de um **caminho alternativo**, ainda não modelado em detalhe: presença
-apenas por tag física, sem a verificação de proximidade de RULE-PRES-01.
-**A mecânica exata desse caminho alternativo (como ele se relaciona com
-RULE-PRES-04/05/07/08, se gera algum tipo de registro com confiança
-distinta, etc.) fica como item novo a modelar pelo Business Analyst antes
-da implementação — não presumir a partir desta nota.**
+presença por esse caminho sem o sinal de localização consentido. Usa em
+vez disso o **caminho alternativo por tag física**, cuja mecânica está
+formalizada em RULE-PRES-15, abaixo.
 **Applies to:** Consentimento para coleta de localização, RULE-PRES-01 e
 RULE-PRES-09.
 **Exceptions:** Nenhuma quanto à exigência de consentimento. A mecânica
@@ -482,6 +489,34 @@ consentimento formal); Business Analyst Agent, 2026-09-15 (texto do
 termo, decisão de registro dedicado, proposta de retenção); Usuário,
 2026-09-15 (consequência da recusa: bloqueio de uso do app, caminho
 alternativo por tag física).
+
+### RULE-PRES-15: Caminho alternativo por tag física para quem recusa o consentimento de localização
+
+**Statement:** O aluno bloqueado do fluxo de login+localização por ter
+recusado ou revogado o consentimento (RULE-PRES-14) continua podendo
+registrar presença por um caminho alternativo: **apenas a tag física**
+(RULE-PRES-04/05/06/07), sem nenhuma checagem de proximidade. Essa
+presença **vale exatamente como uma presença normal** — não recebe
+nenhuma marca de "menos confiável" nem fica pendente de revisão por
+coordenação. Assim que a tag é lida no leitor da sala, a presença fecha
+**imediatamente**; não existe etapa de confirmação manual pelo professor
+nesse caminho.
+**Applies to:** Alunos com consentimento de localização recusado ou
+revogado (RULE-PRES-14).
+**Exceptions:** Nenhuma quanto à validade da presença gerada. As demais
+regras de tag continuam valendo integralmente para este aluno
+(RULE-PRES-04 leitor da própria sala, RULE-PRES-05 tag como
+pré-requisito, RULE-PRES-06 validade por aula, RULE-PRES-07 tag na
+saída).
+**Nota de implicação, não decisão nova:** como este aluno nunca produz
+sinal de localização, o gatilho de afastamento prolongado por
+localização (RULE-PRES-09) não tem como disparar para ele. O afastamento
+dele só pode ser pego pela contagem por câmera (RULE-PRES-10/11), que já
+é um alerta humano, nunca decisório — não é uma lacuna nova, é uma
+consequência aceita da própria decisão de bloquear o caminho normal.
+**Source of confirmation:** Usuário, 2026-09-15 ("Vale igual" — presença
+por tag vale igual à normal; "Tag sozinha basta" — sem confirmação do
+professor).
 
 ---
 
@@ -500,11 +535,15 @@ alternativo por tag física).
 > tecnologias exatamente como recomendadas ("Aprovado pode prosseguir").
 > O item 5 voltou do Business Analyst e também foi **fechado**, com uma
 > decisão nova do usuário sobre a consequência de recusa do consentimento
-> (bloqueio, ver RULE-PRES-14). Dos 7 gaps originais, restam abertos
-> apenas: item 3 (VPN, adiado sem prazo) e item 7 (divisão "em sala" por
-> aula, adiado sem prazo). A mecânica do caminho alternativo por tag
-> física para quem recusa o consentimento (nascida do fechamento do item
-> 5) é um item novo a modelar, não um gap desta lista original.
+> (bloqueio, ver RULE-PRES-14).
+>
+> **Atualização (2026-09-15, rodada 2):** os dois itens que restavam —
+> item 3 (VPN) e item 7 (divisão "em sala" por aula) — também foram
+> **fechados**, com decisão direta do usuário. A mecânica do caminho
+> alternativo por tag física para quem recusa o consentimento (nascida do
+> fechamento do item 5, fora da lista original) também foi decidida e
+> formalizada em RULE-PRES-15. **Os 7 gaps originais desta frente estão
+> todos fechados.**
 
 1. ~~**Distância do gatilho de afastamento (RULE-PRES-09).**~~
    **FECHADO (2026-09-14).** Reaproveita o raio configurável da
@@ -519,11 +558,18 @@ alternativo por tag física).
    nova decorre deste item. **Source of confirmation:** Usuário,
    2026-09-14 ("Mas não está no seu alcance. Isso é algo que a faculdade
    precisa fazer").
-3. **VPN como vetor residual de RULE-PRES-01.** Um aluno em casa com
-   acesso VPN à rede da instituição apareceria como "dentro da rede".
-   Buraco estreito (exige acesso concedido e fica registrado), mas real.
-   **Adiado explicitamente — não tratar agora.** **Source of
-   confirmation:** Usuário, 2026-09-14 ("Por hora não trataremos isso").
+3. ~~**VPN como vetor residual de RULE-PRES-01.**~~ **FECHADO
+   (2026-09-15) como risco coberto, sem trava nova.** Um aluno em casa com
+   acesso VPN à rede da instituição apareceria como "dentro da rede", mas
+   sozinho isso não basta mais: RULE-PRES-01 também exige localização
+   verdadeira, e a detecção de GPS falsificado já aprovada (item 4,
+   `expo-location` + Talsec freeRASP) cobre a outra metade do buraco. Para
+   burlar as duas ao mesmo tempo o aluno precisaria estar conectado por
+   VPN **e** enganar a detecção de GPS falso simultaneamente — e o acesso
+   VPN concedido pela instituição fica registrado. Risco residual aceito
+   conscientemente; nenhuma trava específica contra VPN foi criada.
+   **Source of confirmation:** Usuário, 2026-09-14 ("Por hora não
+   trataremos isso"); Usuário, 2026-09-15 ("Considerar coberto").
 4. ~~**Detecção de GPS falsificado.**~~ **FECHADO (2026-09-15).**
    Tecnologia escolhida: campo nativo `mocked` do `expo-location`
    (camada 1) + Talsec freeRASP (camada 2, cobre root/jailbreak e
@@ -558,6 +604,10 @@ alternativo por tag física).
    com Hardware Evaluation/IoT. **Source of confirmation:** Tech Decision
    Agent, 2026-09-14 (recomendação); Usuário, 2026-09-15, aprovação
    exatamente como recomendada ("Aprovado pode prosseguir").
-7. **Divisão do status "em sala" por aula.** O usuário adiou
-   explicitamente (RULE-PRES-06) e reconfirmou o adiamento em 2026-09-14
-   ("ok").
+7. ~~**Divisão do status "em sala" por aula.**~~ **FECHADO (2026-09-15).**
+   O usuário decidiu que cada aula gera sua própria presença por tag,
+   mesmo quando sala e aluno são os mesmos — a simplificação anterior (um
+   swipe cobrindo todas as aulas do dia na mesma sala) foi substituída.
+   Detalhe completo em RULE-PRES-06, revisão de 2026-09-15. **Source of
+   confirmation:** Usuário, 2026-09-14 (adiamento original, "ok");
+   Usuário, 2026-09-15 ("Uma presença por aula").
