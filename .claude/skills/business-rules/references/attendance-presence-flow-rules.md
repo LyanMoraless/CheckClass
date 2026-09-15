@@ -409,8 +409,10 @@ resposta à pergunta sobre bloqueio duro versus pendência).
 **Statement:** A coleta de localização usada por RULE-PRES-01 (verificação
 pontual no check-in) e RULE-PRES-09 (monitoramento durante a aula, para
 detectar afastamento prolongado) exige consentimento formal do titular
-(ou do responsável legal, para menores, mesmo padrão de RULE-FACE-09),
-registrado em um **registro dedicado**, **distinto** do registro de
+(ou do responsável legal, para menores — conceito, cardinalidade e
+mecânica formalizados em RULE-GRD-01 a RULE-GRD-06,
+`legal-guardian-consent-rules.md`), registrado em um **registro
+dedicado**, **distinto** do registro de
 consentimento LGPD geral já existente no sistema — mesmo padrão já usado
 para consentimento biométrico (RULE-FACE-09), pelo mesmo motivo: dado
 pessoal sensível por natureza, que precisa poder ser revogado
@@ -478,17 +480,33 @@ RULE-PRES-09.
 **Exceptions:** Nenhuma quanto à exigência de consentimento. A mecânica
 do caminho alternativo para quem recusa é o que fica em aberto (ver
 acima).
-**Ressalvas para Security, não decisões novas:** (1) classificação formal
-do dado de localização sob o Art. 11 da LGPD (categoria de dado sensível
-em sentido estrito) não foi confirmada — tratado por analogia de risco à
-biometria, não por enquadramento legal automático; (2) extensão do padrão
-de consentimento de menores de RULE-FACE-09 a este item foi assumida por
-analogia, não confirmada explicitamente para este caso específico.
+**Ressalvas para Security, não decisões novas:** (1) ~~classificação
+formal do dado de localização sob o Art. 11 da LGPD (categoria de dado
+sensível em sentido estrito) não foi confirmada — tratado por analogia de
+risco à biometria, não por enquadramento legal automático~~ — **fechada em
+2026-09-15 (Security Agent):** a lista do Art. 11 é **taxativa** e **não
+inclui geolocalização** (ao contrário do dado biométrico de RULE-FACE-09,
+que está listado explicitamente). O tratamento reforçado dado aqui
+(registro dedicado, revogação isolada, retenção mínima) é **postura
+protetiva voluntária**, não exigência legal do Art. 11 — a coleta ser
+pontual/por sessão, sem perfilamento acumulado, também pesa a favor dessa
+leitura. Nenhuma mudança de arquitetura, retenção, acesso ou consentimento
+decorre deste achado; é só um ajuste de precisão no texto acima, que não
+deve ser lido como afirmando enquadramento legal automático. (2) ~~extensão do
+padrão de consentimento de menores de RULE-FACE-09 a este item foi
+assumida por analogia, não confirmada explicitamente para este caso
+específico~~ — **fechada em 2026-09-15:** o conceito de "menor de idade" e
+o mecanismo de consentimento do responsável legal foram formalizados como
+regra própria e explicitamente genérica em RULE-GRD-01 a RULE-GRD-06
+(`legal-guardian-consent-rules.md`), aplicável a qualquer registro de
+consentimento que dependa dele — não é mais analogia implícita, é a mesma
+regra de domínio citada diretamente por RULE-PRES-14 e por RULE-FACE-09.
 **Source of confirmation:** Usuário, 2026-09-14 (decide o caminho —
 consentimento formal); Business Analyst Agent, 2026-09-15 (texto do
 termo, decisão de registro dedicado, proposta de retenção); Usuário,
 2026-09-15 (consequência da recusa: bloqueio de uso do app, caminho
-alternativo por tag física).
+alternativo por tag física; mecânica do responsável legal, ver
+`legal-guardian-consent-rules.md`).
 
 ### RULE-PRES-15: Caminho alternativo por tag física para quem recusa o consentimento de localização
 
@@ -587,10 +605,14 @@ professor).
    consequência de recusa/revogação decidida (bloqueio do fluxo por
    login+localização, caminho alternativo por tag física). Detalhe
    completo em RULE-PRES-14, acima. Duas ressalvas registradas, não
-   decisões novas, não bloqueiam este fechamento: (a) classificação formal
-   do dado sob o Art. 11 da LGPD a confirmar com Security; (b) mecânica
-   exata do caminho alternativo por tag física ainda não modelada — fica
-   como item novo para o Business Analyst antes da implementação.
+   decisões novas, não bloqueiam este fechamento: (a) ~~classificação
+   formal do dado sob o Art. 11 da LGPD a confirmar com Security~~ —
+   **fechada 2026-09-15:** Art. 11 não se aplica (lista taxativa não
+   inclui geolocalização); tratamento reforçado é postura voluntária, não
+   exigência legal — ver ressalva atualizada em RULE-PRES-14, acima; (b)
+   mecânica exata do caminho alternativo por tag física ainda não
+   modelada — fica como item novo para o Business Analyst antes da
+   implementação.
    **Source of confirmation:** Usuário, 2026-09-14 (caminho: consentimento
    formal); Business Analyst Agent, 2026-09-15 (texto, registro, retenção);
    Usuário, 2026-09-15 (consequência da recusa: bloqueio).

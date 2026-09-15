@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckClass — Arquitetura do Fluxo de Chamada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --text: #1c1c1c;
+    --muted: #5a5a5a;
+    --faint: #8a8a86;
+    --bg: #ffffff;
+    --panel: #f6f6f4;
+    --line: #e2e2df;
+    --pill-core: #1c1c1c;
+    --warn: #7a3b12;
+    --warn-bg: #fdf4ec;
+    --warn-line: #e8cdb4;
+    --ok: #2d6a3e;
+    --ok-bg: #eef6f0;
+    --ok-line: #bfe0c8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Montserrat', sans-serif; color: var(--text); background: var(--bg); line-height: 1.6; }
+  header.masthead { display: flex; align-items: center; gap: 20px; padding: 36px 48px 28px; border-bottom: 3px solid var(--text); }
+  header.masthead img { height: 56px; width: auto; }
+  header.masthead .title-block h1 { font-family: 'Archivo Black', sans-serif; font-size: 26px; margin: 0 0 4px; letter-spacing: 0.5px; }
+  header.masthead .title-block p { margin: 0; color: var(--muted); font-size: 14px; }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 48px 80px; }
+  section { margin-bottom: 52px; }
+  h2.section-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 1px; margin: 0 0 18px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
+  h3 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16.5px; margin: 30px 0 4px; display: flex; align-items: center; gap: 10px; }
+  h4 { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 14.5px; margin: 0 0 8px; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 16.5px; }
+  .overview-box { background: var(--panel); border-left: 4px solid var(--text); padding: 20px 24px; border-radius: 4px; }
+  code { font-family: 'Courier New', monospace; font-size: 12.5px; background: var(--panel); padding: 1px 5px; border-radius: 3px; }
+  .rule-tag {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: #fff;
+    background: var(--pill-core);
+    padding: 2px 9px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .item { border-top: 1px solid var(--line); padding: 16px 0; }
+  .item:last-child { border-bottom: 1px solid var(--line); }
+  .item p.desc { font-size: 14px; margin: 6px 0; max-width: 78ch; }
+  .item p.why { font-size: 13px; color: var(--muted); margin: 0 0 4px; max-width: 78ch; }
+  .callout { background: var(--warn-bg); border: 1px solid var(--warn-line); border-left: 4px solid var(--warn); padding: 16px 20px; border-radius: 4px; margin: 18px 0; }
+  .callout h4 { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: var(--warn); }
+  .callout p { margin: 0 0 8px; font-size: 13.5px; max-width: 78ch; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout.ok { background: var(--ok-bg); border-color: var(--ok-line); border-left-color: var(--ok); }
+  .callout.ok h4 { color: var(--ok); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 14px 0; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.06em; font-size: 14px; border-bottom: 2px solid var(--text); font-weight: normal; }
+  .table-wrap { overflow-x: auto; }
+
+  /* Cards de componente */
+  .comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; margin: 16px 0 6px; }
+  .comp-card { border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; background: #fff; }
+  .comp-card .tag-badge { display: inline-block; font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.06em; color: var(--faint); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; margin-bottom: 8px; }
+  .comp-card p { font-size: 13px; margin: 0 0 8px; }
+  .comp-card p.not { color: var(--muted); font-style: italic; }
+  .comp-card p:last-child { margin-bottom: 0; }
+  .comp-card.new { border-color: var(--ok-line); background: var(--ok-bg); }
+  .comp-card.new .tag-badge { color: var(--ok); border-color: var(--ok-line); }
+  .comp-card.edge { border-style: dashed; }
+
+  /* Pipelines (fluxo de dados) */
+  .arch-stage-label { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 0.08em; color: var(--faint); margin: 22px 0 8px; }
+  .arch-stage-label:first-child { margin-top: 0; }
+  .pipeline { border: 1px solid var(--line); border-radius: 6px; background: #fdfdfc; padding: 18px 20px; margin: 6px 0 18px; }
+  .arch-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 6px 0; }
+  .arch-node { border-radius: 6px; padding: 9px 13px; font-size: 12px; line-height: 1.38; text-align: center; max-width: 230px; }
+  .arch-node.box { background: #fff; border: 1.5px solid var(--text); }
+  .arch-node.mod { background: var(--panel); border: 1.5px solid var(--text); }
+  .arch-node.ok { background: var(--ok-bg); border: 1.5px solid var(--ok); color: var(--ok); font-weight: 600; }
+  .arch-node.warn { background: var(--warn-bg); border: 1.5px solid var(--warn); color: var(--warn); font-weight: 600; }
+  .arch-node.db { background: #fff; border: 1.5px dashed var(--text); font-family: 'Courier New', monospace; font-size: 11px; }
+  .arch-node .rule { display: block; margin-top: 4px; font-size: 10px; font-weight: 400; opacity: 0.65; letter-spacing: 0.03em; }
+  .arch-arrow { font-size: 19px; color: var(--faint); flex-shrink: 0; }
+  .arch-arrow.down { display: block; text-align: left; margin: 2px 0 2px 14px; }
+
+  footer { border-top: 3px solid var(--text); padding: 22px 48px 40px; font-size: 12.5px; color: var(--muted); max-width: 1056px; margin: 0 auto; }
+  footer code { font-size: 11.5px; }
+  @media print {
+    header.masthead { border-bottom: 2px solid #000; }
+    .item, .callout, .comp-card { break-inside: avoid; }
+    section { break-inside: avoid-page; }
+  }
+  @media (max-width: 700px) {
+    header.masthead, main, footer { padding-left: 20px; padding-right: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <img src="assets/logo.png" alt="LGI Morales">
+  <div class="title-block">
+    <h1>CheckClass — Arquitetura do Fluxo de Chamada</h1>
+    <p>Componentes, responsabilidades e integração dos dados — sem escolha de tecnologia, sem código</p>
+  </div>
+</header>
+
+<main>
+
+  <section id="overview">
+    <h2 class="section-title">O Que É Este Documento</h2>
+    <div class="overview-box lead">
+      <p>A frente de regras de negócio do fluxo de chamada (RULE-PRES-01 a 15, <code>.claude/skills/business-rules/references/attendance-presence-flow-rules.md</code>) está fechada, sem gaps abertos. Este documento é a <strong>arquitetura</strong> que suporta esse fluxo: que componentes existem, o que cada um faz e o que <em>não</em> faz, como o dado se move entre eles, e quais decisões de acoplamento/escalabilidade merecem atenção antes da implementação. Não escolhe framework, biblioteca ou linguagem — isso é do Tech Decision Agent — e não implementa nada.</p>
+      <p><strong>Isto não parte do zero.</strong> Já existe uma decisão de arquitetura registrada para este fluxo em <code>.claude/skills/project-knowledge/references/architecture-overview.md</code> ("Decisão de arquitetura — Fluxo de Chamada Redesenhado, RULE-PRES-01 a 13", 2026-09-14), seguida de duas decisões de tecnologia já aprovadas pelo usuário em 2026-09-15 (anti-spoofing de GPS/RASP no app mobile; MobileNet-SSD no Raspberry Pi para contagem por câmera). Este documento <strong>consolida</strong> essa arquitetura para leitura direta, <strong>fecha a cobertura</strong> que faltava para RULE-PRES-14/15 (consentimento e caminho alternativo, que nasceram depois daquele desenho original), e <strong>revisa explicitamente</strong> um ponto do desenho de 2026-09-14 que ficou desatualizado por uma mudança de regra de negócio posterior — sinalizado como tal, não sobrescrito em silêncio (ver seção "Consistência").</p>
+      <p><strong>Nada foi implementado.</strong> Nenhuma migration, nenhum módulo de código, nenhuma linha nova no repositório.</p>
+    </div>
+  </section>
+
+  <section id="componentes">
+    <h2 class="section-title">Componentes Do Sistema</h2>
+    <p>Seis famílias de componente. Três já existem e são reaproveitados sem mudança de contrato; três nascem (ou se estendem de forma relevante) com esta frente.</p>
+
+    <div class="comp-grid">
+
+      <div class="comp-card">
+        <span class="tag-badge">EXISTENTE, ESTENDIDO</span>
+        <h4>App Mobile do Aluno</h4>
+        <p>Captura coordenadas no momento do check-in (login/RULE-PRES-01). Roda um monitor de localização de <strong>vida curta</strong>, ativo só enquanto uma sessão em que o aluno está "presente por login" está em andamento — emite apenas eventos discretos de transição de estado (cruzou o limiar de afastamento / voltou), nunca um stream contínuo (RULE-PRES-09). Carrega os dois sinais de anti-spoofing já aprovados (campo <code>mocked</code> do <code>expo-location</code> + Talsec freeRASP) e os envia junto do check-in/monitoramento. Consulta o consentimento de localização antes de sequer ligar o monitor (RULE-PRES-14).</p>
+        <p class="not">Não decide presença. Não é fonte de tempo — o relógio que vale é sempre o do servidor (RULE-PRES-02). Não retém histórico de localização além do necessário para emitir a transição.</p>
+      </div>
+
+      <div class="comp-card edge">
+        <span class="tag-badge">EXISTENTE, SEM MUDANÇA</span>
+        <h4>Leitor de Tag por Sala (IoT)</h4>
+        <p>Emite <code>ROOM_ENTRY</code>/<code>ROOM_EXIT</code> amarrado à sala (<code>device.roomId</code>, já modelado) pelo gateway de ingestão IoT já existente, autenticado por API key de dispositivo (mecanismo já ratificado no projeto).</p>
+        <p class="not">Não sabe a qual aula/sessão o swipe pertence — essa resolução é do backend (<em>room-presence</em>), nunca do dispositivo. Nenhuma mudança de hardware ou de contrato de payload.</p>
+      </div>
+
+      <div class="comp-card edge">
+        <span class="tag-badge">EXISTENTE, SEM MUDANÇA DE HARDWARE</span>
+        <h4>Câmera + Raspberry Pi (edge)</h4>
+        <p>Mesma câmera fixa RTSP já aprovada para Segurança de Intrusão — não é hardware novo por sala. O Raspberry Pi (classe 4GB+, a validar com Hardware Evaluation) processa <strong>localmente</strong> (edge), a cada 15 minutos, a contagem de pessoas (MobileNet-SSD/COCO via <code>cv2.dnn</code>, tecnologia já aprovada), e envia só o número resultante ao backend (<code>CAMERA_COUNT</code>, contrato de ingestão já existente).</p>
+        <p class="not">Não identifica quem está na sala. Não decide presença. Não envia vídeo ou frames brutos ao backend — só o resultado agregado.</p>
+      </div>
+
+      <div class="comp-card new">
+        <span class="tag-badge">NOVO / ESTENDIDO</span>
+        <h4>Backend — Núcleo de Regras (monólito modular)</h4>
+        <p>Orquestra todas as fontes de sinal e decide presença/ausência/pendência sempre através do motor de regras já existente (<code>AttendanceRulesEngineService</code>). Ganha módulos novos (<code>location-verification</code>, <code>location-consent</code>, <code>room-presence</code>, <code>classroom-headcount-reconciliation</code>) e estende três serviços já existentes (<code>AppCheckinService</code>, <code>AttendanceRulesEngineService</code>, <code>PresenceIntervalService</code>). Detalhe módulo a módulo na seção "Onde Fica Cada Lógica".</p>
+        <p class="not">Não processa vídeo/frames — isso é do edge. Nunca delega a decisão de presença a um sinal isolado (localização ou câmera sozinhos).</p>
+      </div>
+
+      <div class="comp-card new">
+        <span class="tag-badge">NOVO</span>
+        <h4>Registro de Consentimento de Localização</h4>
+        <p>Registra consentimento/recusa/revogação de monitoramento de localização, por titular (ou responsável legal, se menor), em registro <strong>dedicado</strong> — distinto tanto do consentimento LGPD geral quanto do consentimento biométrico (RULE-FACE-09). É a fonte consultada pelo gate do App Mobile/<code>AppCheckinService</code> antes de qualquer coleta de localização, e pelo motor de regras para decidir se o aluno segue o caminho normal ou o alternativo por tag (RULE-PRES-15).</p>
+        <p class="not">Não guarda o dado bruto de localização em si — só o estado do consentimento. O dado bruto vive em outro lugar, com sua própria retenção restrita (ver Banco de Dados).</p>
+      </div>
+
+      <div class="comp-card">
+        <span class="tag-badge">EXISTENTE, ESTENDIDO</span>
+        <h4>Banco de Dados</h4>
+        <p>Reusa sem mudança: grade de horários, sessões, <code>device.roomId</code>, pipeline de ingestão/dedup. Ganha: coordenada de referência + raio configurável por instituição (mesmo padrão self-service já usado para faixa de rede institucional); estado "em sala" por sessão; o registro de consentimento de localização; e o dado bruto de localização propriamente dito, com retenção restrita à avaliação da sessão (exceto pendência aberta) e acesso restrito ao administrador técnico da instituição.</p>
+        <p class="not">Não decide presença — isso é aplicação, não dado. Não retém dado bruto de localização além do necessário nem o inclui no fechamento mensal/anual.</p>
+      </div>
+
+      <div class="comp-card">
+        <span class="tag-badge">EXISTENTE, SUPERFÍCIE REUSADA</span>
+        <h4>Portal de Autoatendimento Web (professor)</h4>
+        <p>Ganha uma tela de alerta de divergência de contagem, mostrando os três números (vistos × logins × tags), reusando a superfície de notificação/pendência já existente — não é canal novo.</p>
+        <p class="not">Não decide presença a partir do alerta — a decisão, quando acionada, é sempre uma chamada manual feita pelo professor.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="fluxo-dados">
+    <h2 class="section-title">Como O Dado Flui</h2>
+    <p>Quatro pipelines, um por bloco de regra de negócio, todos convergindo no mesmo motor de decisão. Nenhum pipeline decide presença sozinho — a decisão final é sempre do motor de regras já existente (Controle A, RULE-ATT-04/08), lendo o que cada módulo novo expõe.</p>
+
+    <div class="arch-stage-label">BLOCO 1 · LOGIN — REDE + GEOLOCALIZAÇÃO (RULE-PRES-01/02/03)</div>
+    <div class="pipeline">
+      <div class="arch-row">
+        <div class="arch-node box">App Mobile<br>(coords + tap)</div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node mod"><code>AppCheckinService</code><span class="rule">extensão</span></div>
+      </div>
+      <div class="arch-arrow down">&#8595;&nbsp; consulta, AND estrito, nunca fundidos numa só checagem</div>
+      <div class="arch-row">
+        <div class="arch-node box"><code>InstitutionalNetworkService</code><br>(rede)</div>
+        <div class="arch-node mod"><code>location-verification</code><br>(raio da instituição)</div>
+        <div class="arch-node box"><code>location-consent</code><br>(gate: consentimento ativo?)</div>
+      </div>
+      <div class="arch-arrow down">&#8595;</div>
+      <div class="arch-row">
+        <div class="arch-node ok">Todos OK<br>&#8594; pipeline existente (Ingestão &#8594; Identificação &#8594; Dedup)</div>
+        <div class="arch-node warn">Qualquer falha<br>&#8594; 200 OK, sem evento de presença</div>
+      </div>
+    </div>
+
+    <div class="arch-stage-label">BLOCO 2/3 · TAG EM SALA E PERMANÊNCIA (RULE-PRES-04 a 09)</div>
+    <div class="pipeline">
+      <div class="arch-row">
+        <div class="arch-node box">Leitor de sala<br>(<code>device.roomId</code>)</div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node box">Gateway IoT<br>(existente)</div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node box">Identificação<br>(resolve pessoa via tag)</div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node box">Dedup</div>
+      </div>
+      <div class="arch-arrow down">&#8595;</div>
+      <div class="arch-row">
+        <div class="arch-node mod"><code>room-presence</code><span class="rule">consome pós-dedup, nunca escreve no núcleo de check-in</span></div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node ok">estado "em sala" por (pessoa, sala, <strong>aula específica</strong>)</div>
+      </div>
+      <div class="arch-arrow down">&#8595;&nbsp; em paralelo, durante a aula</div>
+      <div class="arch-row">
+        <div class="arch-node box">App Mobile<br>(monitor de afastamento)</div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node mod"><code>location-verification</code><br>(afastamento &gt; raio por &gt; 15min)</div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node box"><code>room-presence</code><br>(cadeia de precedência de saída)</div>
+      </div>
+    </div>
+
+    <div class="arch-stage-label">AVALIAÇÃO DA SESSÃO · MOTOR DE REGRAS (fim de <code>scheduled_end</code>)</div>
+    <div class="pipeline">
+      <div class="arch-row">
+        <div class="arch-node mod"><code>AttendanceRulesEngineService</code><span class="rule">RULE-PRES-05, composto</span></div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node box">identification_checkin<br>(login satisfeito?)</div>
+        <span style="font-size:12px;color:var(--faint);">E</span>
+        <div class="arch-node box"><code>room-presence</code><br>.isPresentForSession</div>
+      </div>
+      <div class="arch-row">
+        <div class="arch-node mod"><code>PresenceIntervalService</code></div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node box"><code>room-presence</code><br>.getSessionProjectedInterval</div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node ok">percentual mínimo de permanência<br>(cálculo já existente, sem branch novo)</div>
+      </div>
+      <div class="arch-row">
+        <div class="arch-node warn">Caminho alternativo (consentimento recusado, RULE-PRES-15)<span class="rule">bypassa localização inteiramente</span></div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node ok">Presença fecha só pela tag, imediatamente — sem confirmação do professor</div>
+      </div>
+    </div>
+
+    <div class="arch-stage-label">BLOCO 4 · CÂMERA COMO CRUZAMENTO (a cada 15 min, sessão em andamento — RULE-PRES-10/11/12)</div>
+    <div class="pipeline">
+      <div class="arch-row">
+        <div class="arch-node box">Raspberry Pi<br>(edge, MobileNet-SSD)</div>
+        <div class="arch-arrow">&#8594;</div>
+        <div class="arch-node db">CAMERA_COUNT<br>(evento já existente)</div>
+      </div>
+      <div class="arch-arrow down">&#8595;</div>
+      <div class="arch-row">
+        <div class="arch-node mod"><code>classroom-headcount-reconciliation</code><span class="rule">job de tempo, só leitura, nunca escreve presença</span></div>
+      </div>
+      <div class="arch-arrow down">&#8595;&nbsp; lê três números</div>
+      <div class="arch-row">
+        <div class="arch-node db">CAMERA_COUNT</div>
+        <div class="arch-node db">APP_CHECKIN satisfeitos</div>
+        <div class="arch-node db"><code>room-presence</code> ativos</div>
+      </div>
+      <div class="arch-arrow down">&#8595;</div>
+      <div class="arch-row">
+        <div class="arch-node ok">Diferença &lt; 5, ou não confirmada em 2 janelas<br>&#8594; segue normal</div>
+        <div class="arch-node warn">Diferença &#8805; 5, confirmada em 2 janelas seguidas<br>&#8594; alerta ao professor (Portal Web), com os três números</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="onde-fica">
+    <h2 class="section-title">Onde Fica Cada Lógica</h2>
+
+    <h3>"Em sala por aula" — módulo <code>room-presence</code></h3>
+    <p class="item desc" style="border:none;padding-top:0;">A semântica de "em sala" mora inteiramente em <code>room-presence</code>, um módulo estrutural equivalente ao já existente <code>device-binding</code>: primitiva de leitura dedicada, dona do próprio estado, nunca escreve diretamente na tabela de check-in do núcleo. Consome os eventos de tag <strong>pós-dedup</strong>, resolve a pessoa via identidade de tag (como hoje), e expõe duas leituras para o motor de regras: se a pessoa está presente para uma sessão específica, e o intervalo de permanência projetado daquela sessão (usado no lugar da leitura direta que <code>PresenceIntervalService</code> faz hoje).</p>
+    <div class="callout">
+      <h4>Revisão explícita necessária neste desenho — escopo do estado passa de "por dia" para "por aula"</h4>
+      <p>A decisão de arquitetura registrada em 2026-09-14 (<code>architecture-overview.md</code>) descreve o estado de <code>room-presence</code> como mantido "por (pessoa, sala, <strong>dia calendário</strong>)" — reflexo direto da simplificação de RULE-PRES-06 que valia naquela data (um swipe cobrindo todas as aulas do aluno naquela sala no dia). Em <strong>2026-09-15</strong> o usuário fechou o gap 7 e revisou RULE-PRES-06: cada aula passa a exigir sua própria passagem de tag, mesmo quando sala e aluno são os mesmos ("Uma presença por aula").</p>
+      <p>Este documento revisa o escopo de <code>room-presence</code> para <strong>(pessoa, sala, <code>class_session</code>)</strong> — chave da sessão específica, não mais o dia inteiro. É uma correção pontual e direta, não uma reabertura de desenho: a arquitetura de 2026-09-14 já havia planejado que <code>room-presence</code> derivasse a validade do status a partir da grade (<code>class_session</code>/<code>class_group_schedule_slot</code>), e uma chave por sessão é exatamente o que essa derivação já produzia — só o agrupamento do estado em si (por dia, não por sessão) ficou desatualizado.</p>
+      <p><strong>Sinalizado, não decidido silenciosamente:</strong> esta é uma alteração num componente que já constava de uma decisão de arquitetura registrada — mesmo sendo consequência direta de uma regra de negócio já fechada pelo usuário, recomenda-se que o Project Guardian confirme a consistência desta correção antes da implementação, mesmo padrão de cautela já usado no projeto para qualquer desvio de decisão anterior.</p>
+    </div>
+    <p style="font-size:13px;color:var(--muted);max-width:78ch;">Consequência prática desta correção sobre o desenho de acoplamento já aprovado: <code>IdentificationService.resolveClassSession</code> e <code>PresenceIntervalService.rebuildForPerson</code> continuam precisando migrar de "ler <code>identification_checkin</code> diretamente" para "ler <code>room-presence</code>" — como já registrado em 2026-09-14 — mas a chave de agrupamento que <code>room-presence</code> expõe passa a ser por sessão, não por dia. Não muda a direção do acoplamento (módulo novo lido pelo núcleo, núcleo nunca escreve nele), só a granularidade do estado.</p>
+
+    <h3>Consentimento de localização e caminho alternativo — módulo <code>location-consent</code></h3>
+    <p class="item desc" style="border:none;padding-top:0;">O consentimento vive num registro dedicado (<code>location-consent</code>), no mesmo padrão estrutural já usado para consentimento biométrico (RULE-FACE-09) — <strong>três</strong> registros de consentimento distintos convivem agora no sistema: LGPD geral, biométrico, e de localização. Dois pontos de extensão consomem esse registro:</p>
+    <ul style="font-size:14px;max-width:78ch;padding-left:20px;">
+      <li><strong>No App Mobile</strong>, como gate antes de sequer ligar o monitor de localização de vida curta — se recusado/revogado, o monitor nunca inicia.</li>
+      <li><strong>No <code>AppCheckinService</code></strong>, como terceira checagem (ao lado de rede e raio) — sem consentimento ativo, o caminho login+localização nunca é sequer tentado; o aluno é automaticamente direcionado ao caminho alternativo.</li>
+    </ul>
+    <p class="item desc" style="border:none;">O <strong>caminho alternativo</strong> (RULE-PRES-15) não é um módulo novo — é <code>room-presence</code> operando sozinho, sem nenhuma dependência de <code>location-verification</code>: a presença fecha assim que a tag de saída é lida (ou pela cadeia de precedência sem o passo de localização), <strong>imediatamente</strong>, sem passar por pendência nem por confirmação do professor. Consequência aceita, não lacuna nova: como esse aluno nunca produz sinal de localização, o afastamento prolongado (RULE-PRES-09) não tem como disparar para ele — seu único cruzamento possível contra fraude é o Bloco 4 (câmera), que já era um alerta humano, nunca uma decisão automática.</p>
+  </section>
+
+  <section id="padrao">
+    <h2 class="section-title">Padrão Arquitetural Aplicado</h2>
+    <p>Monólito modular NestJS síncrono para o backend, sem deployable novo e sem broker externo — mesma família de todas as frentes anteriores do projeto. <code>room-presence</code>, <code>location-verification</code> e <code>location-consent</code> seguem o mesmo idioma já estabelecido por <code>device-binding</code>/<code>InstitutionalNetworkService</code>: primitiva mínima, lida explicitamente pelo caller, nunca um guard/middleware global. <code>classroom-headcount-reconciliation</code> segue o idioma de job de tempo já estabelecido pela Frente 10 (retenção/LGPD): script CLI, wiring de agendamento é DevOps, intervalo fixo por regra de negócio (15 min, não configurável).</p>
+    <p>O único componente fisicamente distribuído do sistema continua sendo a borda física (Raspberry Pi/câmera, leitor de tag) — processamento de imagem acontece no <strong>edge</strong>, nunca na nuvem: o Raspberry roda o modelo localmente e envia só o resultado agregado, nunca vídeo bruto. Mesmo padrão já aprovado para Segurança de Intrusão — esta frente não introduz uma segunda filosofia de onde processar câmera.</p>
+  </section>
+
+  <section id="escalabilidade">
+    <h2 class="section-title">Acoplamento e Escalabilidade — Pontos De Atenção</h2>
+
+    <div class="item">
+      <h3>Processamento de câmera: edge, não nuvem</h3>
+      <p class="desc">Decisão já fixada e mantida aqui: contagem acontece no Raspberry Pi, não em um serviço central recebendo vídeo. Reduz drasticamente volume de rede e superfície de exposição de dado sensível (nunca existe vídeo bruto trafegando para fora da sala) — mesmo raciocínio já usado para a câmera de Segurança de Intrusão.</p>
+    </div>
+
+    <div class="item">
+      <h3>Frequência de localização: eventos discretos, nunca stream contínuo</h3>
+      <p class="desc">Restrição arquitetural deliberada: o app mobile deve emitir apenas <strong>transições de estado</strong> (cruzou o limiar de afastamento / voltou), nunca um stream de posições brutas em alta frequência. Se o app transmitisse GPS contínuo para todo aluno em toda aula, esse seria de longe o fluxo de maior volume de escrita do projeto inteiro — ordem de grandeza de "evento por minuto por aluno em aula" contra "evento por swipe" de tudo o mais. Imposta agora, antes de qualquer implementação, para não herdar um problema de volume desnecessário.</p>
+    </div>
+
+    <div class="item">
+      <h3><code>room-presence</code>: volume cresce, mas na mesma ordem de grandeza já conhecida</h3>
+      <p class="desc">A revisão de RULE-PRES-06 (uma passagem de tag por aula, não mais uma por dia) aproximadamente dobra o volume de swipes físicos para alunos com mais de uma aula na mesma sala no mesmo dia, frente ao desenho anterior. Continua na mesma ordem de grandeza que <code>identification_checkin</code> já tem hoje para <code>ROOM_ENTRY</code>/<code>ROOM_EXIT</code> — não é um salto de escala, mas é um número que mudou desde a última vez que a arquitetura foi descrita, e merece ser reconhecido explicitamente, não presumido igual ao de 2026-09-14.</p>
+    </div>
+
+    <div class="item">
+      <h3><code>classroom-headcount-reconciliation</code>: escala com sessões simultâneas, não com histórico</h3>
+      <p class="desc">Job de tempo, roda por sessão-em-andamento a cada janela de 15 minutos — cresce com o número de aulas acontecendo ao mesmo tempo, não com o volume acumulado de dados. Mesma característica já usada para o Controle B (frequência acumulada).</p>
+    </div>
+
+    <div class="item">
+      <h3><code>room-presence</code> e <code>device-binding</code> ficam deliberadamente separados</h3>
+      <p class="desc">Estruturalmente parecidos (mesma família "primitiva lida pelo motor de regras, nunca decide sozinha"), mas provam coisas diferentes — qual sala física vs. qual máquina — com ciclo de vida e dado de origem diferentes (swipe físico datado vs. credencial WebAuthn). Fundir os dois em nome de economizar um módulo quebraria coesão sem ganho real.</p>
+    </div>
+
+    <div class="item">
+      <h3><code>location-consent</code> como gate explícito, não middleware global</h3>
+      <p class="desc">Consultado explicitamente pelos dois pontos que precisam dele (App Mobile antes do monitor, <code>AppCheckinService</code> antes do gate de rede/geo) — nunca um interceptor global aplicado a toda requisição. Mesmo padrão já usado para <code>InstitutionalNetworkService</code>: quem precisa, chama; ninguém herda a checagem por acidente.</p>
+    </div>
+
+    <div class="item">
+      <h3>Dado bruto de localização: retenção restrita, acesso restrito, isolado do resto</h3>
+      <p class="desc">O dado mais sensível que esta frente introduz no projeto até hoje. Contido por três lados ao mesmo tempo: monitor de vida curta (só durante aula em curso), retenção limitada à avaliação da sessão (exceto pendência aberta), e acesso restrito ao administrador técnico — nunca visível a professor/coordenação, que só veem o resultado (presença/pendência). Nenhum desses três limites resolve sozinho a exposição, mas juntos reduzem a superfície ao mínimo necessário.</p>
+    </div>
+  </section>
+
+  <section id="consistencia">
+    <h2 class="section-title">Consistência Com O Que Já Está Registrado</h2>
+
+    <div class="callout ok">
+      <h4>Consistente, sem mudança</h4>
+      <p>Padrão de monólito modular; padrão "primitiva mínima compartilhada, nunca guard/middleware global"; padrão de job de tempo + CLI + DevOps para o cruzamento por câmera; disciplina de relógio de servidor já estabelecida em <code>AppCheckinService</code>; princípio "nunca decide sozinho sobre dado incompleto" do motor de regras; edge processing para câmera (mesma filosofia de Segurança de Intrusão); direção de acoplamento em mão única (módulo novo lê do núcleo, núcleo nunca lê do módulo novo) em toda integração nova desta frente.</p>
+    </div>
+
+    <div class="callout">
+      <h4>Cobertura nova adicionada por este documento</h4>
+      <p>A decisão de arquitetura de 2026-09-14 cobria só RULE-PRES-01 a 13 — RULE-PRES-14 (consentimento) e RULE-PRES-15 (caminho alternativo) nasceram depois, em 2026-09-15, e não tinham arquitetura formalizada até agora. Este documento fecha essa cobertura com o módulo <code>location-consent</code> e os dois pontos de gate descritos em "Onde Fica Cada Lógica".</p>
+    </div>
+
+    <div class="callout">
+      <h4>Desvio sinalizado, não resolvido em silêncio</h4>
+      <p>O escopo do estado de <code>room-presence</code> muda de "por dia" para "por aula" — ver detalhe completo na seção "Onde Fica Cada Lógica". É consequência direta de uma regra de negócio já fechada pelo usuário (revisão de RULE-PRES-06, 2026-09-15), não uma escolha nova do Solution Architect, mas ainda assim altera um componente que já constava de uma decisão de arquitetura registrada — por isso fica marcado como ponto a confirmar com o Project Guardian antes da implementação, em vez de simplesmente substituir o texto anterior.</p>
+    </div>
+  </section>
+
+  <section id="tradeoffs">
+    <h2 class="section-title">Trade-offs</h2>
+    <p>Esta arquitetura otimiza por reaproveitar ao máximo a infraestrutura de ingestão/dedup/identificação de tag e o padrão de edge processing já existentes (nenhum hardware novo, leitor de sala e câmera já existem) e por manter o motor de regras como único lugar que decide presença — nenhum sinal isolado (localização, câmera) decide sozinho.</p>
+    <p>O custo real: <strong>(a)</strong> a correção de <code>room-presence</code> toca um componente já desenhado, exigindo revalidação antes de seguir para implementação; <strong>(b)</strong> três registros de consentimento paralelos (LGPD geral, biométrico, localização) aumentam a superfície que times de produto/compliance precisam manter sincronizada, mesmo sendo a escolha correta para isolar revogação; <strong>(c)</strong> o caminho alternativo abre mão por completo de detecção de afastamento por localização para quem recusa consentimento — a única rede de segurança que resta para esses alunos é a contagem por câmera, que as próprias regras de negócio já reconhecem como imprecisa e incapaz de identificar quem, risco aceito conscientemente pelo usuário, não uma lacuna desta arquitetura.</p>
+  </section>
+
+  <section id="open-questions">
+    <h2 class="section-title">Perguntas Em Aberto</h2>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Para quem</th><th>Pergunta</th></tr></thead>
+      <tbody>
+        <tr><td>Project Guardian</td><td>Confirmar a revisão de escopo de <code>room-presence</code> (dia &#8594; aula específica) como consistente com a arquitetura já registrada em 2026-09-14, antes de qualquer implementação a tocar nesse módulo.</td></tr>
+        <tr><td>Security</td><td>Controle de leitura de <code>person.date_of_birth</code> (quem vê a data crua vs. só o derivado "é menor") — não coberto por RULE-GRD-01 a 06, ver <code>legal-guardian-consent-rules.md</code>. (Schema completo de localização/responsável legal já aprovado pelo usuário em 2026-09-15 — ver <code>architecture-overview.md</code>, seção "Desenho de schema — Localização, timeout de afastamento e responsável legal (APROVADA com pendências)".)</td></tr>
+        <tr><td>Business Analyst</td><td>Backfill de <code>date_of_birth</code> para pessoas já cadastradas — gap aberto em RULE-GRD-01, ainda não resolvido. Ajuste de redação pendente em RULE-PRES-14 sobre enquadramento no Art. 11 (achado do Security Agent, 2026-09-15, roteado, ainda não executado).</td></tr>
+        <tr><td>Backend Agent (quando implementar)</td><td>Onde mora a orquestração da cadeia de precedência de saída (RULE-PRES-08) — dentro de <code>room-presence.getSessionProjectedInterval</code> (proposto) ou dentro de <code>PresenceIntervalService</code>. Já sinalizado como decisão de ergonomia de implementação, não de negócio, em 2026-09-14 — sem mudança.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Arquitetura consolidada a partir de <code>.claude/skills/business-rules/references/attendance-presence-flow-rules.md</code> (RULE-PRES-01 a 15) e da decisão de arquitetura/tecnologia já registrada em <code>.claude/skills/project-knowledge/references/architecture-overview.md</code> (2026-09-14/15). Nenhuma tecnologia nova é escolhida aqui além das já aprovadas pelo usuário; nenhuma migration; nenhuma implementação. Ver também <code>.doc/checkclass-fluxo-chamada.html</code> para a versão narrativa do mesmo fluxo, focada em regra de negócio, não em arquitetura.
+</footer>
+
+</body>
+</html>

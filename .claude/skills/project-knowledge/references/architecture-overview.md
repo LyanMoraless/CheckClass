@@ -3490,6 +3490,575 @@ bloquear o desenho de schema.
 >
 > **Source of confirmation:** Usuário, 2026-09-11.
 
+## Decisão de tecnologia — Armazenamento do dado bruto de localização, RULE-PRES-01/09/14 (APROVADA — 2026-09-15)
+
+> **APROVADA pelo usuário em 2026-09-15** — Open Question do Tech Decision
+> Agent em `.doc/checkclass-arquitetura-chamada.html` (seção "Perguntas Em
+> Aberto"), decidida em resposta ao mesmo par de alternativas já usado na
+> Frente 10 (linha em tabela com TTL vs. objeto em storage). Diferente da
+> Frente 10, aqui não se trata de reaproveitar o padrão já aprovado, mas de
+> reconhecer que o perfil do dado é o oposto: evento de localização
+> pequeno, múltiplos por aluno por aula, retenção de horas (fim da
+> avaliação da sessão, não meses), nunca um artefato baixável.
+
+1. **Formato escolhido: linha em tabela dedicada no Postgres**, nome
+   ilustrativo `raw_location_signal` — mesmo padrão já usado no projeto
+   para dado efêmero de alta frequência: `raw_identification_event` e
+   `refresh_token` (ambos linha de tabela, nunca objeto em storage).
+   Colunas propostas (forma exata fica para o Database Agent): `tenant_id`,
+   `person_id`, `class_session_id`, `event_type`, coordenadas, `accuracy`,
+   `mocked`, `captured_at`. RLS restrita ao administrador técnico
+   (RULE-RET-04), mesma fronteira de acesso já usada para o restante do
+   dado de retenção restrita.
+   **Rejeitado — objeto em storage S3-compatível (padrão da Frente 10):**
+   introduziria round-trip de rede no caminho quente do motor de regras
+   (RULE-PRES-01/09 leem esse dado em tempo real, ao contrário do
+   documento de fechamento da Frente 10, que é lido raramente e nunca sob
+   pressão de latência); o expurgo por sessão não ganha nada de um bucket
+   — não há economia de peso de backup/TOAST equivalente à da Frente 10,
+   porque o volume por linha é minúsculo e a retenção já é curta.
+   **Rejeitado — `jsonb` embutido em `identification_checkin` ou
+   `presence_interval`:** misturaria dois ciclos de vida (o checkin/
+   intervalo sobrevive à janela de retenção padrão de 60 dias, RULE-RET-01;
+   o sinal de localização não) e dois perímetros de acesso diferentes
+   (RULE-RET-04 vs. acesso normal de presença) numa mesma linha.
+2. **Mecanismo de expurgo:** reaproveita o gate de pendência
+   join-em-tempo-de-query (`EXISTS`, sem coluna "bloqueado" denormalizada)
+   já aprovado na Frente 10, trocando só o gatilho de mensal para
+   por-sessão — mesma ressalva de RULE-PRES-13 (pendência manual em
+   aberto) já prevista em RULE-PRES-14 para adiar o expurgo até resolução.
+
+**Achado do Security Agent, não bloqueante:** a ressalva de RULE-PRES-14
+sobre enquadramento no Art. 11 da LGPD foi verificada — a lista do Art. 11
+é taxativa e não inclui geolocalização (ao contrário do dado biométrico de
+RULE-FACE-09, que está listado explicitamente); a doutrina de
+"sensibilidade por inferência" reconhecida pela ANPD não se aplica aqui
+porque a coleta é pontual/por sessão, sem perfilamento acumulado. Nenhuma
+mudança de arquitetura, retenção, acesso ou consentimento decorre deste
+achado. Pendência de redação (não de arquitetura): RULE-PRES-14 hoje
+insinua que o tratamento reforçado é "exigência do Art. 11", quando na
+prática é postura protetiva voluntária — ajuste de texto roteado ao
+Business Analyst Agent, ainda não executado.
+
+**Pronta para o Database Agent.** Nenhuma pergunta bloqueante restante
+nesta camada.
+
+> **Source of confirmation:** Usuário, 2026-09-15 ("Prossiga com a
+> alternativa A").
+
+## Desenho de schema — Localização, timeout de afastamento e responsável legal (APROVADA com pendências — 2026-09-15)
+
+> **Schema aprovado pelo usuário em 2026-09-15** (as 6 divergências
+> sinalizadas pelo Database Agent — ver item por item abaixo — foram todas
+> aceitas como propostas). Nenhuma migration real foi criada ainda; ainda
+> restam 3 pendências não relacionadas ao schema em si (ver "Pendências
+> antes de qualquer migration real" no fim desta seção) antes de liberar
+> Backend/Database para implementar. Esta seção consolida quatro rodadas de
+> Solution Architect + Database Agent desta mesma tarde, disparadas pela
+> aprovação da Alternativa A acima. Existia um risco real de perda —
+> propostas anteriores desta mesma frente foram relatadas ao usuário só em
+> chat e nunca gravadas aqui; corrigido, tudo consolidado num único lugar.
+
+### 1. Pré-requisito de negócio: responsável legal e maioridade
+
+Regra de negócio formalizada pelo Product Definition Agent em
+`business-rules/references/legal-guardian-consent-rules.md` (RULE-GRD-01 a
+06, a partir de 6 decisões do usuário em 2026-09-15) — resumo: maioridade
+sempre calculada (nunca flag), responsável legal é registro declarado sem
+conta própria, múltiplos responsáveis permitidos (qualquer um consente,
+sem unanimidade), consentimento do responsável sobrevive à maioridade
+superveniente sem reconfirmação, sem exigência de prova documental
+armazenada (só conferência presencial da Secretaria), vínculo editável/
+revogável pela Secretaria a qualquer momento sem fluxo de aprovação.
+`business-domain/references/actors.md` também atualizado com o addendum
+"Responsável legal".
+
+**Decisão de arquitetura (Solution Architect, 2026-09-15):**
+`person.date_of_birth` (extensão simples, sem tabela separada — não é
+comparável em sensibilidade ao template facial). Responsável legal é
+**tabela própria** (`legal_guardian`, não uma `person`, sem nenhuma
+relação com autenticação/credencial) — descartado modelar como `person`
+sem `person_credential` por risco de acoplamento incidental com chamada/
+câmera/tag/liderança, que já filtram por `actor_type`. Cardinalidade: uma
+linha por vínculo aluno-responsável, sem deduplicação entre irmãos (não
+confirmado pelo negócio). `location_consent_decision.decided_by_person_id`
+vira **duas colunas FK mutuamente exclusivas**
+(`decided_by_person_id`/`decided_by_legal_guardian_id`, CHECK de
+exatamente uma preenchida) em vez de coluna polimórfica solta, para manter
+integridade referencial real — mesmo componente reusável por RULE-FACE-09
+quando essa frente for implementada, não duplicar a mecânica.
+
+**Controle de leitura de `person.date_of_birth` (Security Agent,
+2026-09-15) — resolvido, não bloqueante, não exige decisão do usuário:**
+mesmo princípio de minimização já aplicado ao dado bruto de localização/
+dispositivo (RULE-RET-04). Só a **Secretaria** lê/escreve a data crua, por
+endpoint dedicado de cadastro/edição de pessoa (RULE-GRD-05); hierarquia
+pedagógica (professor/coordenação/direção) e administrador técnico só
+recebem o derivado booleano "é menor", nunca a data crua — o precedente de
+RULE-RET-04 é especificamente sobre dado bruto de *dispositivo*, não se
+estende por analogia a dado de cadastro de pessoa. Cálculo do derivado
+concentrado num único helper server-side, reaproveitado por RULE-FACE-09 e
+RULE-PRES-14 (mesma fonte única de verdade já exigida por RULE-GRD-01).
+Controle por camada de aplicação/DTO explícito (allowlist de colunas em
+cada endpoint), não RLS — RLS não resolve granularidade de campo.
+**Achado prospectivo para quando o campo for implementado:** revisar
+`backend/src/modules/person-management/person-management.controller.ts` e
+`.service.ts` (`GET /v1/users`) para garantir que `date_of_birth` cru não
+entra no `SELECT` allowlist desse endpoint, que hoje serve um público mais
+amplo que só a Secretaria. **Gap correlato, não bloqueante:** quem além da
+Secretaria administra CRUD geral de pessoa ainda não está totalmente
+confirmado em `actors.md` — não impede fechar este item, fica registrado
+para Business Analyst/Product Definition.
+
+**Estado duplo de `person.date_of_birth` para RULE-GRD-07 (Solution
+Architect Agent, 2026-09-15):** decisão do usuário em RULE-GRD-07
+(`legal-guardian-consent-rules.md`) exige que autodeclaração digital da
+data de nascimento seja tratada como provisória — não libera sozinha o
+bloqueio suave de RULE-FACE-09/RULE-PRES-14; só a confirmação presencial
+pela Secretaria libera de fato. Duas colunas novas em `person`, nullable,
+**sem enum de status próprio** — mesmo princípio de fonte única já
+aplicado ao derivado "é menor" em RULE-GRD-01, o estado é sempre
+calculado, nunca armazenado redundante: `date_of_birth_confirmed_at`
+(timestamp, só relógio do servidor, mesma convenção de `captured_at`
+usada em `raw_location_signal`/`location_consent_decision`) e
+`date_of_birth_confirmed_by_person_id` (FK para `person`, staff da
+Secretaria que confirmou, mesma convenção de auditoria de
+`legal_guardian.registered_by_person_id`). Três estados calculados pela
+combinação: `date_of_birth IS NULL` → ausente (bloqueio suave ativo,
+caso original de RULE-GRD-07); `date_of_birth` preenchido e
+`date_of_birth_confirmed_at IS NULL` → provisório/autodeclarado
+(bloqueio suave permanece ativo); ambos preenchidos → confirmado
+presencialmente (bloqueio suave liberado). Sem tabela de auditoria
+separada — segue o precedente de `legal_guardian.signature_captured_at`
+(timestamp único, sobrescrito em nova confirmação), não o padrão
+append-only de `location_consent_decision`, porque o avanço é num único
+sentido (não confirmado → confirmado); uma correção posterior pela
+Secretaria conta como nova confirmação, não como histórico a preservar.
+Cálculo do estado entra no mesmo helper server-side já concentrado para
+"é menor" (RULE-GRD-01), reaproveitado por RULE-FACE-09/RULE-PRES-14 —
+nenhum mecanismo novo de checagem. **Em aberto para Database/Backend na
+implementação (comportamento, não estrutura):** se uma correção de
+`date_of_birth` já confirmado deve resetar `date_of_birth_confirmed_at`
+para `NULL` (exigindo nova conferência) ou contar como reconfirmação
+simultânea — a estrutura proposta suporta ambos sem mudança de schema.
+
+### 2. `raw_location_signal` — dado bruto de localização
+
+Linha por leitura de GPS (`login_checkin` = RULE-PRES-01, ou
+`class_monitoring` = RULE-PRES-09). Colunas tipadas (não `jsonb`,
+descartado na decisão de tecnologia acima); precedente de forma:
+`refresh_token` (colunas planas totalmente tipadas). `signal_type`,
+`class_session_id` (nullable, mesma forma de `identification_checkin`),
+`raw_identification_event_id` (nullable, correlaciona a leitura de login
+ao evento de identificação que ela liberou — adição do Database Agent,
+**aprovada pelo usuário em 2026-09-15**), `latitude`/`longitude`
+(`numeric(9,6)`), `accuracy_meters`, `is_mocked` (evidência de
+anti-spoofing GPS), `captured_at` (só relógio do servidor, RULE-PRES-02 —
+deliberadamente sem nenhuma coluna de timestamp vindo do device),
+`idempotency_key` (dedup de reenvio, tenant-scoped desde a criação — ao
+contrário de `raw_identification_event`, que precisou de correção
+posterior para isso). RLS simples por tenant (não restrita a admin
+técnico — decisão anterior de RLS "restrita ao administrador técnico"
+superada: mesmo padrão real e verificado de `raw_identification_event`,
+que aplica RULE-RET-04 na camada de aplicação/Permission-guard, não via
+RLS, para não quebrar a leitura em tempo real de RULE-PRES-01/09).
+Expurgo por sessão reaproveita o gate `EXISTS` contra
+`attendance_pending_review.resolved_at IS NULL`, mesmo padrão da Frente
+10.
+
+**Divergência aprovada pelo usuário em 2026-09-15 (Ok):** RULE-PRES-14
+lê como se toda linha sempre pertencesse a uma sessão, mas
+`class_session_id` é nullable (mesma forma real de
+`identification_checkin`) — o corner case de uma leitura `login_checkin`
+capturada fora de qualquer janela de aula resolvível, inalcançável pelo
+expurgo por sessão, fica aceito como está. Nenhum teto de retenção
+alternativo foi exigido para esse caso; fica para Backend/Solution
+Architect tratar se e quando aparecer na prática.
+
+### 3. `legal_guardian` — vínculo de responsabilidade legal
+
+Uma linha por vínculo aluno-responsável (`student_person_id`, nome,
+documento, `signature_captured_at` — interpretação do Database Agent para
+"referência de assinatura", **confirmada pelo usuário em 2026-09-15**),
+`registered_by_person_id` (quem na Secretaria cadastrou, convenção de
+auditoria já usada em `intrusion_incident`/`attendance_pending_review`,
+não exigida literalmente pelo texto de RULE-GRD, mas **aprovada pelo
+usuário em 2026-09-15**). `status` (`active`/`revoked`) em vez
+de exclusão física, mesmo padrão de `intrusion_incident`/
+`attendance_frequency_warning`. RLS simples por tenant — RULE-GRD-06 não
+vira política RLS distinta porque `permission_group` é definido por
+tenant no projeto, não existe papel "Secretaria" fixo na camada de banco;
+a restrição de quem pode editar/revogar é inteiramente de aplicação
+(Permission-guard), a construir quando o Backend implementar — **aceito
+pelo usuário em 2026-09-15**.
+
+### 4. `location_consent_decision` — log de consentimento de localização
+
+Log append-only (nunca `UPDATE`/`DELETE`; status efetivo = linha mais
+recente por pessoa). `decided_by_person_id`/`decided_by_legal_guardian_id`
+mutuamente exclusivas (ver item 1). `decision` (`granted`/`refused`/
+`revoked`, vocabulário do próprio texto de RULE-PRES-14). `consent_version`
+(evidência de qual versão do texto de consentimento foi exibida — decisão
+do Database Agent, não texto literal da regra, a confirmar).
+`captured_at` só relógio do servidor. RLS simples por tenant.
+
+**Divergência aprovada pelo usuário em 2026-09-15 (sim):** coluna
+`subject_person_id` adicionada (identidade de quem é o titular do
+consentimento — igual a `decided_by_person_id` quando o titular decide por
+si, igual a `legal_guardian.student_person_id` quando o responsável
+decide), para não exigir join através de `legal_guardian` a cada leitura
+no caminho quente de RULE-PRES-01. Não fazia parte do pedido original do
+usuário, mas foi confirmada.
+
+### 5. `institutional_location_config` — ponto de referência + raio da instituição
+
+Tabela nova, singleton por tenant (`tenant_id UNIQUE`) — confirmado pelo
+usuário em 2026-09-15 que nenhuma instituição-cliente tem mais de um
+endereço fisicamente distante, descartando a alternativa N-por-tenant
+(forma de `institutional_network_range`). Não fundida em
+`device_binding_config` nem em `attendance_config` (domínios diferentes:
+identidade geográfica vs. higiene de sessão vs. política de apuração).
+Colunas: `tenant_id`, `latitude`, `longitude`, `radius_meters`. Sem
+PostGIS/`geography` (sem evidência de necessidade; radius math simples
+basta). RLS simples por tenant, sem restrição de admin técnico (não é
+dado sensível de indivíduo, é config institucional). A comparação
+"está dentro do raio?" não mora nesta tabela nem na ingestão — fica na
+camada de decisão (login RULE-PRES-01, monitoramento RULE-PRES-09), como
+função pura.
+
+### 6. Timeout de afastamento (RULE-PRES-09)
+
+Segundo parâmetro configurável de RULE-PRES-09 (15 min de referência),
+distinto do raio — identificado como lacuna separada durante o desenho do
+item 5. Decisão do Solution Architect: **não** mora em
+`institutional_location_config` (manteria a tabela pura como identidade
+geográfica); mora como campo novo em `attendance_config`
+(`departure_timeout_minutes`), mesma hierarquia instituição→curso→turma já
+usada por `tolerance_minutes`, e é **snapshotado em `class_session`**
+(`departure_timeout_minutes_snapshot`) no mesmo mecanismo dos três campos
+já snapshotados hoje — necessário porque o monitor de afastamento lê esse
+valor ao vivo durante a sessão; sem snapshot, uma mudança de config no
+meio de uma aula alteraria retroativamente o limiar de um aluno já sendo
+monitorado. Sem CHECK constraint, mesma ausência de `tolerance_minutes`.
+
+### Implementação — 2026-09-15
+
+Todo o lote de schema abaixo (itens 1 a 6, incluindo o estado duplo de
+`date_of_birth` para RULE-GRD-07) foi implementado pelo Database Agent:
+migrations `1755873000000-AddPersonDateOfBirth.ts`,
+`1755874000000-AddRawLocationSignal.ts`,
+`1755875000000-AddLegalGuardianAndLocationConsentDecision.ts`,
+`1755876000000-AddInstitutionalLocationConfig.ts`,
+`1755877000000-AddDepartureTimeoutConfig.ts`, com entities correspondentes
+em `backend/src/database/entities/`. Build e lint passam. Em seguida, o
+Backend Agent implementou a lógica de RULE-GRD-07 (helper único de "é
+menor"/estado de confirmação, controle de leitura por allowlist, endpoint
+de confirmação presencial, suspensão/revalidação de consentimento
+retroativo) — 1034 testes passando. Detalhes de negócio registrados em
+`legal-guardian-consent-rules.md`, RULE-GRD-07.
+
+**Gaps abertos, não bloqueantes, sinalizados durante a implementação:**
+- `raw_location_signal` não tem coluna de identificação da pessoa para o
+  caso `class_monitoring` (RULE-PRES-09) — para `login_checkin` dá para
+  chegar à pessoa via `raw_identification_event_id`, mas não há
+  equivalente para monitoramento em sala. Falta decisão do Solution
+  Architect antes do Backend poder usar essa tabela para o monitor de
+  afastamento por aluno.
+- `location_consent_decision` não tem uma semântica própria para
+  "suspenso pelo sistema/Secretaria" (só modela quem consentiu, pessoa ou
+  responsável) — a suspensão retroativa de RULE-GRD-07 hoje grava
+  `decided_by_person_id` do staff que confirmou, como trilha de auditoria
+  aproximada. Falta decisão do Solution Architect/Security se isso merece
+  uma coluna própria (ex.: `suspended_by_staff_person_id`) ou um quarto
+  valor de `decision`.
+- O fluxo de vínculo do responsável legal (`legal_guardian` CRUD) ainda
+  não existe — a revalidação retroativa de RULE-GRD-07 só registra aviso
+  em log hoje, sem gatilho automático real.
+- O gate de bloqueio suave de RULE-GRD-07 está pronto mas sem onde
+  plugar, porque RULE-FACE-09/RULE-PRES-14 ainda não têm implementação de
+  backend.
+
+### Proposta do Solution Architect para os gaps 1 e 2 (IMPLEMENTADA — aprovada pelo usuário e aplicada por Database + Backend, 2026-09-15)
+
+> Disparada para resolver os dois primeiros gaps acima. O Security Agent
+> revisou (ver parecer abaixo) e não bloqueou o schema, pedindo um ajuste
+> de CHECK antes da migration ser escrita; o usuário aprovou o desenho
+> (com esse ajuste) e Database + Backend Agents implementaram.
+
+**Gap 1 — atribuição de pessoa em `raw_location_signal` (`class_monitoring`):**
+adicionar coluna `person_id uuid NULLABLE REFERENCES person(id)`, com CHECK
+amarrando a nulidade ao `signal_type`: `login_checkin` exige `person_id`
+NULL (pessoa continua alcançável só via `raw_identification_event_id`,
+sem duplicar a fonte de verdade); `class_monitoring` exige `person_id`
+NOT NULL (única forma de atribuição possível, já que não existe
+`raw_identification_event` nesse caminho). Novo índice parcial
+`(tenant_id, class_session_id, person_id, captured_at DESC) WHERE
+signal_type = 'class_monitoring'` para o padrão de leitura do futuro
+monitor de afastamento (por aluno, dentro de uma aula, cronológico) — o
+índice existente (`raw_location_signal_class_session_id_idx`) continua
+servindo só à varredura de expurgo por sessão (RULE-RET-04), propósito
+diferente. Mudança puramente aditiva: confirmado por grep que
+`RawLocationSignalEntity` ainda não tem nenhum consumidor de leitura/
+escrita em `backend/src`, logo não há risco de quebra.
+
+**Gap 2 — semântica de "suspenso pelo sistema" em `location_consent_decision`:**
+adicionar discriminador explícito `decided_by_type varchar(20) NOT NULL
+CHECK (decided_by_type IN ('person', 'legal_guardian', 'system'))`,
+reescrevendo o CHECK de exclusividade mútua para três vias (person exige
+`decided_by_person_id` preenchido e `decided_by_legal_guardian_id` nulo;
+legal_guardian o inverso; system exige os dois nulos). Nova coluna
+separada `system_action_triggered_by_person_id uuid NULLABLE REFERENCES
+person(id)`, preenchida só quando `decided_by_type = 'system'`, para
+registrar qual ação humana (ex.: confirmação presencial de
+`date_of_birth` pela Secretaria) disparou a suspensão automática — uma
+trilha de gatilho, deliberadamente separada de "quem decidiu". Isso
+substitui o uso hoje esticado de `decided_by_person_id` para dois
+significados diferentes (decisor humano vs. gatilho de ação automática)
+em `RetroactiveMinorConsentGuardService`. **`decision` não ganha um
+quarto valor** — mantém-se `'revoked'` para a suspensão do sistema; o
+eixo "o que mudou" e o eixo "quem/o que mudou" já eram conceitualmente
+separados no desenho original, a proposta só completa o segundo eixo
+para o caso que faltava, sem obrigar todo consumidor de `decision` a
+aprender um valor novo. Sem dado real gravado em nenhuma das duas
+tabelas ainda (RULE-GRD-07 acabou de ser implementada nesta mesma leva),
+então não há necessidade de migração de dados — só ajuste de schema
+ainda não implantado. Ambas as mudanças reaproveitam os padrões já em
+uso neste schema: vocabulário fechado via CHECK (não enum nativo) e
+par/conjunto mutuamente exclusivo com FK real em vez de coluna
+polimórfica solta.
+
+**Impacto em código (implementado):** `RetroactiveMinorConsentGuardService`
+trocou `decidedByPersonId: suspendedByPersonId` por `decidedByType:
+'system'` + `systemActionTriggeredByPersonId: suspendedByPersonId`
+(Backend Agent, 2026-09-15). O Database Agent optou por editar diretamente
+as duas migrations já escritas (`1755874000000-AddRawLocationSignal.ts`,
+`1755875000000-AddLegalGuardianAndLocationConsentDecision.ts`) em vez de
+criar novas migrations `ALTER TABLE`, já que nenhum dado real havia sido
+gravado em nenhuma das duas tabelas.
+
+**Parecer do Security (2026-09-15):** schema aprovado sem bloqueio para a
+sua estrutura geral (discriminador de 3 vias com FK real e separação
+decisor/gatilho corrige uma fragilidade de auditoria já presente hoje —
+`RetroactiveMinorConsentGuardService` usa `decidedByPersonId` para
+representar o funcionário da Secretaria, o que hoje é factualmente
+incorreto: essa coluna significa "o titular decidiu por si mesmo", nunca
+"funcionário disparou ação automática"). Dois pontos levantados:
+
+1. **Requisito (ajuste de schema, antes da migration ser escrita):**
+   acrescentar ao CHECK proposto a amarração `decided_by_type = 'system' →
+   decision = 'revoked'`. Sem ela, nada impede uma futura implementação
+   (ex.: quando RULE-FACE-09 reaproveitar este padrão) de gravar
+   `decided_by_type='system'` com `decision='granted'` — o sistema nunca
+   tem base legal para conceder consentimento em nome de ninguém (LGPD
+   Art. 14), então essa combinação seria sempre inválida e deveria ser
+   irrepresentável no banco, não apenas evitada por convenção de código.
+2. **Resposta à questão em aberto nº 1 (registro passivo vs. comunicação
+   ativa):** registro passivo (`decision='revoked'` +
+   `decided_by_type='system'`) **não é suficiente sozinho**. É necessário
+   para a trilha de auditoria interna, mas RULE-GRD-07 pendência 1 já
+   exige que a suspensão "acione o fluxo de vínculo/consentimento do
+   responsável" — uma ação afirmativa e rastreável, não um estado passivo
+   no banco. Hoje `RetroactiveMinorConsentGuardService` (linhas 71-77) só
+   loga essa etapa (`logger.warn`), o que o Security marca como
+   **bloqueante antes de RULE-PRES-14 operar de fato com suspensão
+   automática em produção** — não bloqueante para aprovar este schema
+   agora, já que o schema comporta ambos os casos igualmente. O canal
+   exato de comunicação ativa ao titular/responsável (push, e-mail, aviso
+   presencial) é decisão de produto/UX, fora do escopo do Security e desta
+   proposta arquitetural — mas a ausência de qualquer canal foi sinalizada
+   como risco, não como aceitável por omissão.
+
+Pontos adicionais do Security, para quando cada frente correspondente for
+retomada: (a) Database Agent deve confirmar que o GRANT atual (`SELECT,
+INSERT`, sem UPDATE/DELETE) segue suficiente para as novas colunas; (b)
+quando um endpoint de leitura de `location_consent_decision` existir, ele
+deve herdar o mesmo controle de leitura por allowlist já definido para
+`person.date_of_birth` (uma linha `decided_by_type='system'` é informação
+inferível sobre menoridade/situação de responsável legal, mesma classe de
+sensibilidade); (c) Product/Business Analyst decide o canal de notificação
+ativa citado no item 2 acima.
+
+> **Source of confirmation:** Solution Architect Agent, 2026-09-15
+> (proposta original) + Security Agent, 2026-09-15 (parecer acima, schema
+> não bloqueado, um ajuste de CHECK requisitado) + usuário, 2026-09-15
+> (aprovação explícita) + Database e Backend Agents, 2026-09-15
+> (implementação: migrations, entities e
+> `RetroactiveMinorConsentGuardService`). **Ainda em aberto, não coberto
+> por esta aprovação:** o gatilho real do fluxo de responsável legal
+> (hoje `logger.warn` em `RetroactiveMinorConsentGuardService`) —
+> bloqueante antes de RULE-PRES-14 operar com suspensão automática em
+> produção, ver `legal-guardian-consent-rules.md`.
+
+### Proposta do Solution Architect para o gatilho real do fluxo de responsável legal (`guardian_link_followup`)
+
+> **PROPOSTA — revisada pelo Security, aguardando aprovação do usuário, 2026-09-15**
+
+Fecha a pendência de production-readiness deixada em aberto na seção
+anterior: hoje `RetroactiveMinorConsentGuardService` só grava
+`this.logger.warn(...)` quando suspende automaticamente um consentimento
+de localização por menoridade retroativa — o Security marcou isso como
+bloqueante antes de RULE-PRES-14 operar com suspensão automática em
+produção, exigindo "um acionamento real e rastreável do fluxo de
+responsável legal", sem especificar o mecanismo (decisão de arquitetura).
+
+**Schema — nova entidade `guardian_link_followup`:**
+- `id`, `tenant_id`.
+- `subject_person_id` (FK `person`) — o menor cujo consentimento foi
+  suspenso.
+- `reason` — vocabulário fechado (ex.:
+  `retroactive_minority_location_consent_suspended`), desenhado para
+  reaproveitamento futuro por RULE-FACE-09 via outro valor, em vez de uma
+  tabela por tipo de consentimento.
+- `related_location_consent_decision_id` (FK nullable para
+  `location_consent_decision`) — referência explícita e tipada à linha de
+  suspensão que originou o item (o Security havia sugerido inicialmente um
+  campo genérico `related_decision_id`; o Architect preferiu FK real,
+  seguindo o mesmo padrão já usado no schema de `location_consent_decision`
+  — integridade referencial garantida pelo banco em vez de disciplina de
+  aplicação; o Security revisou e concordou, retirando a recomendação
+  original — ver parecer abaixo).
+- `triggered_by_person_id` (FK `person`) — funcionário da Secretaria cuja
+  confirmação presencial de `date_of_birth` disparou a suspensão.
+- `status` — `open` | `resolved`.
+- `resolved_by_person_id`, `resolved_at`, `resolution_note` (obrigatório
+  no fechamento) — nullable até resolução.
+- `opened_at`/`created_at`. Sem TTL — item não expira sozinho.
+- **Idempotência (requisito):** no máximo um item `open` por
+  `(subject_person_id, reason)` simultaneamente — mecanismo exato (índice
+  único parcial `WHERE status = 'open'` ou equivalente) delegado ao
+  Database Agent.
+- **Grants:** ao contrário de `location_consent_decision` (append-only),
+  esta tabela permite UPDATE, mas restrito às colunas de resolução
+  (`status`, `resolved_at`, `resolved_by_person_id`, `resolution_note`) —
+  colunas de abertura são imutáveis após criação. Nenhum papel de
+  aplicação recebe DELETE.
+
+**Escrita/abertura:** `RetroactiveMinorConsentGuardService` passaria a
+chamar `GuardianLinkFollowupService.open(...)` na mesma transação em que
+grava a suspensão em `location_consent_decision` — um único evento
+atômico com dois efeitos, não dois eventos separados.
+
+**Fechamento:** novo `GuardianLinkFollowupService.resolve(followupId,
+resolvedByPersonId, resolutionNote)` — único caminho de escrita para
+`status = 'resolved'`; rejeita resolver um item já resolvido.
+`resolvedByPersonId` sempre do JWT, nunca do corpo. Exposto via
+`PATCH /v1/users/:personId/guardian-link-followups/:followupId`. É
+**atestação manual da Secretaria** (mesmo padrão de confiança operacional
+já aprovado em RULE-GRD-05/06) — não depende do CRUD de `legal_guardian`,
+que ainda não existe. Quando esse CRUD existir, decidir depois se o
+fechamento passa a exigir estruturalmente um `legal_guardian` ativo, em
+vez de só atestação livre — fora de escopo agora.
+
+**Visibilidade — decisão do usuário, 2026-09-15: "varredura periódica
+como rede de segurança".** Motivo: a cobertura de "próximo contato
+presencial" da RULE-GRD-07 pendência 2 foi desenhada para o caso de
+`date_of_birth` FALTANTE — aqui a suspensão só ocorre com `date_of_birth`
+já confirmado, então nada garante que a tela de pessoa seja reaberta para
+essa pessoa (o Business Analyst confirmou, lendo código e regras
+existentes, que não há hoje nenhum fluxo que reabra essa tela
+automaticamente). Dois caminhos de descoberta:
+- `GET /v1/users/:personId/date-of-birth` (endpoint já existente) passa a
+  compor os itens `open` daquela pessoa específica — contextual, para
+  quando a Secretaria já está atendendo alguém.
+- Novo `GET /v1/guardian-link-followups` (recurso de topo, módulo próprio
+  `GuardianLinkFollowupModule`) — `listAllOpen()`, todos os itens `open`
+  do tenant, ordenados por `opened_at` ascendente, sem paginação (volume
+  já estabelecido como baixo). Mesma allowlist Secretaria-exclusiva já
+  usada em `getDateOfBirth`/`confirmDateOfBirth`
+  (`RequirePermission(MANAGE_USERS)` em nível de classe, sem override).
+- **Decisão explícita de não usar job agendado/cron nem canal de
+  notificação:** não existe infraestrutura de cron aprovada no backend
+  (sem `@nestjs/schedule`, sem scheduling nativo do `pg-boss` em uso) nem
+  canal de notificação ativo (sem e-mail/SMS/push). A "varredura
+  periódica" é a Secretaria consultando o relatório por hábito
+  operacional, não um processo automático. Risco aceito explicitamente
+  pelo usuário: se a Secretaria esquecer de consultar, a rede de
+  segurança falha silenciosamente, sem lembrete automático — mas a
+  suspensão do consentimento permanece em vigor (nega por padrão) até que
+  alguém aja; RULE-PRES-15 garante presença por tag física como caminho
+  alternativo nesse meio-tempo.
+
+**Parecer final do Security, 2026-09-15:** os dois bloqueantes da
+revisão anterior (ausência de caminho de fechamento; premissa de
+visibilidade não verificada) estão **resolvidos**. O Security concordou
+com a FK tipada em vez do campo genérico que havia sugerido, com a
+condição de que, quando RULE-FACE-09 adicionar uma segunda FK mutuamente
+exclusiva, venha acompanhada de um CHECK de exclusividade amarrado a
+`reason` (mesmo padrão de `decided_by_type`). Considerou o risco de
+"sem cron/notificação" aceitável, não bloqueante — a proteção de dados em
+si (suspensão por padrão) não depende de o relatório ser consultado.
+Identificou um **requisito de implementação, não de desenho**: o novo
+`GET /v1/guardian-link-followups` precisa ter tenant-scoping explícito em
+`listAllOpen()` (herdando `TenantContextService`, mesmo padrão do resto
+do módulo) — deve constar explicitamente no ticket de implementação do
+Backend Agent, não ficar implícito. Recomendações não bloqueantes:
+limite superior defensivo na listagem (antecipando volume futuro de
+RULE-FACE-09) e, se/quando infraestrutura de notificação for aprovada por
+qualquer outro motivo, priorizar esta fila como consumidora.
+
+**Veredito do Security:** esta versão, se aprovada pelo usuário, satisfaz
+a exigência de 2026-09-15 de "acionamento real e rastreável" — nenhum
+bloqueante de arquitetura ou de negócio remanescente.
+
+> **Source of confirmation:** Solution Architect Agent, 2026-09-15
+> (proposta, em 3 rodadas: schema, caminho de fechamento, varredura) +
+> Security Agent, 2026-09-15 (revisão em 2 rodadas: 2 bloqueantes
+> apontados e depois confirmados como resolvidos) + Business Analyst
+> Agent, 2026-09-15 (confirmação de que não há cobertura de visibilidade
+> automática hoje) + usuário, 2026-09-15 (decisão da alternativa de
+> visibilidade: varredura periódica). **Ainda não implementado** —
+> aguardando aprovação explícita do usuário para este desenho como um
+> todo antes de acionar Database/Backend.
+
+### Pendências antes de qualquer migration real
+
+1. ~~Confirmar/decidir as 6 divergências sinalizadas pelo Database Agent
+   nesta rodada~~ — **resolvido, usuário aprovou todas em 2026-09-15**
+   (`subject_person_id` denormalizado: sim; nullability de
+   `class_session_id` sem teto de retenção alternativo: Ok; forma de
+   "referência de assinatura": confere; `registered_by_person_id`: sim;
+   `raw_identification_event_id`: Ok; ausência de papel "Secretaria" fixo
+   no banco: aceitável).
+2. ~~Controle de leitura de `person.date_of_birth` (Security)~~ —
+   **resolvido em 2026-09-15**, política definida sem necessidade de
+   decisão do usuário (ver seção do schema de RULE-GRD-01, acima).
+3. ~~Backfill de `date_of_birth` para pessoas já cadastradas~~ —
+   **resolvido em 2026-09-15**, usuário aprovou a recomendação do
+   Business Analyst (RULE-GRD-07, `legal-guardian-consent-rules.md`,
+   agora APROVADA): bloqueio suave dos fluxos de consentimento sensível
+   para quem não tem o campo + coleta pela Secretaria no próximo contato
+   presencial. As 3 pendências próprias da regra também foram decididas
+   pelo usuário: (a) consentimento sensível já concedido por pessoa hoje
+   descoberta menor é **suspenso e revalidado** com o responsável legal,
+   não mantido até renovação natural nem invalidado sem recoleta; (b)
+   existe rede de segurança presencial garantida para toda a base
+   (ex.: rematrícula anual) — cobertura considerada suficiente; (c)
+   autodeclaração digital de `date_of_birth` é permitida, mas só como
+   **provisória** — não libera o bloqueio suave até confirmação
+   presencial pela Secretaria, o que exige o campo carregar um estado
+   duplo (provisório/confirmado) — **resolvido em 2026-09-15**: estado
+   duplo (`date_of_birth_confirmed_at`/
+   `date_of_birth_confirmed_by_person_id`, derivado, sem enum próprio)
+   incorporado ao schema de `date_of_birth` pelo Solution Architect — ver
+   seção do schema de RULE-GRD-01, acima. RULE-GRD-07 está pronta para
+   implementação (Database/Backend).
+4. ~~Ajuste de redação pendente em RULE-PRES-14 sobre enquadramento no
+   Art. 11~~ — **resolvido em 2026-09-15**, direto por mim (ressalva
+   atualizada em `attendance-presence-flow-rules.md`: Art. 11 não se
+   aplica à geolocalização, tratamento reforçado é postura voluntária, não
+   exigência legal; achado do Security Agent já registrado acima, na
+   seção da localização, era só um ajuste de precisão de texto).
+
+**Pronta para:** o schema em si está aprovado — nenhuma implementação de
+Backend/migration real, porém, até os itens 2-4 acima serem resolvidos.
+
+> **Source of confirmation:** Solution Architect Agent (x2) e Database
+> Agent (x3), 2026-09-15, a partir das decisões do usuário sobre
+> multi-campus (não há) e as 6 perguntas de responsável legal; as 6
+> divergências de schema desta seção foram apresentadas ao usuário e
+> aprovadas por ele em 2026-09-15 (respostas: sim / Ok / confere / sim /
+> Ok / aceitável, nessa ordem).
+
 ## Escopo confirmado (arquitetura ainda pendente) — Frente 12: Vínculo de dispositivo institucional (2026-09-10)
 
 > **Produto fechado, arquitetura NÃO decidida.** As regras de negócio da
@@ -4364,7 +4933,7 @@ Architect → Tech Decision → ... (ver
 `project-knowledge/references/pending-decisions.md`, seção "As duas
 frentes novas").
 
-## Decisão de arquitetura — Fluxo de Chamada Redesenhado, RULE-PRES-01 a 13 (PROPOSTA — 2026-09-14, aguardando Tech Decision + aprovação do usuário)
+## Decisão de arquitetura — Fluxo de Chamada Redesenhado, RULE-PRES-01 a 15 (PROPOSTA — 2026-09-14; tecnologias internas APROVADAS 2026-09-15; consolidada em `.doc/checkclass-arquitetura-chamada.html` 2026-09-15, ver nota de revisão abaixo)
 
 > Desenho do Solution Architect Agent a partir de
 > `business-rules/references/attendance-presence-flow-rules.md`
@@ -4679,6 +5248,37 @@ por acidente — é a tradução direta da simplificação que o próprio usuár
 aceitou conscientemente em RULE-PRES-06 ("por hora, vamos fazer desse modo
 mais simplificado"), mas precisa de aprovação explícita do Backend/Database
 antes de tocar em código já implementado e testado.
+
+> **Nota de revisão (2026-09-15) — RULE-PRES-06 revisada; "Desvio real"
+> acima resolvido a favor de escopo por sessão de aula, não mais por dia
+> calendário:** em 2026-09-15 o usuário revisou RULE-PRES-06 para exigir
+> uma passagem de tag por aula (não mais uma única passagem cobrindo todas
+> as aulas do dia na mesma sala) — ver addendum correspondente em
+> `attendance-presence-flow-rules.md`. Isso resolve o desvio sinalizado
+> acima a favor da opção mais simples: já não é mais necessário migrar
+> `IdentificationService.resolveClassSession`/
+> `PresenceIntervalService.rebuildForPerson` de um acoplamento 1:1 para uma
+> projeção "dia inteiro recortado por sessão" — o estado de `room-presence`
+> passa a ser mantido diretamente por **(pessoa, sala, sessão de aula)**,
+> o mesmo grão que essas duas responsabilidades já usam hoje. Onde este
+> documento dizia acima, em "Estrutura proposta" (item 3), "Mantém o
+> estado 'em sala' por (pessoa, sala, dia calendário)" e "validade default
+> até o fim da última sessão do dia" — ambos superados por esta revisão;
+> `room-presence` não precisa mais projetar um estado de dia inteiro sobre
+> uma janela de sessão, abre/fecha diretamente por sessão.
+>
+> Consolidado no documento de arquitetura dedicado que o Solution Architect
+> produziu a partir da regra revisada:
+> `.doc/checkclass-arquitetura-chamada.html` (seções "Onde Fica Cada
+> Lógica" e "Consistência"), que passa a ser a referência corrente para o
+> escopo de `room-presence`, substituindo a descrição "por dia" acima.
+> Project Guardian checou em 2026-09-15 e confirmou que a revisão está
+> corretamente derivada de RULE-PRES-06 e não conflita com nenhuma outra
+> parte do projeto — sem inconsistência bloqueante.
+> **Source of confirmation:** Usuário, 2026-09-15 (revisão de
+> RULE-PRES-06); Solution Architect Agent, 2026-09-15 (consolidação em
+> `.doc/checkclass-arquitetura-chamada.html`); Project Guardian Agent,
+> 2026-09-15 (checagem de consistência, sem bloqueio).
 
 ### Trade-offs
 

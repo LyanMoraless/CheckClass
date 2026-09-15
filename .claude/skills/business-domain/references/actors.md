@@ -189,3 +189,32 @@ de instituição continuam não detalhadas.
 > como tipo de instituição (ver
 > `business-domain/references/domain-overview.md`) — a ressalva acima
 > **só se aplica a escola** a partir de agora.
+
+## Responsável legal (confirmado em 2026-09-15)
+
+O conceito de "responsável legal" — pessoa que consente em nome de um
+aluno menor de idade — era pressuposto implicitamente por RULE-FACE-09
+(consentimento biométrico) e RULE-PRES-14 (consentimento de localização)
+desde suas respectivas confirmações, mas nunca havia sido formalizado como
+conceito de domínio nem listado como ator nesta lista. O Business Analyst
+Agent identificou a lacuna ao trabalhar o fechamento dos dois gaps; o
+usuário decidiu a mecânica completa em 2026-09-15, formalizada em
+`business-rules/references/legal-guardian-consent-rules.md`
+(RULE-GRD-01 a RULE-GRD-06).
+
+**Natureza do papel — não é um ator autenticável do sistema.** Diferente
+dos demais atores desta lista, o responsável legal **não tem conta, login
+ou credencial própria** (RULE-GRD-02). É um **registro declarado** (nome,
+documento de identificação, assinatura), vinculado ao aluno menor de
+idade, capturado presencialmente pela Secretaria no mesmo fluxo já usado
+para o cadastro biométrico (RULE-FACE-05/06). Um aluno pode ter mais de um
+responsável legal cadastrado; o consentimento de **qualquer um** deles é
+suficiente, sem exigência de unanimidade (RULE-GRD-03). O vínculo pode ser
+editado ou revogado pela Secretaria a qualquer momento, sem fluxo de
+aprovação adicional (RULE-GRD-06).
+
+**Pré-requisito de domínio:** a condição "aluno é menor de idade" passa a
+ser calculada automaticamente a partir de um campo de data de nascimento
+adicionado a `person` (RULE-GRD-01) — não existe flag manual independente.
+
+**Source of confirmation:** Usuário, 2026-09-15.

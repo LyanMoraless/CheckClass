@@ -282,6 +282,21 @@ formalizada como RULE-FACE própria), que trata do que acontece quando esse
 consentimento **não** existe. O registro vive em um **registro dedicado de
 consentimento biométrico**, **distinto** do registro de consentimento LGPD
 geral já existente no sistema.
+
+**Nota (mecânica do "menor" e do "responsável" formalizada, 2026-09-15):**
+esta regra sempre pressupôs, sem definir, como o sistema sabe que um aluno
+é menor de idade e quem/como é o responsável que assina por ele. Essa
+lacuna foi identificada pelo Business Analyst Agent e fechada pelo usuário
+em regra própria, compartilhada com RULE-PRES-14 (consentimento de
+localização): RULE-GRD-01 a RULE-GRD-06
+(`legal-guardian-consent-rules.md`) — maioridade calculada
+automaticamente a partir de data de nascimento em `person` (RULE-GRD-01);
+responsável sem conta própria, apenas registro declarado (RULE-GRD-02);
+múltiplos responsáveis permitidos, consentimento de qualquer um basta
+(RULE-GRD-03); consentimento permanece válido quando o aluno atinge a
+maioridade (RULE-GRD-04); sem exigência de documento comprobatório
+armazenado (RULE-GRD-05); vínculo editável/revogável pela Secretaria a
+qualquer momento (RULE-GRD-06).
 **Applies to:** Consentimento para tratamento de dado biométrico facial,
 qualquer papel (aluno, professor, secretaria, administração).
 **Exceptions:** Nenhuma — todos assinam, sem exceção de papel.
@@ -355,4 +370,9 @@ uma tecnologia específica ser escolhida antes.
   RULE-RET-04 (administrador técnico, distinto da Secretaria de
   RULE-FACE-05).
 - `business-domain/references/actors.md` — addendum introduzindo
-  "Secretaria" como ator concreto (RULE-FACE-05/06).
+  "Secretaria" como ator concreto (RULE-FACE-05/06), e addendum
+  (2026-09-15) introduzindo "Responsável legal" como conceito de domínio
+  não autenticável.
+- `business-rules/references/legal-guardian-consent-rules.md` —
+  RULE-GRD-01 a RULE-GRD-06 (2026-09-15), formaliza "menor de idade" e
+  "responsável legal", referenciados por RULE-FACE-09 acima.
