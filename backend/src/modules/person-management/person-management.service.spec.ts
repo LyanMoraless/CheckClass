@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { compare } from 'bcrypt';
 import { QueryFailedError } from 'typeorm';
 import { ActorTypeEntity, PersonCredentialEntity, PersonEntity } from '../../database/entities';
@@ -46,8 +46,9 @@ describe('PersonManagementService', () => {
       manager.createQueryBuilder.mockReturnValue(createMockInsertQueryBuilder(options.insertedActorTypeId ?? null));
     }
     const tenantContext = createMockTenantContext(manager);
-    const service = new PersonManagementService(tenantContext as never);
-    return { service, actorTypeRepo, personRepo, credentialRepo, manager };
+    const retroactiveMinorConsentGuard = { suspendSensitiveConsentsIfGranted: jest.fn().mockResolvedValue(undefined) };
+    const service = new PersonManagementService(tenantContext as never, retroactiveMinorConsentGuard as never);
+    return { service, actorTypeRepo, personRepo, credentialRepo, manager, retroactiveMinorConsentGuard };
   }
 
   const baseInput: CreatePersonInput = { fullName: 'Jane Student', actorTypeCode: 'STUDENT' };
@@ -172,5 +173,106 @@ describe('PersonManagementService', () => {
     const result = await service.list();
 
     expect(result).toEqual([]);
+  });
+
+  // RULE-GRD-05/07 — Secretaria-restricted date-of-birth read/write and its
+  // RULE-GRD-07 pendência 1 retroactive-risk side effect.
+  describe('getDateOfBirthDetail', () => {
+    test('test_getDateOfBirthDetail_personNotFound_throwsNotFound', async () => {
+      const personRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
+      const { service } = buildService({ personRepo });
+
+      await expect(service.getDateOfBirthDetail('missing-person')).rejects.toThrow(NotFoundException);
+    });
+
+    test('test_getDateOfBirthDetail_absentState_returnsNullDateOfBirthAndAbsentState', async () => {
+      const personRepo = createMockRepository({
+        findOneBy: jest
+          .fn()
+          .mockResolvedValue({ id: 'person-1', dateOfBirth: null, dateOfBirthConfirmedAt: null, dateOfBirthConfirmedByPersonId: null }),
+      });
+      const { service } = buildService({ personRepo });
+
+      const result = await service.getDateOfBirthDetail('person-1');
+
+      expect(result).toEqual({
+        personId: 'person-1',
+        dateOfBirth: null,
+        confirmedAt: null,
+        confirmedByPersonId: null,
+        confirmationState: 'absent',
+      });
+    });
+
+    test('test_getDateOfBirthDetail_confirmedState_passesThroughRawFields', async () => {
+      const confirmedAt = new Date('2026-01-01T00:00:00.000Z');
+      const personRepo = createMockRepository({
+        findOneBy: jest.fn().mockResolvedValue({
+          id: 'person-1',
+          dateOfBirth: '2000-05-10',
+          dateOfBirthConfirmedAt: confirmedAt,
+          dateOfBirthConfirmedByPersonId: 'staff-1',
+        }),
+      });
+      const { service } = buildService({ personRepo });
+
+      const result = await service.getDateOfBirthDetail('person-1');
+
+      expect(result).toEqual({
+        personId: 'person-1',
+        dateOfBirth: '2000-05-10',
+        confirmedAt,
+        confirmedByPersonId: 'staff-1',
+        confirmationState: 'confirmed',
+      });
+    });
+  });
+
+  describe('confirmDateOfBirth', () => {
+    test('test_confirmDateOfBirth_personNotFound_throwsNotFound', async () => {
+      const personRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(null) });
+      const { service } = buildService({ personRepo });
+
+      await expect(service.confirmDateOfBirth('missing-person', '2000-01-01', 'staff-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    test('test_confirmDateOfBirth_adultResult_updatesPersonAndDoesNotTriggerRetroactiveGuard', async () => {
+      const personRepo = createMockRepository({
+        findOneBy: jest.fn().mockResolvedValue({ id: 'person-1' }),
+      });
+      const { service, personRepo: repo, retroactiveMinorConsentGuard } = buildService({ personRepo });
+
+      // Comfortably an adult regardless of when this test runs.
+      const result = await service.confirmDateOfBirth('person-1', '1950-01-01', 'staff-1');
+
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'person-1' },
+        expect.objectContaining({
+          dateOfBirth: new Date('1950-01-01'),
+          dateOfBirthConfirmedByPersonId: 'staff-1',
+        }),
+      );
+      expect(result).toMatchObject({ personId: 'person-1', dateOfBirth: '1950-01-01', confirmedByPersonId: 'staff-1' });
+      expect(retroactiveMinorConsentGuard.suspendSensitiveConsentsIfGranted).not.toHaveBeenCalled();
+    });
+
+    test('test_confirmDateOfBirth_minorResult_triggersRetroactiveGuard', async () => {
+      const personRepo = createMockRepository({
+        findOneBy: jest.fn().mockResolvedValue({ id: 'person-1' }),
+      });
+      const { service, retroactiveMinorConsentGuard } = buildService({ personRepo });
+
+      // A birth date one year ago is comfortably a minor regardless of when
+      // this test runs.
+      const oneYearAgo = new Date();
+      oneYearAgo.setUTCFullYear(oneYearAgo.getUTCFullYear() - 1);
+      const recentDateOfBirth = oneYearAgo.toISOString().slice(0, 10);
+
+      await service.confirmDateOfBirth('person-1', recentDateOfBirth, 'staff-1');
+
+      expect(retroactiveMinorConsentGuard.suspendSensitiveConsentsIfGranted).toHaveBeenCalledWith('person-1', 'staff-1');
+    });
   });
 });

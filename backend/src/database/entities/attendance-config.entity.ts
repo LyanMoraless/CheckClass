@@ -53,6 +53,16 @@ export class AttendanceConfigEntity {
   @Column({ name: 'post_tolerance_behavior', type: 'varchar', length: 20 })
   postToleranceBehavior: string;
 
+  // RULE-PRES-09's afastamento duration parameter (15 min reference value) —
+  // same institution->course->class_group scope resolution as
+  // toleranceMinutes above, same absence of a CHECK constraint. Snapshotted
+  // onto class_session.departureTimeoutMinutesSnapshot at session-creation
+  // time, same mechanism as toleranceMinutes/minAttendancePercentage/
+  // postToleranceBehavior, because the afastamento monitor reads this value
+  // live during an in-progress session.
+  @Column({ name: 'departure_timeout_minutes', type: 'int' })
+  departureTimeoutMinutes: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -62,3 +62,7 @@ export * from './device-credential.entity';
 export * from './device-binding.entity';
 export * from './device-binding-config.entity';
 export * from './institutional-network-range.entity';
+export * from './raw-location-signal.entity';
+export * from './legal-guardian.entity';
+export * from './location-consent-decision.entity';
+export * from './institutional-location-config.entity';

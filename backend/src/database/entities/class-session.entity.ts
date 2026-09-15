@@ -53,6 +53,14 @@ export class ClassSessionEntity {
   @Column({ name: 'post_tolerance_behavior_snapshot', type: 'varchar', length: 20 })
   postToleranceBehaviorSnapshot: string;
 
+  // Snapshot of attendance_config.departureTimeoutMinutes (RULE-PRES-09) —
+  // same mechanism/rationale as the three snapshot columns above: the
+  // afastamento monitor reads this value live during an in-progress
+  // session, so a mid-class config change must not retroactively change the
+  // threshold for a student already being monitored.
+  @Column({ name: 'departure_timeout_minutes_snapshot', type: 'int' })
+  departureTimeoutMinutesSnapshot: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
