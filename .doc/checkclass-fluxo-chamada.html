@@ -116,8 +116,9 @@
     <h2 class="section-title">O Que É Este Documento</h2>
     <div class="overview-box lead">
       <p>Fluxo de chamada redesenhado com o usuário em <strong>2026-09-14</strong>, do zero, em cima de uma pergunta simples: <em>o que, exatamente, prova que o aluno estava na aula?</em></p>
-      <p>O desenho anterior apoiava a resposta em <strong>contagem de pessoas por câmera</strong>. O usuário rejeitou essa direção por não ser exata ("não consigo trabalhar com nada que não seja 100%") e propôs um fluxo novo em quatro etapas, que foi então analisado em busca de formas de burlar. Este documento é o resultado: o fluxo já com as correções, as decisões tomadas uma a uma, <strong>os buracos que ficaram abertos de propósito</strong> e os pontos que ainda não têm resposta.</p>
-      <p>A regra de negócio formal está em <code>.claude/skills/business-rules/references/attendance-presence-flow-rules.md</code> (RULE-PRES-01 a 13). <strong>Nada foi implementado</strong> — nenhuma linha de código foi escrita para esta frente.</p>
+      <p>O desenho anterior apoiava a resposta em <strong>contagem de pessoas por câmera</strong>. O usuário rejeitou essa direção por não ser exata ("não consigo trabalhar com nada que não seja 100%") e propôs um fluxo novo em quatro etapas, que foi então analisado em busca de formas de burlar. Este documento é o resultado: o fluxo já com as correções, as decisões tomadas uma a uma, e <strong>os buracos que ficaram abertos de propósito</strong> — por escolha consciente, não por falta de resposta.</p>
+      <p><strong>Atualização 2026-09-15:</strong> os 7 pontos que ainda não tinham resposta quando este fluxo foi desenhado (01–09-14) foram todos fechados. Duas peças novas nasceram desse fechamento: a exigência de consentimento formal e separado para usar localização (RULE-PRES-14) e o caminho alternativo por tag física para quem recusa esse consentimento (RULE-PRES-15) — ver seção dedicada abaixo. A regra que dividia o status "em sala" por sala/dia também mudou para dividir por aula.</p>
+      <p>A regra de negócio formal está em <code>.claude/skills/business-rules/references/attendance-presence-flow-rules.md</code> (RULE-PRES-01 a 15). <strong>Nada foi implementado</strong> — nenhuma linha de código foi escrita para esta frente.</p>
     </div>
   </section>
 
@@ -145,7 +146,7 @@
         <h3>Tag</h3>
       </div>
       <p class="desc">O aluno passa a tag no leitor da mesa do professor, <strong>e precisa ser o leitor daquela sala</strong>. Isso o marca como "em sala". Sem essa passagem, o login da etapa 1 nunca vira presença, mesmo com todo o resto satisfeito.</p>
-      <p class="desc">O status "em sala" vale até o fim da <strong>última aula que aquele aluno tem naquela sala naquele dia</strong>, derivado da grade de horários que o sistema já mantém. Um logout explícito encerra antes. Trocou de sala, passa a tag de novo.</p>
+      <p class="desc">O status "em sala" vale <strong>apenas para a aula em que a tag foi passada</strong>, do início ao fim daquela sessão específica, derivado da grade de horários que o sistema já mantém. Aluno com duas aulas na mesma sala no mesmo dia passa a tag duas vezes — o status não se estende sozinho de uma aula para a seguinte. Um logout explícito encerra antes. Trocou de sala, passa a tag de novo.</p>
       <p class="rules-line">RULE-PRES-04, RULE-PRES-05, RULE-PRES-06</p>
     </div>
 
@@ -177,9 +178,22 @@
     </div>
   </section>
 
+  <section id="consentimento">
+    <h2 class="section-title">Consentimento De Localização E Caminho Alternativo</h2>
+    <p>Localização é dado pessoal sensível — mais delicado que qualquer outro dado que o projeto já coleta. Por isso ela não entra de graça no fluxo: precisa de consentimento próprio, separado, e precisa de um caminho para quem diz não.</p>
+
+    <div class="step">
+      <p class="desc"><strong>Consentimento em registro dedicado.</strong> Usar localização (etapa 1, verificação pontual no login; etapa 3, monitoramento durante a aula) exige um consentimento formal do aluno — ou do responsável, se menor de idade — guardado num registro próprio, separado do consentimento geral que o sistema já pede. Mesmo padrão já usado para dado biométrico. A localização bruta nunca é vista por professor ou coordenação, só o resultado (presença/pendência); e não é guardada além da avaliação daquela aula, salvo enquanto durar uma pendência em aberto.</p>
+      <p class="desc"><strong>Quem recusa não fica de fora.</strong> Aluno que recusa ou revoga esse consentimento fica bloqueado do caminho login+localização, mas continua registrando presença normalmente por um caminho alternativo: <strong>só a tag física</strong>, sem nenhuma checagem de proximidade. Essa presença vale <strong>igual</strong> a uma presença normal — não fica marcada como "menos confiável" nem exige confirmação do professor; fecha assim que a tag é lida.</p>
+      <p class="desc">Consequência aceita, não lacuna nova: como esse aluno nunca gera sinal de localização, o alerta de afastamento prolongado (etapa 3) não tem como disparar para ele — seu único freio contra fraude passa a ser a contagem por câmera da etapa 4, que já era um alerta para humano conferir, nunca uma decisão automática.</p>
+      <p class="rules-line">RULE-PRES-14, RULE-PRES-15</p>
+    </div>
+  </section>
+
   <section id="fluxograma">
     <h2 class="section-title">O Fluxograma Completo</h2>
     <p>A mesma lógica das quatro etapas, agora com <strong>todas as decisões e todos os desvios</strong> desenhados — inclusive os que levam a "sem presença" ou "pendência". É o diagrama que a análise de fraude produziu, não uma simplificação dele.</p>
+    <p style="font-size: 13.5px; color: var(--muted);">O diagrama abaixo ainda representa só o núcleo login → tag → permanência → contagem (RULE-PRES-01 a 13). A camada de consentimento e caminho alternativo (RULE-PRES-14/15), descrita acima, ainda não foi desenhada aqui.</p>
 
     <div class="flow-legend">
       <span><i class="lg-box"></i> passo / estado</span>
@@ -306,6 +320,7 @@
       <h3><span class="rule-tag">PRES-06</span> Por que a validade sai da grade, e não de um limite em horas</h3>
       <p class="desc">A proposta inicial era um limite fixo de 4 horas mais um cadastro novo de horário por sala. A verificação no código mostrou que <strong>esse cadastro já existe</strong>: cada aula já guarda sala, início e fim, e a grade recorrente já gera as sessões.</p>
       <p class="why">Além de redundante, o limite fixo tinha um defeito concreto: um turno da manhã de 7:30 às 12:00 dura 4h30 — o status venceria no meio da última aula e viraria pendência para um aluno que não fez nada errado. Derivar da grade nunca vence no meio da aula, nunca sobra além do devido, e acompanha sozinha qualquer mudança de horário.</p>
+      <p class="why"><strong>Revisão 2026-09-15:</strong> a versão fechada em 14/09 ainda simplificava para "um swipe cobre todas as aulas do dia naquela sala" — ponto que o próprio usuário havia deixado para revisitar depois. Revisitado: agora cada aula exige sua própria passagem de tag, mesmo quando sala e aluno são os mesmos no mesmo dia.</p>
     </div>
 
     <div class="item">
@@ -344,60 +359,72 @@
     </div>
 
     <div class="callout">
-      <h4>Um swipe cobre todas as aulas do dia naquela sala</h4>
-      <p>Simplificação assumida pelo usuário, que registrou a intenção de revisitar depois ("por hora, vamos fazer desse modo mais simplificado, depois pensamos em como dividir isso por aulas").</p>
-      <p>O caso do aluno com aula na mesma sala às 8h e às 14h que vai embora no intervalo <strong>não vira fraude</strong>, porque o monitoramento de localização acusa que ele não estava na aula das 14h. Decidido não complicar a regra por causa dele.</p>
+      <h4>VPN residual: risco aceito, sem trava nova</h4>
+      <p>Aluno em casa com acesso VPN à rede institucional aparece como "dentro da rede" — mas sozinho isso não basta mais, porque a etapa 1 também exige localização verdadeira, e a detecção de GPS falsificado (RULE-PRES-09) cobre a outra metade. Para burlar as duas ao mesmo tempo, precisaria de VPN <strong>e</strong> enganar a detecção de GPS simultaneamente, e o acesso VPN concedido pela instituição fica registrado.</p>
+      <p>Risco residual estreito, aceito conscientemente. Nenhuma trava específica contra VPN foi criada.</p>
+    </div>
+
+    <div class="callout">
+      <h4>Caminho alternativo por tag não passa por confirmação do professor</h4>
+      <p>Quem recusa o consentimento de localização (ver seção "Consentimento De Localização E Caminho Alternativo") registra presença só com a tag, contando igual a uma presença normal, sem revisão manual. Decisão explícita do usuário — não tratar esse aluno como "menos confiável" por ter recusado um consentimento que é direito dele recusar.</p>
     </div>
   </section>
 
   <section id="gaps">
-    <h2 class="section-title">O Que Ainda Não Tem Resposta</h2>
-    <p>Nenhum destes foi decidido. Não presumir resposta a partir deste documento.</p>
+    <h2 class="section-title">Gaps — Todos Fechados</h2>
+    <p>Os 7 pontos que ficaram em aberto quando este fluxo foi desenhado (2026-09-14) foram todos decididos até <strong>2026-09-15</strong>. Nenhum documento antigo (impresso, print, cópia local) deve ser lido como representando o estado atual.</p>
 
     <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>#</th><th>Ponto em aberto</th><th>Por que importa</th></tr>
+        <tr><th>#</th><th>Ponto</th><th>Como foi fechado</th></tr>
       </thead>
       <tbody>
         <tr>
           <td class="num">01</td>
-          <td><strong>Distância de afastamento da sala</strong></td>
-          <td>Os 5 metros do desenho original <strong>não são construíveis com GPS</strong>: ±5m no melhor caso a céu aberto, ±20–50m dentro de prédio, quando há sinal. Salas vizinhas ficam a 3–8m, distância que o GPS nunca distingue. Sem substituto confirmado.</td>
+          <td><strong>Distância do gatilho de afastamento</strong></td>
+          <td>Reaproveita o raio configurável da instituição (~50m), mesmo parâmetro de RULE-PRES-01, dois usos. RULE-PRES-09.</td>
         </tr>
         <tr>
           <td class="num">02</td>
           <td><strong>Wi-Fi institucional em toda sala</strong></td>
-          <td>Aluno em dado móvel (4G) reprova na checagem de rede mesmo sentado na sala. Isso vira requisito operacional da instituição — cobertura em toda sala e aluno conectado —, não algo que o sistema resolve.</td>
+          <td>Fora do escopo do sistema — requisito operacional da instituição, não responsabilidade do CheckClass.</td>
         </tr>
         <tr>
           <td class="num">03</td>
           <td><strong>VPN como vetor residual</strong></td>
-          <td>Aluno em casa com acesso VPN à rede da instituição apareceria como "dentro da rede". Buraco estreito (exige acesso concedido e fica registrado), mas real. Mitigação não decidida.</td>
+          <td>Risco coberto, sem trava nova — a detecção de GPS falso (item 04) fecha a outra metade do buraco. Ver callout na seção anterior.</td>
         </tr>
         <tr>
           <td class="num">04</td>
           <td><strong>Detecção de GPS falsificado</strong></td>
-          <td>Existem mecanismos de plataforma para detectar localização simulada e aparelho comprometido. Nenhum foi avaliado — é decisão de tecnologia, não de negócio.</td>
+          <td>Campo nativo <code>mocked</code> do <code>expo-location</code> + Talsec freeRASP. Aprovado pelo usuário como recomendado.</td>
         </tr>
         <tr>
           <td class="num">05</td>
           <td><strong>Consentimento e retenção de localização (LGPD)</strong></td>
-          <td>Rastrear a localização do aluno durante a aula é dado pessoal sensível, de peso jurídico maior que qualquer dado que o projeto coleta hoje. Precisa de base legal, consentimento formal, retenção e limitação de finalidade.</td>
+          <td>Termo, registro dedicado, retenção e consequência da recusa (bloqueio + caminho alternativo por tag) decididos. RULE-PRES-14.</td>
         </tr>
         <tr>
           <td class="num">06</td>
           <td><strong>Tecnologia da contagem por câmera</strong></td>
-          <td>Continua a cargo de Tech Decision + Computer Vision. A direção que estava sendo desenhada antes do redesenho foi abandonada e não deve ser retomada como aprovada.</td>
+          <td>MobileNet-SSD (COCO) via <code>cv2.dnn</code> no Raspberry Pi já aprovado. Aprovado pelo usuário como recomendado.</td>
         </tr>
         <tr>
           <td class="num">07</td>
           <td><strong>Divisão do status "em sala" por aula</strong></td>
-          <td>Adiado explicitamente pelo usuário. Ver a simplificação assumida na seção anterior.</td>
+          <td>Cada aula passa a exigir sua própria passagem de tag. RULE-PRES-06, revisão 2026-09-15.</td>
         </tr>
       </tbody>
     </table>
     </div>
+
+    <p style="margin-top: 22px;"><strong>Três ressalvas seguem pendentes</strong> — não são gaps de negócio, são validações técnicas/orçamentárias que não bloqueiam nenhuma das decisões acima:</p>
+    <ul style="font-size: 14px; max-width: 74ch; padding-left: 20px;">
+      <li>Custo real do Talsec freeRASP na escala do projeto, a confirmar com a Talsec.</li>
+      <li>Modelo exato do Raspberry Pi (recomendação assume classe 4GB como piso), a confirmar com Hardware Evaluation/IoT.</li>
+      <li>Classificação formal do dado de localização sob o Art. 11 da LGPD, a confirmar com Security.</li>
+    </ul>
   </section>
 
   <section id="impacto">
@@ -427,7 +454,7 @@
 </main>
 
 <footer>
-  Fluxo desenhado e fechado com o usuário em 2026-09-14. Regra de negócio formal em <code>.claude/skills/business-rules/references/attendance-presence-flow-rules.md</code> (RULE-PRES-01 a 13), com notas cruzadas em <code>attendance-rules.md</code>, <code>security-intrusion-rules.md</code> (RULE-SEC-05) e <code>configurable-parameters.md</code>. Situação do código levantada por leitura direta de <code>backend/src/</code> na mesma data. <strong>Implementação não aprovada</strong> — nenhuma linha de código foi escrita para esta frente.
+  Fluxo desenhado com o usuário em 2026-09-14; os 7 gaps abertos naquele momento foram todos fechados até 2026-09-15. Regra de negócio formal em <code>.claude/skills/business-rules/references/attendance-presence-flow-rules.md</code> (RULE-PRES-01 a 15), com notas cruzadas em <code>attendance-rules.md</code>, <code>security-intrusion-rules.md</code> (RULE-SEC-05) e <code>configurable-parameters.md</code>. Situação do código levantada por leitura direta de <code>backend/src/</code> em 2026-09-14, ainda válida. <strong>Implementação não aprovada</strong> — nenhuma linha de código foi escrita para esta frente.
 </footer>
 
 </body>
