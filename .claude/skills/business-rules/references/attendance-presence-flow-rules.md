@@ -402,6 +402,14 @@ resposta à pergunta sobre bloqueio duro versus pendência).
 > `project-knowledge/references/architecture-overview.md`), e 1 permanece
 > adiado sem mudança (item 7). Nenhum item sem "Source of confirmation"
 > abaixo deve ter resposta presumida a partir deste arquivo.
+>
+> **Atualização (2026-09-15):** os itens 4 e 6 voltaram do Tech Decision
+> com recomendação e foram **fechados** — o usuário aprovou ambas as
+> tecnologias exatamente como recomendadas ("Aprovado pode prosseguir").
+> Dos 7 gaps originais, restam abertos apenas: item 3 (VPN, adiado sem
+> prazo), item 5 (caminho decidido — vai por termo de consentimento —
+> mas texto exato ainda não formalizado por Business Analyst/Security) e
+> item 7 (divisão "em sala" por aula, adiado sem prazo).
 
 1. ~~**Distância do gatilho de afastamento (RULE-PRES-09).**~~
    **FECHADO (2026-09-14).** Reaproveita o raio configurável da
@@ -421,11 +429,17 @@ resposta à pergunta sobre bloqueio duro versus pendência).
    Buraco estreito (exige acesso concedido e fica registrado), mas real.
    **Adiado explicitamente — não tratar agora.** **Source of
    confirmation:** Usuário, 2026-09-14 ("Por hora não trataremos isso").
-4. **Detecção de GPS falsificado.** Existem mecanismos de plataforma para
-   detectar localização simulada e aparelho comprometido. Decisão de
-   tecnologia — **roteado ao Tech Decision Agent em 2026-09-14** a pedido
-   explícito do usuário. Continua sem escolha até o retorno dessa
-   consulta.
+4. ~~**Detecção de GPS falsificado.**~~ **FECHADO (2026-09-15).**
+   Tecnologia escolhida: campo nativo `mocked` do `expo-location`
+   (camada 1) + Talsec freeRASP (camada 2, cobre root/jailbreak e
+   reforça a detecção de GPS falso). Detalhe completo em
+   `project-knowledge/references/architecture-overview.md`, "Decisão de
+   tecnologia — Detecção de localização simulada e dispositivo
+   comprometido, App Mobile". Ressalva pendente (não bloqueia a escolha,
+   bloqueia orçamento): custo real do freeRASP na escala do projeto
+   ainda não confirmado com a Talsec. **Source of confirmation:** Tech
+   Decision Agent, 2026-09-14 (recomendação); Usuário, 2026-09-15,
+   aprovação exatamente como recomendada ("Aprovado pode prosseguir").
 5. **Consentimento e retenção de localização contínua (LGPD).**
    Rastrear a localização de aluno durante a aula é dado pessoal
    sensível, de peso jurídico maior que qualquer dado que o projeto
@@ -440,10 +454,16 @@ resposta à pergunta sobre bloqueio duro versus pendência).
    Business Analyst/Security formalizar como addendum próprio antes da
    implementação. **Source of confirmation:** Usuário, 2026-09-14
    ("Coloque para adicionar no termo de consentimento").
-6. **Tecnologia da contagem por câmera.** Decisão de tecnologia —
-   **roteado ao Tech Decision Agent em 2026-09-14** junto com o item 4, a
-   pedido explícito do usuário. Continua sem escolha até o retorno dessa
-   consulta.
+6. ~~**Tecnologia da contagem por câmera.**~~ **FECHADO (2026-09-15).**
+   Tecnologia escolhida: MobileNet-SSD (treinado em COCO), via
+   `cv2.dnn`, rodando no Raspberry Pi já aprovado. Detalhe completo em
+   `project-knowledge/references/architecture-overview.md`, "Decisão de
+   tecnologia — Contagem de pessoas por câmera em sala de aula". Ressalva
+   pendente: modelo exato de Raspberry Pi nunca foi fixado por nenhuma
+   decisão anterior; recomendação assume classe 4GB como piso, a validar
+   com Hardware Evaluation/IoT. **Source of confirmation:** Tech Decision
+   Agent, 2026-09-14 (recomendação); Usuário, 2026-09-15, aprovação
+   exatamente como recomendada ("Aprovado pode prosseguir").
 7. **Divisão do status "em sala" por aula.** O usuário adiou
    explicitamente (RULE-PRES-06) e reconfirmou o adiamento em 2026-09-14
    ("ok").

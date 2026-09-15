@@ -4750,3 +4750,181 @@ aula, só eventos discretos) mas não substitui a decisão jurídica pendente.
    reprovadas no gate de RULE-PRES-01, mesmo sem trilha para investigação
    futura de fraude. **Source of confirmation:** Usuário, 2026-09-14
    ("Não. Não quero guardar nada").
+
+> **Atualização (2026-09-15):** os dois itens do ponto 4 que estavam
+> roteados ao Tech Decision (GPS falsificado e tecnologia de câmera)
+> voltaram com recomendação e foram **aprovados pelo usuário exatamente
+> como recomendados** — ver "Decisão de tecnologia — Detecção de
+> localização simulada e dispositivo comprometido" e "Decisão de
+> tecnologia — Contagem de pessoas por câmera em sala de aula" logo
+> abaixo. Isso fecha os itens 4 e 6 de "Gaps abertos desta frente" em
+> `attendance-presence-flow-rules.md`. Restam nesta frente apenas: item 3
+> (VPN, adiado), item 5 (texto exato do consentimento, ainda não
+> formalizado por Business Analyst/Security) e item 7 (divisão "em sala"
+> por aula, adiado).
+
+## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
+
+Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como
+recomendada, sem nenhuma ressalva ou pedido de mudança — mesmo padrão da
+decisão de tecnologia de GAP-10 (ver acima). Preenche com tecnologia
+concreta um dos gaps roteados pelo usuário em 2026-09-14 (item 4 de
+"Gaps abertos desta frente",
+`business-rules/references/attendance-presence-flow-rules.md`): como
+produzir, no App Mobile, o sinal técnico de "localização simulada" e/ou
+"dispositivo comprometido" que alimenta `location-verification`
+(RULE-PRES-01/09). **Apenas o desenho de tecnologia é aprovado nesta
+entrada — nenhuma implementação foi feita.**
+
+**Alternativa escolhida — duas camadas, não uma só:**
+- **Camada 1 (custo zero, imediata):** campo nativo `mocked` do
+  `expo-location` (Expo SDK ~57), equivalente a
+  `Location.isFromMockProvider()` no Android, embutido no próprio
+  `LocationObject` retornado por `getCurrentPositionAsync`/
+  `watchPositionAsync` — sem módulo customizado, sem mudança de
+  workflow de build.
+- **Camada 2 (cobre root/jailbreak + reforça detecção de GPS falso):**
+  Talsec freeRASP (`freerasp-react-native`), SDK de RASP (Runtime
+  Application Self-Protection) com detecção de root/jailbreak (Magisk,
+  KernelSU, Shamiko, unc0ver, Dopamine), hooking (Frida/LSPosed),
+  bootloader desbloqueado, emulador, tampering e GPS mocking/spoofing
+  explícito — no próprio tier gratuito, checagem 100% local no
+  aparelho, sem chamada de rede nova. Guia oficial de integração com
+  Expo (config plugin compatível com `expo prebuild`/EAS Build, o
+  development build já em uso pelo projeto).
+
+**Comportamento em caso de sinal positivo:** mesmo padrão não-punitivo
+já fixado para rede/geo em RULE-PRES-01 — login continua funcionando
+normalmente, o evento simplesmente não entra no pipeline de presença;
+nunca bloqueio duro, nunca falta automática.
+
+**Alternativas descartadas (parte do histórico de decisão):**
+- **Apenas o campo `mocked`, sem camada 2** — descartada como solução
+  única porque é documentada só para Android, cobre apenas o vetor
+  "ingênuo" (apps de GPS falso que passam pelo mock provider oficial) e
+  é contornável em dispositivo rooteado por módulos Xposed/Magisk (ex.:
+  UnMockGPS, XposedFakeLocation, GPS Setter); não detecta root/jailbreak
+  isoladamente.
+- **`jail-monkey`** — biblioteca gratuita (MIT) equivalente para
+  root/jailbreak, mas com status de manutenção incerto (relatos
+  conflitantes de período dormente) — mesmo critério de risco já usado
+  neste projeto para rejeitar `@passwordless-id/webauthn` na Frente 12
+  ("autor único, atrito relatado").
+- **Google Play Integrity API + Apple App Attest/DeviceCheck via
+  `@expo/app-integrity`** — sinal tecnicamente mais forte (hardware-backed
+  attestation da própria Apple/Google), mas pacote em status alpha com
+  breaking changes esperados, e não cobre spoofing de localização de
+  forma nenhuma (resolveria só metade do problema). Sinalizada, não
+  descartada para sempre — revisitar quando o pacote sair de alpha, como
+  camada adicional futura de atestação, não como substituto das camadas
+  1/2 acima.
+- **Não fazer nada agora** — rejeitada, é exatamente o gap que o usuário
+  pediu para rotear a este agente.
+
+**Ressalvas registradas, não decisões novas:**
+- **Custo real do Talsec freeRASP na escala do projeto (milhares de
+  dispositivos de alunos) não foi confirmado em fonte primária** — a
+  única referência de preço encontrada na pesquisa é secundária e de
+  baixa confiança. **Precisa ser confirmado diretamente com a Talsec
+  antes de qualquer compromisso orçamentário.** Isto não bloqueia a
+  aprovação da tecnologia (o usuário já aprovou a escolha), mas bloqueia
+  fechar orçamento/compra até essa confirmação existir.
+- Como exatamente o sinal produzido por estas camadas se conecta ao
+  gate binário já fixado pela arquitetura (hoje um AND estrito de
+  rede + geo, "nunca fundidos numa única primitiva") é detalhe que
+  precisa de confirmação do Solution Architect antes da implementação —
+  esta decisão escolhe a tecnologia que produz o sinal, não decide se
+  ele vira um terceiro gate bloqueante ou um dado auxiliar.
+- Compatibilidade exata do freeRASP com os mínimos de plataforma já
+  fixados pelo projeto (iOS 16.4+/Android 7.0, API 24) não foi
+  verificada linha a linha na pesquisa — confirmar na integração real.
+
+**Não tocado nesta rodada:** nenhuma implementação em código (App
+Mobile) — integrar `expo-location`/freeRASP e conectar o sinal a
+`location-verification` fica para o Mobile Agent e o Solution Architect
+(ressalva acima), próxima etapa quando esta frente for implementada.
+
+**Source of confirmation:** Tech Decision Agent, 2026-09-14 (pesquisa e
+recomendação); Usuário, 2026-09-15, aprovação exatamente como
+recomendada, sem ressalva ou pedido de mudança ("Aprovado pode
+prosseguir").
+
+## Decisão de tecnologia — Contagem de pessoas por câmera em sala de aula (APROVADA — 2026-09-15)
+
+Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como
+recomendada. Preenche com tecnologia concreta o outro gap roteado em
+2026-09-14 (item 6 de "Gaps abertos desta frente",
+`business-rules/references/attendance-presence-flow-rules.md`): qual
+técnica/modelo de visão computacional roda dentro do pipeline de borda
+já aprovado (câmera IP fixa RTSP → Raspberry Pi, Python + OpenCV,
+`systemd`) para contar pessoas na sala a cada 15 minutos, alimentando o
+evento `CAMERA_COUNT` já existente e o job
+`classroom-headcount-reconciliation` (RULE-PRES-10/11/12). **Apenas o
+desenho de tecnologia é aprovado nesta entrada — nenhuma implementação
+foi feita.**
+
+**Alternativa escolhida — MobileNet-SSD (treinado em COCO), via
+`cv2.dnn`.** Detector de objetos genérico (não só pedestres em pé), lida
+melhor com poses sentadas/oclusão parcial de carteira que o cenário de
+sala de aula impõe; suportado nativamente pelo `cv2.dnn` (já parte do
+OpenCV, sem runtime paralelo); licença Apache-2.0 (uso comercial sem
+restrição); é o padrão de fato de implementações de referência para
+"contar pessoas com câmera fixa + OpenCV"; performance em Raspberry Pi 4
+(5 a ~30 FPS conforme build/quantização) é folga enorme para 1 execução
+a cada 15 minutos.
+
+**Alternativa leve sinalizada, não descartada:** NanoDet-Plus (já parte
+do OpenCV Model Zoo, via `cv2.dnn`, ~1-2MB, Apache-2.0) — cotada como
+substituta caso o piloto real na sala de aula mostre necessidade de
+footprint menor ou ganho de acurácia. Decisão a ser revisitada pelo
+Computer Vision Agent na implementação, não fechada aqui.
+
+**Alternativas descartadas (parte do histórico de decisão):**
+- **HOG+SVM (`cv2.HOGDescriptor`), nativo do OpenCV** — zero dependência
+  extra, mas treinado para pedestres de corpo inteiro em pé;
+  desempenho documentadamente ruim sob oclusão parcial (múltiplas
+  fontes), exatamente a condição de uma sala de aula com alunos
+  sentados atrás de carteiras — tende a **subcontagem sistemática**
+  (viés, não ruído aleatório), o que conflita diretamente com o
+  propósito do limiar de alerta de RULE-PRES-11 (5 pessoas/2 janelas).
+  Rejeitada por esse motivo, não por ser genericamente "menos precisa".
+- **YOLOv8n/YOLO11n (Ultralytics)** — geralmente mais precisa, mas
+  pesos/código AGPL-3.0 por padrão; uso comercial fechado exigiria
+  licença Enterprise paga (valor não divulgado publicamente) e a
+  cláusula de rede do AGPL é risco jurídico real para um produto
+  comercial como o CheckClass. Rejeitada: o ganho de precisão não
+  justifica o risco de licença para um requisito que já tolera 5
+  pessoas de erro.
+- **YOLO-NAS (Deci AI)** — projeto congelado desde a aquisição da Deci
+  pela NVIDIA (abril/2024), sem desenvolvimento ativo, licenciamento
+  comercial pós-aquisição incerto — mesmo padrão de risco de manutenção
+  já usado pelo projeto para descartar dependências de mantenedor
+  único/incerto.
+- **Modelos de estimativa de densidade (CSRNet e família)** —
+  desenhados para multidões densas com sobreposição severa
+  (centenas/milhares de pessoas), problema diferente de uma sala de
+  aula (dezenas de pessoas); exigiria dados de treino próprios sem
+  benefício correspondente — complexidade desproporcional.
+
+**Ressalvas registradas, não decisões novas:**
+- **Nenhuma decisão anterior do projeto fixou o modelo exato de
+  Raspberry Pi** (Pi 4 vs Pi 5 vs outro). Esta recomendação assume uma
+  Pi classe 4GB como piso conservador; se o hardware real for mais
+  fraco, esta escolha precisa ser revisitada pelo Hardware
+  Evaluation/IoT antes de comprar em volume.
+- Nenhuma imagem/vídeo trafega para o backend — o payload permanece
+  `{ count: N }`, mesmo padrão de privacidade já fixado para
+  `FACIAL_CHECKIN`. Não reabre nem contradiz a exigência de contagem
+  exata de RULE-SEC-05 para áreas de Segurança de Intrusão — esta
+  decisão é escopada exclusivamente ao uso de sala de aula
+  (RULE-PRES-10/11/12).
+
+**Não tocado nesta rodada:** nenhuma implementação em código (Raspberry
+Pi/edge) — integrar o modelo ao serviço Python + OpenCV já existente
+fica para o Computer Vision Agent e o IoT Agent, próxima etapa quando
+esta frente for implementada.
+
+**Source of confirmation:** Tech Decision Agent, 2026-09-14 (pesquisa e
+recomendação); Usuário, 2026-09-15, aprovação exatamente como
+recomendada, sem ressalva ou pedido de mudança ("Aprovado pode
+prosseguir").
