@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { LocationConsentDecisionEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
+import { GuardianLinkFollowupReason, GuardianLinkFollowupService } from '../guardian-link-followup/guardian-link-followup.service';
 
 // RULE-GRD-07 pendência 1 (business-rules/references/legal-guardian-consent-rules.md,
 // approved 2026-09-15): triggered by PersonManagementService.confirmDateOfBirth
@@ -29,9 +30,10 @@ import { TenantContextService } from '../../database/tenant-context.service';
 // migration.
 @Injectable()
 export class RetroactiveMinorConsentGuardService {
-  private readonly logger = new Logger(RetroactiveMinorConsentGuardService.name);
-
-  constructor(private readonly tenantContext: TenantContextService) {}
+  constructor(
+    private readonly tenantContext: TenantContextService,
+    private readonly guardianLinkFollowup: GuardianLinkFollowupService,
+  ) {}
 
   async suspendSensitiveConsentsIfGranted(subjectPersonId: string, suspendedByPersonId: string): Promise<void> {
     await this.suspendLocationConsentIfSelfGranted(subjectPersonId, suspendedByPersonId);
@@ -57,7 +59,7 @@ export class RetroactiveMinorConsentGuardService {
       return;
     }
 
-    await repository.save(
+    const saved = await repository.save(
       repository.create({
         tenantId,
         subjectPersonId,
@@ -68,12 +70,19 @@ export class RetroactiveMinorConsentGuardService {
       }),
     );
 
-    this.logger.warn(
-      `Location consent for person ${subjectPersonId} suspended after a presencial date-of-birth ` +
-        'confirmation revealed minority (RULE-GRD-07 pendência 1). The legal-guardian vínculo flow ' +
-        '(RULE-GRD-02/05) must be (re-)completed before this consent can be granted again — no ' +
-        'legal_guardian CRUD endpoint exists yet in this backend to trigger automatically; flagged here ' +
-        'for manual follow-up until that module is built.',
-    );
+    // RULE-GRD-07 pendência 1 production-readiness gap (Security,
+    // 2026-09-15): a real, traceable trigger of the legal-guardian vínculo
+    // flow, replacing the previous logger.warn-only signal. Opened in the
+    // SAME transaction as the suspension row above — both go through this
+    // request's this.tenantContext.getManager() (TenantContextService.
+    // runWithTenant), one atomic event with two effects, not two separate
+    // ones. See architecture-overview.md's "Proposta do Solution Architect
+    // para o gatilho real do fluxo de responsável legal".
+    await this.guardianLinkFollowup.open({
+      subjectPersonId,
+      reason: GuardianLinkFollowupReason.RETROACTIVE_MINORITY_LOCATION_CONSENT_SUSPENDED,
+      relatedLocationConsentDecisionId: saved.id,
+      triggeredByPersonId: suspendedByPersonId,
+    });
   }
 }

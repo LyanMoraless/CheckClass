@@ -47,8 +47,9 @@ describe('PersonManagementService', () => {
     }
     const tenantContext = createMockTenantContext(manager);
     const retroactiveMinorConsentGuard = { suspendSensitiveConsentsIfGranted: jest.fn().mockResolvedValue(undefined) };
-    const service = new PersonManagementService(tenantContext as never, retroactiveMinorConsentGuard as never);
-    return { service, actorTypeRepo, personRepo, credentialRepo, manager, retroactiveMinorConsentGuard };
+    const guardianLinkFollowup = { listOpenBySubject: jest.fn().mockResolvedValue([]) };
+    const service = new PersonManagementService(tenantContext as never, retroactiveMinorConsentGuard as never, guardianLinkFollowup as never);
+    return { service, actorTypeRepo, personRepo, credentialRepo, manager, retroactiveMinorConsentGuard, guardianLinkFollowup };
   }
 
   const baseInput: CreatePersonInput = { fullName: 'Jane Student', actorTypeCode: 'STUDENT' };
@@ -201,6 +202,7 @@ describe('PersonManagementService', () => {
         confirmedAt: null,
         confirmedByPersonId: null,
         confirmationState: 'absent',
+        openGuardianLinkFollowups: [],
       });
     });
 
@@ -224,7 +226,28 @@ describe('PersonManagementService', () => {
         confirmedAt,
         confirmedByPersonId: 'staff-1',
         confirmationState: 'confirmed',
+        openGuardianLinkFollowups: [],
       });
+    });
+
+    // architecture-overview.md's "Visibilidade" section, second bullet:
+    // GET /v1/users/:personId/date-of-birth composes this person's OPEN
+    // guardian_link_followup items — contextual discovery for when the
+    // Secretaria is already attending this person.
+    test('test_getDateOfBirthDetail_composesOpenGuardianLinkFollowupsForThisPerson', async () => {
+      const personRepo = createMockRepository({
+        findOneBy: jest
+          .fn()
+          .mockResolvedValue({ id: 'person-1', dateOfBirth: null, dateOfBirthConfirmedAt: null, dateOfBirthConfirmedByPersonId: null }),
+      });
+      const openFollowups = [{ id: 'followup-1', subjectPersonId: 'person-1', status: 'open' }];
+      const { service, guardianLinkFollowup } = buildService({ personRepo });
+      guardianLinkFollowup.listOpenBySubject.mockResolvedValue(openFollowups);
+
+      const result = await service.getDateOfBirthDetail('person-1');
+
+      expect(guardianLinkFollowup.listOpenBySubject).toHaveBeenCalledWith('person-1');
+      expect(result.openGuardianLinkFollowups).toBe(openFollowups);
     });
   });
 

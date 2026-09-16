@@ -66,3 +66,4 @@ export * from './raw-location-signal.entity';
 export * from './legal-guardian.entity';
 export * from './location-consent-decision.entity';
 export * from './institutional-location-config.entity';
+export * from './guardian-link-followup.entity';

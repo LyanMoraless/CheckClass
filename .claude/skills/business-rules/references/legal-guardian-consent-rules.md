@@ -269,19 +269,37 @@ do Solution Architect para os gaps 1 e 2", agora marcada como implementada.
 `decided_by_type = 'system' → decision = 'revoked'` (ajuste pedido pelo
 Security), e `RetroactiveMinorConsentGuardService` foi corrigido para usar
 `decidedByType: 'system'` + `systemActionTriggeredByPersonId` em vez de
-esticar `decidedByPersonId`. **Ainda pendente, não coberto por esta
-aprovação:** o gatilho de log citado no parágrafo acima ("falta o gatilho
-automático quando o módulo de vínculo existir") continua sendo só
-`logger.warn` — o Security marcou a troca por um acionamento real e
-rastreável do fluxo de responsável legal como bloqueante antes de
-RULE-PRES-14 operar com suspensão automática em produção, mas essa troca
-não fez parte do que o usuário aprovou nesta rodada (só o ajuste de
-schema). Segue em aberto para quando essa frente for retomada.
+esticar `decidedByPersonId`.
+
+**Atualização — implementada em 2026-09-15:** o gatilho de log citado no
+parágrafo acima ("falta o gatilho automático quando o módulo de vínculo
+existir"), que era só `logger.warn` e que o Security havia marcado como
+bloqueante antes de RULE-PRES-14 operar com suspensão automática em
+produção, foi **substituído por um acionamento real e rastreável**: nova
+entidade `guardian_link_followup` (idempotente por `(tenant_id,
+subject_person_id, reason)` via índice único parcial, colunas de abertura
+imutáveis por GRANT column-level no banco), `GuardianLinkFollowupService`
+(`open`/`resolve`/`listAllOpen`/`listOpenBySubject`, todos tenant-scoped),
+`RetroactiveMinorConsentGuardService` chamando `open(...)` na mesma
+transação da suspensão do consentimento, endpoint de fechamento
+`PATCH /v1/users/:personId/guardian-link-followups/:followupId`
+(atestação manual da Secretaria, mesmo padrão de confiança operacional de
+RULE-GRD-05/06 — não depende de CRUD de `legal_guardian`, que ainda não
+existe) e dois caminhos de visibilidade: `GET /v1/guardian-link-followups`
+(relatório de topo, todos os itens `open` do tenant) e
+`GET /v1/users/:personId/date-of-birth` (agora compõe os itens `open`
+daquela pessoa). Visibilidade decidida pelo usuário como "varredura
+periódica como rede de segurança" — sem cron/notificação, risco aceito
+explicitamente (ver `architecture-overview.md` para o raciocínio
+completo). Detalhes técnicos completos em `architecture-overview.md`,
+seção "Proposta do Solution Architect para o gatilho real do fluxo de
+responsável legal (`guardian_link_followup`)". **Nada mais pendente nesta
+frente.**
 **Source of confirmation:** Business Analyst Agent, 2026-09-15
 (recomendação); usuário, 2026-09-15 (aprovação da Opção D, decisão das 3
-pendências, e aprovação do schema dos gaps 1 e 2); Solution Architect,
-Security, Database e Backend Agents, 2026-09-15 (proposta, revisão e
-implementação).
+pendências, aprovação do schema dos gaps 1 e 2, e aprovação do desenho
+completo do `guardian_link_followup`); Solution Architect, Security,
+Database e Backend Agents, 2026-09-15 (proposta, revisão e implementação).
 
 ---
 

@@ -1,10 +1,11 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { hash } from 'bcrypt';
 import { QueryFailedError } from 'typeorm';
-import { ActorTypeEntity, PersonCredentialEntity, PersonEntity } from '../../database/entities';
+import { ActorTypeEntity, GuardianLinkFollowupEntity, PersonCredentialEntity, PersonEntity } from '../../database/entities';
 import { BirthDateConfirmationState, deriveMinorityStatus } from '../../common/minority-status.util';
 import { dateKeyOfUtc } from '../../common/utc-date.util';
 import { TenantContextService } from '../../database/tenant-context.service';
+import { GuardianLinkFollowupService } from '../guardian-link-followup/guardian-link-followup.service';
 import { RetroactiveMinorConsentGuardService } from './retroactive-minor-consent-guard.service';
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -38,6 +39,14 @@ export interface PersonDateOfBirthDetail {
   confirmedAt: Date | null;
   confirmedByPersonId: string | null;
   confirmationState: BirthDateConfirmationState;
+  // Contextual discovery path for guardian_link_followup (architecture
+  // -overview.md's "Visibilidade" section, second bullet): this person's
+  // OPEN items, surfaced while the Secretaria is already attending them.
+  // Returned as the raw entity (not a narrower shape like the other fields
+  // above) — same Secretaria-only allowlist as the rest of this interface,
+  // and GET /v1/guardian-link-followups already returns the same shape
+  // tenant-wide, so there is no narrower "public" version to protect here.
+  openGuardianLinkFollowups: GuardianLinkFollowupEntity[];
 }
 
 export interface ConfirmedDateOfBirth {
@@ -57,6 +66,7 @@ export class PersonManagementService {
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly retroactiveMinorConsentGuard: RetroactiveMinorConsentGuardService,
+    private readonly guardianLinkFollowup: GuardianLinkFollowupService,
   ) {}
 
   async createPerson(input: CreatePersonInput): Promise<CreatedPerson> {
@@ -125,12 +135,14 @@ export class PersonManagementService {
     }
 
     const { confirmationState } = deriveMinorityStatus(person);
+    const openGuardianLinkFollowups = await this.guardianLinkFollowup.listOpenBySubject(personId);
     return {
       personId: person.id,
       dateOfBirth: toDateOnlyString(person.dateOfBirth),
       confirmedAt: person.dateOfBirthConfirmedAt,
       confirmedByPersonId: person.dateOfBirthConfirmedByPersonId,
       confirmationState,
+      openGuardianLinkFollowups,
     };
   }
 

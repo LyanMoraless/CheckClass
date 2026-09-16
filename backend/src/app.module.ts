@@ -24,6 +24,7 @@ import { DeviceModule } from './modules/device/device.module';
 import { DeviceBindingModule } from './modules/device-binding/device-binding.module';
 import { DeviceIdentityModule } from './modules/device-identity/device-identity.module';
 import { ExamModule } from './modules/exam/exam.module';
+import { GuardianLinkFollowupModule } from './modules/guardian-link-followup/guardian-link-followup.module';
 import { HealthModule } from './modules/health/health.module';
 import { HolidayModule } from './modules/holiday/holiday.module';
 import { IdentificationModule } from './modules/identification/identification.module';
@@ -73,6 +74,12 @@ import { QueueModule } from './queue/queue.module';
     AttendanceRegisterModule,
     AuthModule,
     InstitutionOnboardingModule,
+    // GuardianLinkFollowupModule before PersonManagementModule reflects the
+    // real dependency direction (PersonManagementModule imports it, never
+    // the reverse) — registration order in this array doesn't affect Nest's
+    // DI resolution, kept this way only for readability (same convention as
+    // DeviceIdentityModule/DeviceBindingModule below).
+    GuardianLinkFollowupModule,
     PersonManagementModule,
     StudentDirectoryModule,
     CourseModule,

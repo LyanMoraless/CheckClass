@@ -3883,15 +3883,17 @@ ativa citado no item 2 acima.
 > não bloqueado, um ajuste de CHECK requisitado) + usuário, 2026-09-15
 > (aprovação explícita) + Database e Backend Agents, 2026-09-15
 > (implementação: migrations, entities e
-> `RetroactiveMinorConsentGuardService`). **Ainda em aberto, não coberto
-> por esta aprovação:** o gatilho real do fluxo de responsável legal
-> (hoje `logger.warn` em `RetroactiveMinorConsentGuardService`) —
-> bloqueante antes de RULE-PRES-14 operar com suspensão automática em
-> produção, ver `legal-guardian-consent-rules.md`.
+> `RetroactiveMinorConsentGuardService`). **Atualização — 2026-09-15:** o
+> gatilho real do fluxo de responsável legal (então `logger.warn` em
+> `RetroactiveMinorConsentGuardService`), que ficava em aberto e bloqueante
+> antes de RULE-PRES-14 operar com suspensão automática em produção, foi
+> **implementado** — ver seção seguinte, "Proposta do Solution Architect
+> para o gatilho real do fluxo de responsável legal (`guardian_link_followup`)".
 
-### Proposta do Solution Architect para o gatilho real do fluxo de responsável legal (`guardian_link_followup`)
+### Proposta do Solution Architect para o gatilho real do fluxo de responsável legal (`guardian_link_followup`) (IMPLEMENTADA — aprovada pelo usuário e aplicada por Database + Backend, 2026-09-15)
 
-> **PROPOSTA — revisada pelo Security, aguardando aprovação do usuário, 2026-09-15**
+> Aprovada pelo usuário e implementada por Database + Backend Agents,
+> 2026-09-15 — ver "Impacto em código (implementado)" ao final desta seção.
 
 Fecha a pendência de production-readiness deixada em aberto na seção
 anterior: hoje `RetroactiveMinorConsentGuardService` só grava
@@ -3996,9 +3998,50 @@ limite superior defensivo na listagem (antecipando volume futuro de
 RULE-FACE-09) e, se/quando infraestrutura de notificação for aprovada por
 qualquer outro motivo, priorizar esta fila como consumidora.
 
-**Veredito do Security:** esta versão, se aprovada pelo usuário, satisfaz
-a exigência de 2026-09-15 de "acionamento real e rastreável" — nenhum
-bloqueante de arquitetura ou de negócio remanescente.
+**Veredito do Security:** esta versão satisfaz a exigência de 2026-09-15
+de "acionamento real e rastreável" — nenhum bloqueante de arquitetura ou
+de negócio remanescente.
+
+**Impacto em código (implementado, 2026-09-15):**
+- **Database:** migration `1755878000000-AddGuardianLinkFollowup.ts` +
+  entity `guardian-link-followup.entity.ts` — tabela `guardian_link_followup`
+  exatamente como desenhada acima: CHECK de vocabulário fechado em `reason`,
+  CHECK de mutual-exclusividade nas colunas de resolução (mesmo padrão de
+  `location_consent_decision_decided_by_exclusive_check`), índice único
+  parcial `(tenant_id, subject_person_id, reason) WHERE status = 'open'`
+  (idempotência garantida pelo banco), índice parcial adicional para a
+  listagem por `opened_at`, RLS por tenant, e GRANT `UPDATE` **column-level**
+  restrito às 4 colunas de resolução (`status, resolved_at,
+  resolved_by_person_id, resolution_note`) — as colunas de abertura ficam
+  imutáveis por garantia do banco, não só disciplina de aplicação.
+- **Backend:** novo módulo de topo `GuardianLinkFollowupModule`
+  (`backend/src/modules/guardian-link-followup/`) com
+  `GuardianLinkFollowupService` (`open` idempotente via insert-or-ignore +
+  re-select, mesmo padrão de `PersonManagementService.findOrCreateActorType`;
+  `resolve` via UPDATE condicional `WHERE status = 'open'`, distinguindo 404
+  de item inexistente e 409 de item já resolvido; `listAllOpen` e
+  `listOpenBySubject`, ambos tenant-scoped via `TenantContextService`) e
+  `GuardianLinkFollowupController` expondo `GET /v1/guardian-link-followups`
+  (allowlist `MANAGE_USERS`, mesma exigida pelo Security). O motivo é
+  reutilizável via `GuardianLinkFollowupReason` (enum, um valor hoje,
+  ponto de extensão para RULE-FACE-09). `RetroactiveMinorConsentGuardService`
+  trocou o `logger.warn` por uma chamada real a
+  `GuardianLinkFollowupService.open(...)` na mesma transação do INSERT em
+  `location_consent_decision`. `PersonManagementController` ganhou
+  `PATCH /v1/users/:personId/guardian-link-followups/:followupId`
+  (fechamento — atestação manual da Secretaria, `resolvedByPersonId` sempre
+  do JWT, valida que o followup pertence ao `:personId` da rota antes de
+  resolver, mesmo 404 para "não existe" e "existe mas é de outra pessoa").
+  Segundo caminho de visibilidade implementado: `GET
+  /v1/users/:personId/date-of-birth` agora compõe
+  `openGuardianLinkFollowups` (itens `open` daquela pessoa específica) no
+  corpo de `PersonDateOfBirthDetail`.
+- **Testes:** cobertura nova em `guardian-link-followup.service.spec.ts`
+  (open idempotente, resolve happy path/404/409, listAllOpen,
+  listOpenBySubject) e specs atualizados de
+  `retroactive-minor-consent-guard.service.spec.ts` e
+  `person-management.service.spec.ts`. Build, lint e suíte completa (102
+  suítes) verdes.
 
 > **Source of confirmation:** Solution Architect Agent, 2026-09-15
 > (proposta, em 3 rodadas: schema, caminho de fechamento, varredura) +
@@ -4006,9 +4049,11 @@ bloqueante de arquitetura ou de negócio remanescente.
 > apontados e depois confirmados como resolvidos) + Business Analyst
 > Agent, 2026-09-15 (confirmação de que não há cobertura de visibilidade
 > automática hoje) + usuário, 2026-09-15 (decisão da alternativa de
-> visibilidade: varredura periódica). **Ainda não implementado** —
-> aguardando aprovação explícita do usuário para este desenho como um
-> todo antes de acionar Database/Backend.
+> visibilidade: varredura periódica, e aprovação explícita do desenho como
+> um todo) + Database e Backend Agents, 2026-09-15 (implementação: ver
+> "Impacto em código" acima). **Implementada** — fecha a pendência de
+> production-readiness deixada em aberto na seção "Proposta ... para os
+> gaps 1 e 2" acima; ver também `legal-guardian-consent-rules.md`.
 
 ### Pendências antes de qualquer migration real
 
