@@ -301,6 +301,46 @@ pendências, aprovação do schema dos gaps 1 e 2, e aprovação do desenho
 completo do `guardian_link_followup`); Solution Architect, Security,
 Database e Backend Agents, 2026-09-15 (proposta, revisão e implementação).
 
+**Atualização — implementada em 2026-09-15 (CRUD de `legal_guardian`):**
+RULE-GRD-02/05/06 deixam de ser apenas "registro declarado" sem mecanismo
+de escrita e passam a ter **CRUD real**: criar, listar, editar e revogar
+o vínculo aluno-responsável, no módulo
+`backend/src/modules/legal-guardian/` (`LegalGuardianService.create`/
+`listByStudent`/`update`/`revoke`, `LegalGuardianController` expondo
+`POST/GET v1/users/:personId/legal-guardians`,
+`PATCH v1/users/:personId/legal-guardians/:guardianId` e
+`POST v1/users/:personId/legal-guardians/:guardianId/revoke`, mesma
+allowlist Secretaria-exclusiva `MANAGE_USERS` de `guardian_link_followup`).
+`revoke()` tem dois efeitos colaterais independentes e não-exclusivos, via
+o novo serviço compartilhado `LocationConsentSuspensionService`
+(`backend/src/modules/location-consent-guard/`, extraído de
+`RetroactiveMinorConsentGuardService`): (a) se o responsável revogado era
+quem decidiu o consentimento de localização mais recente **concedido** do
+aluno, esse consentimento é **invalidado retroativamente** e reabre
+`guardian_link_followup` (`reason:
+legal_guardian_revoked_location_consent_invalidated`); (b) se era o
+**último responsável ativo restante** de um aluno atualmente menor
+confirmado, abre `guardian_link_followup` (`reason:
+no_active_legal_guardian_remaining`) — as duas checagens podem disparar
+juntas na mesma chamada de `revoke()`, cada uma idempotente pelo índice
+único parcial já existente na tabela. O `GRANT DELETE` físico de
+`legal_guardian`, que nunca deveria ter existido (RULE-GRD-06 só prevê
+revogação lógica, nunca exclusão), foi corrigido para o mesmo padrão de
+defesa em profundidade já aplicado a `guardian_link_followup` (migration
+`FixLegalGuardianGrants`). Security revisou (autorização `MANAGE_USERS`,
+RLS por tenant, IDOR via checagem de pertencimento aluno-responsável,
+imutabilidade de colunas de auditoria a nível de banco, consistência
+transacional do `revoke()`) e **aprovou sem bloqueios**, com 2
+recomendações não-bloqueantes registradas como dívida técnica aceita.
+Detalhes técnicos completos em `architecture-overview.md`, seção "Decisão
+de arquitetura — CRUD de legal_guardian", agora com "Impacto em código" ao
+final. **Nada mais pendente nesta frente.**
+**Source of confirmation:** Business Analyst e Solution Architect Agents,
+2026-09-15 (desenho); usuário, 2026-09-15 (aprovação das 4 decisões de
+negócio e dos 5 defaults propostos); Database e Backend Agents, 2026-09-15
+(implementação); Security Agent, 2026-09-15 (revisão, aprovada sem
+bloqueios).
+
 ---
 
 ## Arquivos relacionados

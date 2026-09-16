@@ -33,6 +33,8 @@ import { InstitutionOnboardingModule } from './modules/institution-onboarding/in
 import { InstitutionalNetworkModule } from './modules/institutional-network/institutional-network.module';
 import { IntrusionDetectionModule } from './modules/intrusion-detection/intrusion-detection.module';
 import { LeadershipAssignmentModule } from './modules/leadership-assignment/leadership-assignment.module';
+import { LegalGuardianModule } from './modules/legal-guardian/legal-guardian.module';
+import { LocationConsentGuardModule } from './modules/location-consent-guard/location-consent-guard.module';
 import { PendingReviewModule } from './modules/pending-review/pending-review.module';
 import { PersonManagementModule } from './modules/person-management/person-management.module';
 import { RoomModule } from './modules/room/room.module';
@@ -74,13 +76,19 @@ import { QueueModule } from './queue/queue.module';
     AttendanceRegisterModule,
     AuthModule,
     InstitutionOnboardingModule,
-    // GuardianLinkFollowupModule before PersonManagementModule reflects the
-    // real dependency direction (PersonManagementModule imports it, never
-    // the reverse) — registration order in this array doesn't affect Nest's
-    // DI resolution, kept this way only for readability (same convention as
-    // DeviceIdentityModule/DeviceBindingModule below).
+    // GuardianLinkFollowupModule/LocationConsentGuardModule before
+    // PersonManagementModule reflects the real dependency direction
+    // (PersonManagementModule imports both, never the reverse) —
+    // registration order in this array doesn't affect Nest's DI resolution,
+    // kept this way only for readability (same convention as
+    // DeviceIdentityModule/DeviceBindingModule below). LegalGuardianModule
+    // after PersonManagementModule for the same reason (imports it for
+    // PersonMinorityStatusService — "Decisão de arquitetura — CRUD de
+    // legal_guardian", architecture-overview.md).
     GuardianLinkFollowupModule,
+    LocationConsentGuardModule,
     PersonManagementModule,
+    LegalGuardianModule,
     StudentDirectoryModule,
     CourseModule,
     SubjectModule,

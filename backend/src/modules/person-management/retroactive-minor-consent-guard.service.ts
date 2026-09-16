@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { LocationConsentDecisionEntity } from '../../database/entities';
-import { TenantContextService } from '../../database/tenant-context.service';
-import { GuardianLinkFollowupReason, GuardianLinkFollowupService } from '../guardian-link-followup/guardian-link-followup.service';
+import { GuardianLinkFollowupReason } from '../guardian-link-followup/guardian-link-followup.service';
+import { LocationConsentSuspensionService } from '../location-consent-guard/location-consent-suspension.service';
 
 // RULE-GRD-07 pendência 1 (business-rules/references/legal-guardian-consent-rules.md,
 // approved 2026-09-15): triggered by PersonManagementService.confirmDateOfBirth
@@ -20,20 +19,17 @@ import { GuardianLinkFollowupReason, GuardianLinkFollowupService } from '../guar
 // when it is, its own consent-decision table/service must get the exact same
 // treatment via a new private method here, not a second divergent mechanism.
 //
-// Schema note: this suspension row is written with decided_by_type =
-// 'system' (nobody decided — RULE-GRD-07's soft block fires automatically)
-// and system_action_triggered_by_person_id = the Secretaria staff who
-// performed the date-of-birth confirmation that triggered it — distinct from
-// decided_by_person_id/decided_by_legal_guardian_id, which record WHO
-// DECIDED and are both left unset here, as the DB CHECK on decided_by_type =
-// 'system' requires. See AddLegalGuardianAndLocationConsentDecision
-// migration.
+// Extraction note ("Decisão de arquitetura — CRUD de legal_guardian",
+// architecture-overview.md): the actual "read latest decision" / "insert the
+// 'system'-revoked row + open a guardian_link_followup item" mechanics now
+// live in the shared LocationConsentSuspensionService (legal_guardian
+// revocation is a second, unrelated trigger of that same mechanic) — this
+// class keeps only the guard condition specific to retroactive-minority
+// discovery ("was the latest decision granted by the subject THEMSELF"),
+// preserving its original behavior exactly.
 @Injectable()
 export class RetroactiveMinorConsentGuardService {
-  constructor(
-    private readonly tenantContext: TenantContextService,
-    private readonly guardianLinkFollowup: GuardianLinkFollowupService,
-  ) {}
+  constructor(private readonly locationConsentSuspension: LocationConsentSuspensionService) {}
 
   async suspendSensitiveConsentsIfGranted(subjectPersonId: string, suspendedByPersonId: string): Promise<void> {
     await this.suspendLocationConsentIfSelfGranted(subjectPersonId, suspendedByPersonId);
@@ -42,14 +38,7 @@ export class RetroactiveMinorConsentGuardService {
   }
 
   private async suspendLocationConsentIfSelfGranted(subjectPersonId: string, suspendedByPersonId: string): Promise<void> {
-    const manager = this.tenantContext.getManager();
-    const tenantId = this.tenantContext.getTenantId();
-    const repository = manager.getRepository(LocationConsentDecisionEntity);
-
-    const latest = await repository.findOne({
-      where: { subjectPersonId },
-      order: { capturedAt: 'DESC' },
-    });
+    const latest = await this.locationConsentSuspension.getLatestDecision(subjectPersonId);
 
     // Nothing to suspend if there is no consent, it isn't currently
     // 'granted', or it was already granted BY A GUARDIAN — that last case is
@@ -59,29 +48,10 @@ export class RetroactiveMinorConsentGuardService {
       return;
     }
 
-    const saved = await repository.save(
-      repository.create({
-        tenantId,
-        subjectPersonId,
-        decidedByType: 'system',
-        systemActionTriggeredByPersonId: suspendedByPersonId,
-        decision: 'revoked',
-        consentVersion: latest.consentVersion,
-      }),
-    );
-
-    // RULE-GRD-07 pendência 1 production-readiness gap (Security,
-    // 2026-09-15): a real, traceable trigger of the legal-guardian vínculo
-    // flow, replacing the previous logger.warn-only signal. Opened in the
-    // SAME transaction as the suspension row above — both go through this
-    // request's this.tenantContext.getManager() (TenantContextService.
-    // runWithTenant), one atomic event with two effects, not two separate
-    // ones. See architecture-overview.md's "Proposta do Solution Architect
-    // para o gatilho real do fluxo de responsável legal".
-    await this.guardianLinkFollowup.open({
+    await this.locationConsentSuspension.suspendAndOpenFollowup({
       subjectPersonId,
+      latest,
       reason: GuardianLinkFollowupReason.RETROACTIVE_MINORITY_LOCATION_CONSENT_SUSPENDED,
-      relatedLocationConsentDecisionId: saved.id,
       triggeredByPersonId: suspendedByPersonId,
     });
   }

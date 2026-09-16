@@ -4104,6 +4104,278 @@ Backend/migration real, porém, até os itens 2-4 acima serem resolvidos.
 > aprovadas por ele em 2026-09-15 (respostas: sim / Ok / confere / sim /
 > Ok / aceitável, nessa ordem).
 
+## Decisão de arquitetura — CRUD de legal_guardian (IMPLEMENTADA — aprovada pelo usuário e aplicada por Database + Backend, 2026-09-15)
+
+> **Arquitetura aprovada pelo usuário em 2026-09-15**, incluindo os 5
+> defaults propostos pelo Solution Architect Agent (ver "Pendências em
+> aberto" abaixo, mantida como registro histórico da proposta — todos os
+> pontos foram aprovados sem alteração). Implementada por Database +
+> Backend Agents, 2026-09-15 — ver "Impacto em código (implementado)" ao
+> final desta seção.
+
+### Contexto
+
+`legal_guardian` já existe como tabela/entity (migration
+`1755875000000-AddLegalGuardianAndLocationConsentDecision.ts`,
+`legal-guardian.entity.ts`), mas nunca ganhou um CRUD próprio — hoje só é
+referenciada como FK por `location_consent_decision.decided_by_legal_guardian_id`
+e por `retroactive-minor-consent-guard.service.ts`. O Business Analyst
+decompôs os requisitos do CRUD e o usuário fechou 4 decisões de negócio em
+2026-09-15: (1) revogar um responsável que é o autor da decisão de
+consentimento de localização mais recente de um aluno **invalida
+retroativamente** esse consentimento e reabre `guardian_link_followup`;
+(2) revogar o único responsável ativo restante de um menor abre um item
+de `guardian_link_followup`; (3) o modelo "uma linha por vínculo
+aluno-responsável" (schema atual) permanece como está, sem entidade de
+responsável compartilhada entre irmãos; (4) o `GRANT DELETE` físico hoje
+existente em `legal_guardian` deve ser corrigido para o mesmo padrão de
+defesa em profundidade das tabelas irmãs.
+
+### Componentes afetados
+
+- **`legal_guardian`** — ganha seu primeiro módulo real de leitura/escrita;
+  grants precisam ser corrigidos.
+- **`guardian_link_followup`** / `GuardianLinkFollowupService` — reaproveitado
+  sem mudança de service, mas o vocabulário fechado de `reason` (CHECK no
+  banco) ganha 2 valores novos.
+- **`RetroactiveMinorConsentGuardService`** — sua mecânica privada de
+  "suspender consentimento + abrir followup" é extraída para um serviço
+  compartilhado, para o novo fluxo de revogação não duplicar a lógica.
+- **`PersonManagementModule`** — passa a ser importado também pelo novo
+  módulo `legal-guardian` (para `PersonMinorityStatusService`), exatamente
+  o ponto de reaproveitamento que o próprio cabeçalho daquele módulo já
+  previa.
+- **`location_consent_decision`** — sem mudança de schema; novos
+  leitores/escritores.
+
+### Estrutura proposta
+
+**Novo módulo `LegalGuardianModule`** (`backend/src/modules/legal-guardian/`),
+espelhando o formato de `GuardianLinkFollowupModule`:
+- `LegalGuardianService` — `create`, `listByStudent`, `findById`, `update`,
+  `revoke`.
+- `LegalGuardianController` em `@Controller('v1/users/:personId/legal-guardians')`
+  (aninhado sob a pessoa do aluno, mesmo idioma de
+  `GET /v1/users/:personId/date-of-birth`), com
+  `@RequirePermission(Permission.MANAGE_USERS)` em nível de classe, sem
+  ampliação por método — mesmo allowlist de `guardian-link-followup`.
+- `dto/create-legal-guardian.dto.ts` (`fullName`, `documentNumber` —
+  `studentPersonId` vem da rota, `registeredByPersonId` sempre do JWT,
+  nunca do corpo).
+- `dto/update-legal-guardian.dto.ts` (`fullName?`, `documentNumber?` —
+  nada mais editável).
+
+**Novo módulo compartilhado `LocationConsentGuardModule`**
+(`backend/src/modules/location-consent-guard/`) — extração, não lógica
+nova: hospeda a mecânica já existente em
+`RetroactiveMinorConsentGuardService.suspendLocationConsentIfSelfGranted`,
+generalizada para um segundo gatilho (revogação de responsável)
+reaproveitar sem criar uma cópia divergente:
+- `LocationConsentSuspensionService.getLatestDecision(subjectPersonId)` —
+  a mesma leitura "linha mais recente por `capturedAt`" já existente.
+- `LocationConsentSuspensionService.suspendAndOpenFollowup({ subjectPersonId, latest, reason, triggeredByPersonId })`
+  — o corpo já existente após a condição de guarda em
+  `suspendLocationConsentIfSelfGranted` (insere linha
+  `decided_by_type = 'system'` revogada + chama
+  `GuardianLinkFollowupService.open(...)`), agora parametrizado por
+  `reason` e genérico quanto ao chamador.
+
+Nome deliberadamente `location-consent-guard`, não `location-consent`,
+para não colidir com um futuro módulo que viria a possuir os próprios
+endpoints de conceder/recusar de RULE-PRES-14 (ainda não construídos) —
+este módulo só suspende, nunca concede/recusa, consistente com a
+constraint `location_consent_decision_system_revoked_only_check` já
+existente no banco.
+
+`RetroactiveMinorConsentGuardService` é refatorado (preservando
+comportamento) para chamar esse serviço compartilhado em vez de tocar
+`LocationConsentDecisionEntity`/`GuardianLinkFollowupService`
+diretamente — sua nota de escopo original (RULE-FACE-09 precisa do mesmo
+tratamento via um novo método privado ali) é preservada; a revogação de
+responsável é dona de um gatilho diferente, então **não** migra para
+dentro dessa classe (ver Coesão/acoplamento).
+
+**`GuardianLinkFollowupReason` ganha 2 valores novos**
+(`guardian-link-followup.service.ts`):
+- `LEGAL_GUARDIAN_REVOKED_LOCATION_CONSENT_INVALIDATED = 'legal_guardian_revoked_location_consent_invalidated'`
+- `NO_ACTIVE_LEGAL_GUARDIAN_REMAINING = 'no_active_legal_guardian_remaining'`
+
+**Comportamento do `LegalGuardianService`:**
+- `create(...)` — verifica que `studentPersonId` existe (404 caso
+  contrário), insere com `signature_captured_at = now()` por default do
+  banco (nunca aceito do cliente — aceitar timestamp do cliente
+  permitiria à Secretaria retrodatar a conferência presencial, RULE-GRD-05).
+- `listByStudent(studentPersonId, includeRevoked = false)` — por padrão só
+  `status = 'active'`; `?status=all` inclui revogados, ordenado por
+  `createdAt ASC`. Usa o índice parcial já existente
+  `(tenant_id, student_person_id) WHERE status='active'` no caminho
+  padrão.
+- `findById(guardianId)` — busca simples nullable, mesmo idioma de
+  `GuardianLinkFollowupService.findById`, usada pelo controller para
+  confirmar que o responsável pertence ao `:personId` da rota antes de
+  `update`/`revoke` (mesmo idioma de 404-para-ambos-os-casos de
+  `resolveGuardianLinkFollowup`).
+- `update(guardianId, { fullName?, documentNumber? })` — `UPDATE`
+  condicional `WHERE id = :id AND status = 'active'`; 404 se a linha não
+  existir, 409 se existir mas já estiver revogada (mesmo padrão de
+  `GuardianLinkFollowupService.resolve`). `BadRequestException` se nenhum
+  campo for enviado.
+- `revoke(guardianId, revokedByPersonId)` — `UPDATE` condicional
+  `SET status='revoked' WHERE id=:id AND status='active'`, mesmo padrão
+  404/409, seguido de duas checagens independentes e não-exclusivas:
+  1. `invalidateConsentIfDecidedByThisGuardian` — busca a decisão mais
+     recente de consentimento de localização do aluno; se
+     `decision === 'granted' && decidedByLegalGuardianId === guardian.id`,
+     chama `suspendAndOpenFollowup(..., reason: LEGAL_GUARDIAN_REVOKED_LOCATION_CONSENT_INVALIDATED)`.
+  2. `openFollowupIfNoActiveGuardianRemains` — conta linhas `active`
+     restantes do aluno; se zero **e** o aluno for atualmente menor
+     (`isMinor === true`, estritamente — ver Pendências em aberto, item
+     5), chama `GuardianLinkFollowupService.open({ reason: NO_ACTIVE_LEGAL_GUARDIAN_REMAINING, ... })`.
+
+  As duas checagens podem disparar na mesma chamada de `revoke()` (duas
+  linhas distintas de `guardian_link_followup`, `reason` diferente, ambas
+  idempotentes via o índice único parcial já existente) — intencional:
+  respondem perguntas diferentes ("este consentimento específico ficou
+  inválido" vs. "este menor ficou sem ninguém responsável cadastrado").
+
+**Migrations novas (aditivas — o shape de `legal_guardian` não muda, por
+decisão do usuário):**
+1. `FixLegalGuardianGrants` — revoga `DELETE` e o `UPDATE` amplo em
+   `legal_guardian`; concede `UPDATE` só nas colunas
+   `(full_name, document_number, status, updated_at)`. `tenant_id`,
+   `student_person_id`, `registered_by_person_id`,
+   `signature_captured_at`, `created_at`, `id` passam a ser imutáveis a
+   nível de banco — exatamente o padrão já aplicado a
+   `guardian_link_followup`.
+2. `WidenGuardianLinkFollowupReasonVocabulary` — recria a CHECK constraint
+   de `reason` incluindo os 2 valores novos.
+
+### Integrações
+
+`LegalGuardianController → LegalGuardianService → LocationConsentSuspensionService → GuardianLinkFollowupService`,
+mais `LegalGuardianService → PersonMinorityStatusService` — tudo síncrono,
+in-process (DI do Nest), sem integração externa nova. Todas as escritas de
+uma mesma requisição continuam dentro de uma única transação via
+`TenantContextService.runWithTenant`, mesma garantia que
+`RetroactiveMinorConsentGuardService` já usa.
+
+### Padrão arquitetural aplicado
+
+Monólito modular em camadas (controller → service → repositório TypeORM),
+sem mudança de padrão. O único movimento arquiteturalmente relevante é
+extrair um **serviço de domínio compartilhado**
+(`LocationConsentSuspensionService`) de um serviço até então
+single-purpose que passaria a ter um segundo chamador não relacionado —
+mesma forma que `PersonMinorityStatusService` já assume como portão
+compartilhado para consumidores futuros.
+
+### Coesão/acoplamento
+
+Reduz risco de duplicação (sem a extração, a mecânica de "suspender +
+abrir followup" existiria em duas cópias divergentes). Introduz uma nova
+dependência entre módulos, unidirecional:
+`LegalGuardianModule → PersonManagementModule` (sem ciclo).
+Deliberadamente **não** move a lógica de suspensão por revogação para
+dentro de `RetroactiveMinorConsentGuardService` — o escopo documentado
+dessa classe é "descoberta retroativa de menoridade"; um segundo gatilho
+de negócio não relacionado morando ali seria violação de coesão, não
+ganho de reuso.
+
+### Pendências em aberto (defaults propostos pelo Solution Architect — aprovados pelo usuário em 2026-09-15, sem alteração)
+
+1. Criar vínculo para aluno já maior de idade: proposta = **permitir**,
+   sem bloqueio por idade (RULE-GRD-04 já trata o vínculo como
+   legitimamente sobrevivendo à maioridade).
+2. Duplicidade de `document_number` para o mesmo aluno: proposta =
+   **permitir, sem constraint de unicidade** (revogar e recadastrar mais
+   tarde produz legitimamente uma segunda linha com o mesmo documento).
+3. Campos editáveis: proposta = **só `fullName` e `documentNumber`**
+   (`status` só muda via `revoke()`; `studentPersonId`/`tenantId`
+   imutáveis).
+4. Listagem: proposta = **só ativos por padrão**, `?status=all` inclui
+   revogados; **sem** relatório de topo (`GET /v1/legal-guardians`) por
+   enquanto — só listagem aninhada por aluno, diferente de
+   `guardian_link_followup` por não haver necessidade documentada de
+   "rede de segurança" de visão geral aqui.
+5. O alerta de "último responsável restante" só dispara se o aluno for
+   **atualmente** menor (`isMinor === true`, não `null`/desconhecido nem
+   `false`) — proposta própria do arquiteto, não literal na decisão 2 do
+   usuário; sinalizada à parte porque disparar esse alerta para um adulto
+   (ou para alguém sem `date_of_birth` confirmado, onde o bloqueio suave
+   de RULE-GRD-07 já nega consentimento sensível independente de
+   responsáveis) seria ruído operacional sem ação exigida.
+6. Se `LocationConsentSuspensionService` deveria validar que
+   `subjectPersonId` do chamador bate com o `subjectPersonId` da decisão
+   buscada — não é risco real hoje (os dois chamadores já buscam a
+   decisão pelo mesmo `subjectPersonId`), anotado só para revisão do
+   Security.
+
+**Impacto em código (implementado, 2026-09-15):**
+- **Database:** migration `1755879000000-FixLegalGuardianGrants.ts` —
+  revoga `DELETE` e o `UPDATE` amplo em `legal_guardian`, concede `UPDATE`
+  **column-level** restrito a `(full_name, document_number, status,
+  updated_at)` (mesmo padrão de defesa em profundidade já aplicado a
+  `guardian_link_followup`; `tenant_id`, `student_person_id`,
+  `registered_by_person_id`, `signature_captured_at`, `created_at` e `id`
+  ficam imutáveis a nível de banco). Migration
+  `1755880000000-WidenGuardianLinkFollowupReasonVocabulary.ts` — recria a
+  CHECK constraint de `reason` em `guardian_link_followup` incluindo os 2
+  valores novos (`legal_guardian_revoked_location_consent_invalidated`,
+  `no_active_legal_guardian_remaining`). Nenhuma migration de shape para
+  `legal_guardian` em si — o schema já existia
+  (`AddLegalGuardianAndLocationConsentDecision`), só os grants mudaram.
+- **Backend:** novo módulo `LegalGuardianModule`
+  (`backend/src/modules/legal-guardian/`) com `LegalGuardianService`
+  (`create`/`listByStudent`/`findById`/`update`/`revoke`, exatamente como
+  desenhado acima) e `LegalGuardianController` expondo
+  `POST /v1/users/:personId/legal-guardians`,
+  `GET /v1/users/:personId/legal-guardians` (`?status=all` inclui
+  revogados), `PATCH /v1/users/:personId/legal-guardians/:guardianId` e
+  `POST /v1/users/:personId/legal-guardians/:guardianId/revoke` (mesmo
+  idioma `.../revoke` já usado por Device/WristbandController, não um
+  verbo DELETE — `revoke()` tem efeitos colaterais próprios, não é só uma
+  troca de estado), todos atrás da allowlist Secretaria-exclusiva
+  `RequirePermission(MANAGE_USERS)` em nível de classe. Novo módulo
+  compartilhado `LocationConsentGuardModule`
+  (`backend/src/modules/location-consent-guard/`) com
+  `LocationConsentSuspensionService` (`getLatestDecision`/
+  `suspendAndOpenFollowup`) — extração da mecânica "suspender
+  consentimento + abrir followup" que antes vivia só dentro de
+  `RetroactiveMinorConsentGuardService`, agora parametrizada por `reason`
+  e genérica quanto ao chamador. `RetroactiveMinorConsentGuardService` foi
+  refatorado para chamar esse serviço compartilhado (comportamento
+  preservado, sem mudança observável). `GuardianLinkFollowupReason` ganhou
+  os 2 valores novos citados acima. `PersonManagementModule` passou a ser
+  importado também por `LegalGuardianModule` (para
+  `PersonMinorityStatusService`) e `AppModule` registrou os 2 módulos
+  novos.
+- **Testes:** cobertura nova em `legal-guardian.service.spec.ts`,
+  `legal-guardian.controller.spec.ts` e
+  `location-consent-suspension.service.spec.ts`; specs atualizados de
+  `retroactive-minor-consent-guard.service.spec.ts` (refatoração,
+  comportamento preservado). Build, lint e suíte completa (105 suítes /
+  1075 testes) verdes.
+- **Security:** revisão de autorização (`MANAGE_USERS`), RLS por tenant,
+  IDOR (checagem de pertencimento aluno-responsável antes de
+  `update`/`revoke`, via `assertBelongsToStudent` no controller),
+  imutabilidade de colunas de auditoria a nível de banco (grants
+  column-level) e consistência transacional do `revoke()` —
+  **aprovado sem bloqueios**. 2 recomendações não-bloqueantes, registradas
+  como dívida técnica aceita: (1) grant de `INSERT` sem restrição de
+  coluna em `legal_guardian` — mesmo padrão já aceito em
+  `guardian_link_followup`; (2) ausência de criptografia/mascaramento de
+  PII — postura de baixa prioridade já aceita para todo o schema, não
+  específica deste módulo.
+
+> **Source of confirmation:** Business Analyst Agent (decomposição de
+> requisitos) e Solution Architect Agent (desenho técnico), 2026-09-15,
+> a partir de 4 decisões de negócio do usuário sobre efeito de revogação,
+> alerta de responsável único, modelo de dado e grants; usuário aprovou os
+> 5 defaults propostos sem alteração, também em 2026-09-15; Database e
+> Backend Agents, 2026-09-15 (implementação: ver "Impacto em código"
+> acima); Security Agent, 2026-09-15 (revisão, aprovada sem bloqueios).
+> **Implementada** — ver também `legal-guardian-consent-rules.md`.
+
 ## Escopo confirmado (arquitetura ainda pendente) — Frente 12: Vínculo de dispositivo institucional (2026-09-10)
 
 > **Produto fechado, arquitetura NÃO decidida.** As regras de negócio da

@@ -377,8 +377,6 @@
       <thead><tr><th>Para quem</th><th>Pergunta</th></tr></thead>
       <tbody>
         <tr><td>Project Guardian</td><td>Confirmar a revisão de escopo de <code>room-presence</code> (dia &#8594; aula específica) como consistente com a arquitetura já registrada em 2026-09-14, antes de qualquer implementação a tocar nesse módulo.</td></tr>
-        <tr><td>Security</td><td>Controle de leitura de <code>person.date_of_birth</code> (quem vê a data crua vs. só o derivado "é menor") — não coberto por RULE-GRD-01 a 06, ver <code>legal-guardian-consent-rules.md</code>. (Schema completo de localização/responsável legal já aprovado pelo usuário em 2026-09-15 — ver <code>architecture-overview.md</code>, seção "Desenho de schema — Localização, timeout de afastamento e responsável legal (APROVADA com pendências)".)</td></tr>
-        <tr><td>Business Analyst</td><td>Backfill de <code>date_of_birth</code> para pessoas já cadastradas — gap aberto em RULE-GRD-01, ainda não resolvido. Ajuste de redação pendente em RULE-PRES-14 sobre enquadramento no Art. 11 (achado do Security Agent, 2026-09-15, roteado, ainda não executado).</td></tr>
         <tr><td>Backend Agent (quando implementar)</td><td>Onde mora a orquestração da cadeia de precedência de saída (RULE-PRES-08) — dentro de <code>room-presence.getSessionProjectedInterval</code> (proposto) ou dentro de <code>PresenceIntervalService</code>. Já sinalizado como decisão de ergonomia de implementação, não de negócio, em 2026-09-14 — sem mudança.</td></tr>
       </tbody>
     </table>

@@ -3,13 +3,24 @@ import { GuardianLinkFollowupEntity } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
 
 // Closed vocabulary for guardian_link_followup.reason (DB CHECK,
-// AddGuardianLinkFollowup migration). One value today — deliberately kept as
-// its own enum (same spirit as auth/permission.enum.ts) so RULE-FACE-09 can
-// add a second value later and reuse this same table, instead of a table per
-// consent type (Solution Architect, architecture-overview.md's "Proposta...
-// para o gatilho real do fluxo de responsável legal").
+// AddGuardianLinkFollowup migration, widened by
+// WidenGuardianLinkFollowupReasonVocabulary for the 2 values below).
+// Deliberately kept as its own enum (same spirit as auth/permission.enum.ts)
+// so a value can be added later and reuse this same table, instead of a
+// table per consent type (Solution Architect, architecture-overview.md's
+// "Proposta... para o gatilho real do fluxo de responsável legal").
 export enum GuardianLinkFollowupReason {
   RETROACTIVE_MINORITY_LOCATION_CONSENT_SUSPENDED = 'retroactive_minority_location_consent_suspended',
+  // legal_guardian CRUD's revoke() (architecture-overview.md's "Decisão de
+  // arquitetura — CRUD de legal_guardian"): the revoked guardian was the
+  // author of the student's most recent GRANTED location consent decision —
+  // that consent is retroactively invalidated (LocationConsentSuspensionService).
+  LEGAL_GUARDIAN_REVOKED_LOCATION_CONSENT_INVALIDATED = 'legal_guardian_revoked_location_consent_invalidated',
+  // Same revoke() flow: the revoked guardian was the student's last
+  // remaining ACTIVE legal_guardian AND the student is currently a confirmed
+  // minor (isMinor === true, strictly) — no location_consent_decision
+  // necessarily involved, relatedLocationConsentDecisionId is null here.
+  NO_ACTIVE_LEGAL_GUARDIAN_REMAINING = 'no_active_legal_guardian_remaining',
 }
 
 export interface OpenGuardianLinkFollowupInput {

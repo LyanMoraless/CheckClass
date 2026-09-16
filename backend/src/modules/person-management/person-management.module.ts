@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { GuardianLinkFollowupModule } from '../guardian-link-followup/guardian-link-followup.module';
+import { LocationConsentGuardModule } from '../location-consent-guard/location-consent-guard.module';
 import { PersonManagementController } from './person-management.controller';
 import { PersonManagementService } from './person-management.service';
 import { PersonMinorityStatusService } from './person-minority-status.service';
@@ -8,9 +9,12 @@ import { RetroactiveMinorConsentGuardService } from './retroactive-minor-consent
 
 @Module({
   // GuardianLinkFollowupModule: PersonManagementController's guardian-link-
-  // followup closure endpoint, and RetroactiveMinorConsentGuardService's
-  // real trigger below (replacing the previous logger.warn-only signal).
-  imports: [AuthModule, GuardianLinkFollowupModule],
+  // followup closure endpoint (findById/resolve, used directly, not through
+  // LocationConsentGuardModule). LocationConsentGuardModule:
+  // RetroactiveMinorConsentGuardService's shared suspend+open-followup
+  // mechanic (see that service's header — extracted for
+  // LegalGuardianModule to reuse without duplicating it).
+  imports: [AuthModule, GuardianLinkFollowupModule, LocationConsentGuardModule],
   controllers: [PersonManagementController],
   providers: [PersonManagementService, PersonMinorityStatusService, RetroactiveMinorConsentGuardService],
   // PersonMinorityStatusService is the reusable "é menor"/RULE-GRD-07 gate
