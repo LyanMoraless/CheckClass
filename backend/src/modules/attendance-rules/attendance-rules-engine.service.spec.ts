@@ -11,6 +11,8 @@ import {
   MockRepository,
 } from '../../../test/unit/support/mock-entity-manager';
 import { DeviceBindingFactorState, DeviceBindingService } from '../device-binding/device-binding.service';
+import { LocationConsentService } from '../location-consent/location-consent.service';
+import { RoomPresenceService } from '../room-presence/room-presence.service';
 import { AttendanceRulesEngineService } from './attendance-rules-engine.service';
 import { PresenceIntervalService } from './presence-interval.service';
 
@@ -44,6 +46,11 @@ describe('AttendanceRulesEngineService', () => {
     // never include DEVICE_BINDING, since evaluateFactorForClassSession is
     // only ever called when that code is present.
     deviceBindingFactorState?: DeviceBindingFactorState;
+    // Defaults to true (active consent, "caminho normal") — irrelevant for
+    // scenarios whose requiredFactorRows never include APP_CHECKIN, since
+    // hasActiveConsent is only ever called when that code is present.
+    hasLocationConsent?: boolean;
+    isPresentForSession?: boolean;
   }
 
   function buildService(scenario: Scenario) {
@@ -84,8 +91,31 @@ describe('AttendanceRulesEngineService', () => {
       evaluateFactorForClassSession: jest.fn().mockResolvedValue(scenario.deviceBindingFactorState ?? 'absent'),
     } as unknown as DeviceBindingService;
 
-    const service = new AttendanceRulesEngineService(tenantContext as never, presenceIntervalService, deviceBindingService);
-    return { service, sessionRepo, pendingReviewRepo, consolidationRepo, presenceIntervalService, deviceBindingService };
+    const locationConsentService = {
+      hasActiveConsent: jest.fn().mockResolvedValue(scenario.hasLocationConsent ?? true),
+    } as unknown as LocationConsentService;
+
+    const roomPresenceService = {
+      isPresentForSession: jest.fn().mockResolvedValue(scenario.isPresentForSession ?? true),
+    } as unknown as RoomPresenceService;
+
+    const service = new AttendanceRulesEngineService(
+      tenantContext as never,
+      presenceIntervalService,
+      deviceBindingService,
+      locationConsentService,
+      roomPresenceService,
+    );
+    return {
+      service,
+      sessionRepo,
+      pendingReviewRepo,
+      consolidationRepo,
+      presenceIntervalService,
+      deviceBindingService,
+      locationConsentService,
+      roomPresenceService,
+    };
   }
 
   test('test_evaluateSession_sessionNotFound_throwsNotFoundException', async () => {
@@ -364,6 +394,95 @@ describe('AttendanceRulesEngineService', () => {
       await service.evaluateSession(pastSession.id);
 
       expect(deviceBindingService.evaluateFactorForClassSession).not.toHaveBeenCalled();
+    });
+  });
+
+  // RULE-PRES-05/14/15 (architecture-overview.md's "Decisão de arquitetura —
+  // Fluxo de Chamada Redesenhado"): APP_CHECKIN's satisfaction is composite
+  // (identification_checkin AND room-presence.isPresentForSession) for a
+  // student with active location consent, and bypassed entirely (caminho
+  // alternativo) for one without.
+  describe('APP_CHECKIN factor (RULE-PRES-05/14/15)', () => {
+    const appCheckinRequired = [{ attendance_factor_type_id: 'factor-app-checkin', code: 'APP_CHECKIN' }];
+
+    test('test_evaluateSession_appCheckinSatisfiedAndInRoom_countsAsSatisfiedFactor', async () => {
+      const { service, consolidationRepo, pendingReviewRepo, roomPresenceService } = buildService({
+        requiredFactorRows: appCheckinRequired,
+        satisfiedRows: [{ code: 'APP_CHECKIN' }],
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+        hasLocationConsent: true,
+        isPresentForSession: true,
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(roomPresenceService.isPresentForSession).toHaveBeenCalledWith('person-1', pastSession.id);
+      expect(pendingReviewRepo.save).not.toHaveBeenCalled();
+      expect(consolidationRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'present' }));
+    });
+
+    test('test_evaluateSession_appCheckinSatisfiedButNotInRoom_recordsPendingWithMissingFactorReason', async () => {
+      // RULE-PRES-05: the login/APP_CHECKIN factor alone is never enough —
+      // without the tag ("em sala"), it must not count as satisfied.
+      const { service, pendingReviewRepo, consolidationRepo } = buildService({
+        requiredFactorRows: appCheckinRequired,
+        satisfiedRows: [{ code: 'APP_CHECKIN' }],
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+        hasLocationConsent: true,
+        isPresentForSession: false,
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(pendingReviewRepo.save).toHaveBeenCalledWith(expect.objectContaining({ reason: 'missing_factor' }));
+      expect(consolidationRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending' }));
+    });
+
+    test('test_evaluateSession_appCheckinNeverSubmitted_recordsPendingWithoutCallingIsPresentForSession', async () => {
+      const { service, pendingReviewRepo, roomPresenceService } = buildService({
+        requiredFactorRows: appCheckinRequired,
+        satisfiedRows: [],
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+        hasLocationConsent: true,
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(roomPresenceService.isPresentForSession).not.toHaveBeenCalled();
+      expect(pendingReviewRepo.save).toHaveBeenCalledWith(expect.objectContaining({ reason: 'missing_factor' }));
+    });
+
+    test('test_evaluateSession_locationConsentRefused_bypassesAppCheckinEntirelyCaminhoAlternativo', async () => {
+      // RULE-PRES-15: no active consent -> caminho alternativo. APP_CHECKIN
+      // is never pushed to missingFactorCodes regardless of whether it was
+      // ever submitted, and isPresentForSession (the composite/location
+      // cross-check) is never even called for this student.
+      const { service, consolidationRepo, pendingReviewRepo, roomPresenceService, locationConsentService } = buildService({
+        requiredFactorRows: appCheckinRequired,
+        satisfiedRows: [], // never submitted — would normally be missing_factor
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+        hasLocationConsent: false,
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(locationConsentService.hasActiveConsent).toHaveBeenCalledWith('person-1');
+      expect(roomPresenceService.isPresentForSession).not.toHaveBeenCalled();
+      expect(pendingReviewRepo.save).not.toHaveBeenCalled();
+      expect(consolidationRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'present' }));
+    });
+
+    test('test_evaluateSession_appCheckinNotRequired_neverCallsLocationConsentOrRoomPresence', async () => {
+      const { service, locationConsentService, roomPresenceService } = buildService({
+        requiredFactorRows: [{ attendance_factor_type_id: 'factor-tag', code: 'TAG_CHECKIN' }],
+        satisfiedRows: [{ code: 'TAG_CHECKIN' }],
+        presenceInterval: { closedIntervals: [], hasOpenInterval: false },
+      });
+
+      await service.evaluateSession(pastSession.id);
+
+      expect(locationConsentService.hasActiveConsent).not.toHaveBeenCalled();
+      expect(roomPresenceService.isPresentForSession).not.toHaveBeenCalled();
     });
   });
 });

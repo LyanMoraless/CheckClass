@@ -40,6 +40,7 @@ import { LocationVerificationModule } from './modules/location-verification/loca
 import { PendingReviewModule } from './modules/pending-review/pending-review.module';
 import { PersonManagementModule } from './modules/person-management/person-management.module';
 import { RoomModule } from './modules/room/room.module';
+import { RoomPresenceModule } from './modules/room-presence/room-presence.module';
 import { ScheduleConflictDetectionModule } from './modules/schedule-conflict-detection/schedule-conflict-detection.module';
 import { SecurityIncidentModule } from './modules/security-incident/security-incident.module';
 import { SecurityIngestionModule } from './modules/security-ingestion/security-ingestion.module';
@@ -157,6 +158,13 @@ import { QueueModule } from './queue/queue.module';
     // InstitutionalNetworkModule above, registered here purely for DI
     // resolution — no controller of its own, no route lives here.
     LocationVerificationModule,
+    // RULE-PRES-04/05/06/07/08 (architecture-overview.md's "Implementação —
+    // room-presence e integração dos três gates"): dedicated read primitive,
+    // same family as DeviceBindingModule above. Registered here purely for
+    // DI resolution — no controller of its own; its write path
+    // (recordFromCheckin) is invoked by DeduplicationModule, its reads by
+    // AttendanceRulesModule (both import it directly too).
+    RoomPresenceModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

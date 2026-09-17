@@ -5968,6 +5968,135 @@ App Mobile; Frontend.
 **Source of confirmation:** Backend Agent, 2026-09-16 (implementação e
 verificação).
 
+### Implementação — room-presence e integração dos três gates (Fluxo de Chamada Redesenhado) (2026-09-16)
+
+Terceira etapa real de implementação desta frente, sobre o schema de
+`room_presence_event` e os dois módulos self-contained entregues nas duas
+etapas anteriores. Fecha a lógica de negócio de RULE-PRES-04 a 09 e RULE-
+PRES-05/14/15, plugando os três gates dentro de `AppCheckinService` e
+migrando `PresenceIntervalService`/`AttendanceRulesEngineService` para
+`room-presence`.
+
+**1. Módulo `room-presence`** (`backend/src/modules/room-presence/`,
+`RoomPresenceService`, sem controller):
+
+- **Write path (`recordFromCheckin`):** plugado dentro de
+  `DeduplicationWorker`, logo depois de
+  `DeduplicationService.deduplicate()` resolver o `is_duplicate` final do
+  checkin, **na mesma transação de tenant** — "pós-dedup" (arquitetura)
+  vira concretamente "reler o checkin depois que `deduplicate()` já
+  rodou", não uma segunda fila/consumidor. Ignora o checkin sem gerar erro
+  quando não é o caso de `room-presence` (`is_duplicate = true`, sem
+  `class_session_id`, ou fator diferente de `ROOM_ENTRY`/`ROOM_EXIT`) — a
+  ausência de linha é o caminho normal, não uma exceção.
+- **`isPresentForSession(personId, classSessionId)`** (RULE-PRES-05): "em
+  sala cobrindo a sessão" lido como "existe pelo menos um `entry`" — a
+  avaliação só roda depois de `scheduled_end`, quando um aluno realmente
+  presente já deu tag-out na esmagadora maioria dos casos.
+- **`getSessionProjectedInterval(personId, classSessionId)`:** mesmo
+  contrato de saída que `PresenceIntervalService.rebuildForPerson` já
+  produzia (`closedIntervals`/`hasOpenInterval`), mais `openIntervalEntryAt`
+  (necessário só para persistir a linha aberta, não para os demais
+  callers). Implementa a cadeia de precedência de saída completa
+  (RULE-PRES-08) dentro deste método — decisão de ergonomia (não de
+  negócio, já sinalizada como tal na arquitetura): tag-out (prioridade 1,
+  dado próprio) → afastamento prolongado via
+  `LocationVerificationService.evaluateDepartureFromClassLocation` OU
+  logout explícito (prioridade 2, leitura mão única) → nenhum, intervalo
+  fica aberto (prioridade 3, mesmo caminho `missing_exit`/pendência que já
+  existia). A orquestração ficou dentro de `room-presence`, não de
+  `PresenceIntervalService`, porque `room-presence` já é quem lê
+  `location-verification` e já é dono do dado de prioridade 1 — isso
+  mantém `PresenceIntervalService` cego a de onde um "exit" veio.
+- **Decisão não trivial — `evaluateDepartureFromClassLocation` ganhou
+  `asOfDate` opcional** (`LocationVerificationService`, retrocompatível,
+  default `new Date()`): a avaliação retroativa de `room-presence` usa a
+  última leitura persistida em `raw_location_signal`
+  (`signal_type = 'class_monitoring'`) como posição de referência e passa
+  `asOfDate: session.scheduledEnd`, para que os minutos decorridos sejam
+  contados até o fim da aula, não até o momento (possivelmente muito
+  depois) em que o Motor de Regras avalia a sessão — sem esse teto, um
+  afastamento que começou 5 minutos antes do fim da aula, avaliado horas
+  depois, seria lido incorretamente como "prolongado".
+- **Sinalizado, não decidido — sinal de "logout explícito" (RULE-PRES-08
+  prioridade 2, segunda perna):** `resolveExplicitLogoutAt` sempre retorna
+  `null` hoje. Não existe, no backend, um sinal de "o aluno apertou sair da
+  aula" distinto do ciclo de vida de sessão JWT do `mobile-auth` (que
+  também dispara em toda rotação normal de refresh token, não só num
+  logout deliberado) — reaproveitar esse sinal atribuiria erroneamente
+  refreshes de rotina como saídas de RULE-PRES-08. Precisa de um sinal
+  real, desenhado junto com a rodada de App Mobile; até lá, cai sempre na
+  prioridade 3 (intervalo aberto/pendência), nunca fabrica uma saída.
+
+**2. `PresenceIntervalService.rebuildForPerson` migrado** — para de
+consultar `identification_checkin` diretamente e passa a consumir
+`RoomPresenceService.getSessionProjectedInterval`, só para
+`ROOM_ENTRY`/`ROOM_EXIT` (o único par que este serviço já pareava).
+Contrato de saída e comportamento de persistência inalterados — nenhum
+outro fator é tocado.
+
+**3. `AttendanceRulesEngineService.evaluatePerson` — RULE-PRES-05/15:**
+`APP_CHECKIN` sai do filtro genérico de `missingFactorCodes` (mesmo idioma
+já usado para `DEVICE_BINDING_FACTOR_CODE`) e ganha bloco próprio:
+
+- Primeiro checa `LocationConsentService.hasActiveConsent(personId)`. Sem
+  consentimento ativo, RULE-PRES-15 (caminho alternativo) se aplica: o
+  aluno é **permanentemente** roteado para presença só pela tag, sem a
+  checagem composta de localização e sem pendência gerada por essa
+  checagem especificamente — implementado como "não avalia a condição
+  composta", não como um terceiro estado.
+- Com consentimento ativo, `APP_CHECKIN` só conta como satisfeito se
+  `identification_checkin` **E** `room-presence.isPresentForSession`
+  confirmarem — mesma família de mudança já feita para
+  `DEVICE_BINDING_FACTOR_CODE` na Frente 12, mas como condição adicional
+  dentro do já existente present/ausente, não um terceiro estado (mesmo
+  padrão descrito na arquitetura).
+- **Ambiguidade sinalizada, não decidida — "sem pendência" de RULE-PRES-15:**
+  implementado de forma conservadora, dispensando só a pendência da própria
+  checagem composta de `APP_CHECKIN`. A rede de segurança `missing_exit`
+  já existente (RULE-ATT-09/RULE-PRES-08 prioridade 3) para um
+  `ROOM_ENTRY` sem par continua valendo também para esses alunos, porque o
+  texto de RULE-PRES-15 reconfirma RULE-PRES-04 a 07 mas é silencioso
+  sobre RULE-PRES-08/`missing_exit` especificamente. Fica sinalizado no
+  código e aqui — não presumido como definitivo.
+
+**4. `AppCheckinService` — os três gates (RULE-PRES-01/02/14):** antes do
+insert em `raw_identification_event`:
+1. `LocationConsentService.hasActiveConsent` — checado **primeiro**, e não
+   é um dos dois gates AND abaixo: é uma decisão de **roteamento**
+   (RULE-PRES-14/15), não uma falha de gate. Sem consentimento ativo, rede
+   e geo nunca chegam a ser avaliadas — o aluno segue o caminho
+   alternativo por `room-presence`/tag.
+2. `InstitutionalNetworkService.isWithinInstitutionalNetwork` (rede) —
+   mesma primitiva/postura já usada para GAP-10.
+3. `LocationVerificationService.isWithinInstitutionalRadius` (geo) — nova
+   nesta rodada.
+
+Qualquer falha de 2/3 (ou coordenadas ausentes, já que `AppCheckinDto`
+ganhou `latitude`/`longitude` **opcionais** — obrigatório seria rejeitar
+com 400 exatamente o caso legítimo de RULE-PRES-15, cujo App Mobile nunca
+tenta coletar localização) reaproveita o mesmo comportamento que
+`InstitutionalNetworkService`/GAP-10 já tinha: endpoint responde sucesso
+(200 OK via `created: false, eventId: null` — mesmo shape do caminho de
+idempotência já existente, sem mudança no controller), evento não entra no
+pipeline. RULE-PRES-01's "nenhuma trilha de auditoria" é respeitada — nada
+dos três gates é persistido.
+
+**Verificação independente feita pela sessão principal:** `nest build`
+limpo; suíte completa rodada (1136 testes, 109/110 suítes verdes) — mesmas
+2 falhas pré-existentes em
+`absence-justification-eligibility.service.spec.ts`, sem relação com este
+trabalho.
+
+**Não tocado nesta rodada:** `classroom-headcount-reconciliation`; App
+Mobile (captura de coordenadas, monitor de afastamento, tela de
+consentimento); Frontend (tela de alerta do professor); `IdentificationService`
+(já correto, sem mudança necessária); ingestão de `raw_location_signal`
+(já existente, sem mudança).
+**Source of confirmation:** Backend Agent, 2026-09-16 (implementação);
+verificação independente da sessão principal no mesmo dia (build, suíte de
+testes, leitura do código).
+
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 
 Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como

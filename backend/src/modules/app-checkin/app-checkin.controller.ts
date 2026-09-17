@@ -32,7 +32,11 @@ export class AppCheckinController {
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const result = await this.appCheckinService.submit(request.personId, dto);
+    // request.ip: same source-IP extraction already used for
+    // InstitutionalNetworkService's other caller (DeviceBindingController,
+    // GAP-10) — see that controller's own comment on Express's
+    // `string | undefined` typing.
+    const result = await this.appCheckinService.submit(request.personId, dto, request.ip ?? '');
     response.status(result.created ? HttpStatus.CREATED : HttpStatus.OK);
     return { eventId: result.eventId, created: result.created };
   }

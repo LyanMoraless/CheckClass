@@ -25,7 +25,14 @@ import { AppCheckinService } from './app-checkin.service';
 // fixed system time so assertions about "what timestamp was used" are exact
 // and don't depend on wall-clock drift while the test runs.
 describe('AppCheckinService', () => {
-  const dto: AppCheckinDto = { idempotencyKey: 'idem-key-1' };
+  // RULE-PRES-01(b): every scenario below that exercises the full pipeline
+  // (network+geo+consent all passing, mocked in buildService's defaults)
+  // needs coordinates present — the service treats their absence as a
+  // failed geo gate regardless of what isWithinInstitutionalRadius would
+  // have returned (see AppCheckinDto's own comment on why they're optional
+  // at the wire level but functionally required for this path). The
+  // dedicated "no coordinates" gate test below overrides this.
+  const dto: AppCheckinDto = { idempotencyKey: 'idem-key-1', latitude: -23.561, longitude: -46.655 };
   const personId = 'person-1';
   const serverNowIso = '2026-08-22T10:00:00.000Z';
 
@@ -37,7 +44,17 @@ describe('AppCheckinService', () => {
     jest.useRealTimers();
   });
 
-  function buildService(options: { factorTypeRepo?: MockRepository; insertedId?: string | null } = {}) {
+  const sourceIp = '198.51.100.9';
+
+  function buildService(
+    options: {
+      factorTypeRepo?: MockRepository;
+      insertedId?: string | null;
+      withinNetwork?: boolean;
+      withinRadius?: boolean;
+      hasLocationConsent?: boolean;
+    } = {},
+  ) {
     const factorTypeRepo =
       options.factorTypeRepo ?? createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'factor-app-checkin' }) });
     const rawEventRepo = createMockRepository();
@@ -52,8 +69,32 @@ describe('AppCheckinService', () => {
 
     const tenantContext = createMockTenantContext(manager);
     const queue = { sendWithManager: jest.fn().mockResolvedValue(undefined) };
-    const service = new AppCheckinService(tenantContext as never, queue as never);
-    return { service, manager, factorTypeRepo, rawEventRepo, queue };
+    const institutionalNetworkService = {
+      isWithinInstitutionalNetwork: jest.fn().mockResolvedValue(options.withinNetwork ?? true),
+    };
+    const locationVerificationService = {
+      isWithinInstitutionalRadius: jest.fn().mockResolvedValue(options.withinRadius ?? true),
+    };
+    const locationConsentService = {
+      hasActiveConsent: jest.fn().mockResolvedValue(options.hasLocationConsent ?? true),
+    };
+    const service = new AppCheckinService(
+      tenantContext as never,
+      queue as never,
+      institutionalNetworkService as never,
+      locationVerificationService as never,
+      locationConsentService as never,
+    );
+    return {
+      service,
+      manager,
+      factorTypeRepo,
+      rawEventRepo,
+      queue,
+      institutionalNetworkService,
+      locationVerificationService,
+      locationConsentService,
+    };
   }
 
   function mockClassSessionRows(manager: MockEntityManager, rows: Array<{ id: string }>) {
@@ -64,7 +105,7 @@ describe('AppCheckinService', () => {
     const { service, manager, queue } = buildService();
     mockClassSessionRows(manager, [{ id: 'session-1' }]);
 
-    const result = await service.submit(personId, dto);
+    const result = await service.submit(personId, dto, sourceIp);
 
     expect(result).toEqual({ created: true, eventId: 'raw-event-1' });
     expect(manager.createQueryBuilder).toHaveBeenCalled();
@@ -92,7 +133,7 @@ describe('AppCheckinService', () => {
     const { service, manager, queue } = buildService();
     mockClassSessionRows(manager, []);
 
-    await expect(service.submit(personId, dto)).rejects.toThrow(UnprocessableEntityException);
+    await expect(service.submit(personId, dto, sourceIp)).rejects.toThrow(UnprocessableEntityException);
 
     expect(manager.createQueryBuilder).not.toHaveBeenCalled();
     expect(queue.sendWithManager).not.toHaveBeenCalled();
@@ -104,7 +145,7 @@ describe('AppCheckinService', () => {
     const { service, manager, queue } = buildService();
     mockClassSessionRows(manager, [{ id: 'session-1' }, { id: 'session-2' }]);
 
-    await expect(service.submit(personId, dto)).rejects.toThrow(UnprocessableEntityException);
+    await expect(service.submit(personId, dto, sourceIp)).rejects.toThrow(UnprocessableEntityException);
 
     expect(manager.createQueryBuilder).not.toHaveBeenCalled();
     expect(queue.sendWithManager).not.toHaveBeenCalled();
@@ -121,7 +162,7 @@ describe('AppCheckinService', () => {
     });
     mockClassSessionRows(manager, [{ id: 'session-1' }]);
 
-    const result = await service.submit(personId, dto);
+    const result = await service.submit(personId, dto, sourceIp);
 
     expect(result).toEqual({ created: false, eventId: 'existing-raw-event' });
     expect(rawEventRepo.findOneBy).toHaveBeenCalledWith({ idempotencyKey: dto.idempotencyKey });
@@ -137,7 +178,7 @@ describe('AppCheckinService', () => {
     });
     mockClassSessionRows(manager, [{ id: 'session-1' }]);
 
-    await expect(service.submit(personId, dto)).rejects.toThrow(InternalServerErrorException);
+    await expect(service.submit(personId, dto, sourceIp)).rejects.toThrow(InternalServerErrorException);
   });
 
   test('test_submit_appCheckinFactorTypeNotSeeded_throwsInternalServerErrorWithoutInserting', async () => {
@@ -145,7 +186,7 @@ describe('AppCheckinService', () => {
     const { service, manager, queue } = buildService({ factorTypeRepo });
     mockClassSessionRows(manager, [{ id: 'session-1' }]);
 
-    await expect(service.submit(personId, dto)).rejects.toThrow(InternalServerErrorException);
+    await expect(service.submit(personId, dto, sourceIp)).rejects.toThrow(InternalServerErrorException);
     expect(manager.createQueryBuilder).not.toHaveBeenCalled();
     expect(queue.sendWithManager).not.toHaveBeenCalled();
   });
@@ -154,7 +195,7 @@ describe('AppCheckinService', () => {
     const { service, manager } = buildService();
     mockClassSessionRows(manager, [{ id: 'session-1' }]);
 
-    await service.submit(personId, dto);
+    await service.submit(personId, dto, sourceIp);
 
     expect(manager.query).toHaveBeenCalledWith(expect.stringContaining('class_group_enrollment'), [
       'tenant-a-id',
@@ -179,7 +220,7 @@ describe('AppCheckinService', () => {
       capturedAt: '1970-01-01T00:00:00.000Z', // implausible far-past value
     } as unknown as AppCheckinDto;
 
-    await service.submit(personId, dtoWithSmuggledCapturedAt);
+    await service.submit(personId, dtoWithSmuggledCapturedAt, sourceIp);
 
     expect(manager.query).toHaveBeenCalledWith(expect.stringContaining('class_group_enrollment'), [
       'tenant-a-id',
@@ -196,7 +237,84 @@ describe('AppCheckinService', () => {
     const { service, manager, queue } = buildService();
     mockClassSessionRows(manager, []); // no session's window contains server-now
 
-    await expect(service.submit(personId, dto)).rejects.toThrow(UnprocessableEntityException);
+    await expect(service.submit(personId, dto, sourceIp)).rejects.toThrow(UnprocessableEntityException);
     expect(queue.sendWithManager).not.toHaveBeenCalled();
+  });
+
+  // RULE-PRES-01/14 ("Decisão de arquitetura — Fluxo de Chamada
+  // Redesenhado", architecture-overview.md's "Implementação — room-presence
+  // e integração dos três gates"): consent (routing, checked first,
+  // independently), network + geo (AND estrito). All three reuse the same
+  // created:false/eventId:null shape as the idempotency-duplicate path so
+  // the endpoint always still responds 200 OK (AppCheckinController's
+  // existing `created ? 201 : 200`), never a 4xx/5xx — RULE-PRES-01's own
+  // "login é permitido normalmente" / "sem trilha de auditoria".
+  describe('RULE-PRES-01/14 three-gate check', () => {
+    test('test_submit_noActiveLocationConsent_returnsWithoutInsertingAndNeverChecksNetworkOrGeo', async () => {
+      // RULE-PRES-14/15: routing decision, not a gate failure — network/geo
+      // are never even evaluated for this caller (caminho alternativo).
+      const { service, manager, queue, institutionalNetworkService, locationVerificationService } = buildService({
+        hasLocationConsent: false,
+      });
+
+      const result = await service.submit(personId, dto, sourceIp);
+
+      expect(result).toEqual({ created: false, eventId: null });
+      expect(institutionalNetworkService.isWithinInstitutionalNetwork).not.toHaveBeenCalled();
+      expect(locationVerificationService.isWithinInstitutionalRadius).not.toHaveBeenCalled();
+      expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+      expect(queue.sendWithManager).not.toHaveBeenCalled();
+    });
+
+    test('test_submit_outsideInstitutionalNetwork_returnsSuccessWithoutInsertingOrEnqueuing', async () => {
+      const { service, manager, queue } = buildService({ withinNetwork: false });
+
+      const result = await service.submit(personId, dto, sourceIp);
+
+      expect(result).toEqual({ created: false, eventId: null });
+      expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+      expect(queue.sendWithManager).not.toHaveBeenCalled();
+    });
+
+    test('test_submit_outsideInstitutionalRadius_returnsSuccessWithoutInsertingOrEnqueuing', async () => {
+      const { service, manager, queue } = buildService({ withinRadius: false });
+
+      const result = await service.submit(personId, dto, sourceIp);
+
+      expect(result).toEqual({ created: false, eventId: null });
+      expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+      expect(queue.sendWithManager).not.toHaveBeenCalled();
+    });
+
+    test('test_submit_coordinatesAbsentFromDto_treatedAsFailedGeoGateWithoutCallingLocationVerification', async () => {
+      // RULE-PRES-15's caminho alternativo caller legitimately omits
+      // coordinates (see AppCheckinDto's own comment) — but that path is
+      // already routed away by the consent gate above. A caller WITH active
+      // consent who nonetheless sends no coordinates must still fail-closed,
+      // never silently skip the geo check.
+      const dtoWithoutCoordinates = { idempotencyKey: 'idem-key-1' } as AppCheckinDto;
+      const { service, manager, locationVerificationService } = buildService();
+
+      const result = await service.submit(personId, dtoWithoutCoordinates, sourceIp);
+
+      expect(result).toEqual({ created: false, eventId: null });
+      expect(locationVerificationService.isWithinInstitutionalRadius).not.toHaveBeenCalled();
+      expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    test('test_submit_allThreeGatesPass_proceedsToExistingPipeline', async () => {
+      const { service, manager, institutionalNetworkService, locationVerificationService, locationConsentService } = buildService();
+      mockClassSessionRows(manager, [{ id: 'session-1' }]);
+
+      const result = await service.submit(personId, dto, sourceIp);
+
+      expect(result).toEqual({ created: true, eventId: 'raw-event-1' });
+      expect(locationConsentService.hasActiveConsent).toHaveBeenCalledWith(personId);
+      expect(institutionalNetworkService.isWithinInstitutionalNetwork).toHaveBeenCalledWith('tenant-a-id', sourceIp);
+      expect(locationVerificationService.isWithinInstitutionalRadius).toHaveBeenCalledWith('tenant-a-id', {
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+      });
+    });
   });
 });

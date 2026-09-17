@@ -7,8 +7,10 @@ import {
   SessionAttendanceConsolidationEntity,
 } from '../../database/entities';
 import { TenantContextService } from '../../database/tenant-context.service';
-import { DEVICE_BINDING_FACTOR_CODE } from '../attendance-factor-codes';
+import { APP_CHECKIN_FACTOR_CODE, DEVICE_BINDING_FACTOR_CODE } from '../attendance-factor-codes';
 import { DeviceBindingService } from '../device-binding/device-binding.service';
+import { LocationConsentService } from '../location-consent/location-consent.service';
+import { RoomPresenceService } from '../room-presence/room-presence.service';
 import { PresenceIntervalService } from './presence-interval.service';
 
 type PendingReason = 'missing_factor' | 'missing_exit';
@@ -37,6 +39,20 @@ interface SatisfiedFactorRow {
 // An institution that doesn't require both has no reliable duration signal
 // to gate on, so presence there reduces to "were the required factors
 // satisfied".
+//
+// FLAGGED, not decided here — RULE-PRES-15's "imediatamente, sem pendência
+// nem confirmação do professor" for the caminho alternativo (consent
+// refused/revoked): implemented here as bypassing ONLY the APP_CHECKIN
+// composite check's own missing_factor pendency (see the
+// requiredCodes.has(APP_CHECKIN_FACTOR_CODE) block below) — the existing
+// missing_exit safety net for an unmatched ROOM_ENTRY (RULE-ATT-09/
+// RULE-PRES-08 priority 3) is deliberately left untouched for these
+// students too, since RULE-PRES-15's own text reconfirms RULE-PRES-04/05/06/
+// 07 ("as demais regras de tag continuam valendo integralmente") but is
+// silent on RULE-PRES-08/missing_exit specifically. Whether "sem pendência"
+// was also meant to waive THAT safety net for a forgotten tag-out is a real
+// ambiguity in the rule's text, not assumed away — needs confirmation before
+// this reading is treated as final.
 @Injectable()
 export class AttendanceRulesEngineService {
   private readonly logger = new Logger(AttendanceRulesEngineService.name);
@@ -45,6 +61,8 @@ export class AttendanceRulesEngineService {
     private readonly tenantContext: TenantContextService,
     private readonly presenceIntervalService: PresenceIntervalService,
     private readonly deviceBindingService: DeviceBindingService,
+    private readonly locationConsentService: LocationConsentService,
+    private readonly roomPresenceService: RoomPresenceService,
   ) {}
 
   async evaluateSession(classSessionId: string): Promise<void> {
@@ -131,8 +149,15 @@ export class AttendanceRulesEngineService {
     // excluded for a different reason (RULE-DEV-10): it never writes to
     // identification_checkin at all, so satisfiedCodes can never contain it
     // — evaluated separately below, via device-binding's own read primitive.
+    // APP_CHECKIN is excluded for a third reason (RULE-PRES-05/14/15): its
+    // satisfaction is composite (identification_checkin AND room-presence),
+    // not a plain satisfiedCodes membership test, and that composite check
+    // itself doesn't even apply to every student (RULE-PRES-15) — evaluated
+    // separately below, same "excluded from the generic filter, handled in
+    // its own dedicated block" idiom already used for DEVICE_BINDING.
     const missingFactorCodes = [...requiredCodes].filter(
-      (code) => code !== 'ROOM_EXIT' && code !== DEVICE_BINDING_FACTOR_CODE && !satisfiedCodes.has(code),
+      (code) =>
+        code !== 'ROOM_EXIT' && code !== DEVICE_BINDING_FACTOR_CODE && code !== APP_CHECKIN_FACTOR_CODE && !satisfiedCodes.has(code),
     );
 
     if (requiredCodes.has(DEVICE_BINDING_FACTOR_CODE)) {
@@ -147,6 +172,30 @@ export class AttendanceRulesEngineService {
       const deviceBindingState = await this.deviceBindingService.evaluateFactorForClassSession(personId, session);
       if (deviceBindingState === 'absent') {
         missingFactorCodes.push(DEVICE_BINDING_FACTOR_CODE);
+      }
+    }
+
+    if (requiredCodes.has(APP_CHECKIN_FACTOR_CODE)) {
+      // RULE-PRES-15: a student with no active location consent is
+      // permanently routed to the caminho alternativo — presença fecha só
+      // pela tag (room-presence alone), sem a checagem composta de
+      // localização/isPresentForSession, e sem gerar pendência por essa
+      // checagem especificamente. Mirrors DEVICE_BINDING's 'not_applicable'
+      // exclusion above (same family of change, per architecture-
+      // overview.md), but expressed inline rather than as a third
+      // evaluateFactorForClassSession-style state, per that same doc's
+      // explicit instruction: this is "uma condição adicional dentro do já
+      // existente present/ausente", not a new state.
+      const hasLocationConsent = await this.locationConsentService.hasActiveConsent(personId);
+      if (hasLocationConsent) {
+        // RULE-PRES-05: satisfied requires BOTH the identification_checkin
+        // (satisfiedCodes, as for any other factor) AND room-presence
+        // confirming "em sala" for this specific session — not just one.
+        const appCheckinConfirmed =
+          satisfiedCodes.has(APP_CHECKIN_FACTOR_CODE) && (await this.roomPresenceService.isPresentForSession(personId, session.id));
+        if (!appCheckinConfirmed) {
+          missingFactorCodes.push(APP_CHECKIN_FACTOR_CODE);
+        }
       }
     }
 

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsLatitude, IsLongitude, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 // personId and tenantId are deliberately absent — resolved exclusively from
 // the caller's own verified JWT (JwtAuthGuard sets request.personId/tenantId),
@@ -33,4 +33,30 @@ export class AppCheckinDto {
   // must be reintroduced as its own field, explicitly documented as never
   // influencing session resolution, deduplication, or any pipeline
   // decision — not silently restored to this role.
+
+  // RULE-PRES-01(b): dado espacial aceito do cliente, mesma disciplina já
+  // usada para tagCode/idempotencyKey — but the DECISION of whether it
+  // counts as presence is never the client's: AppCheckinService.submit
+  // treats a coordinate outside the institution's configured radius (or
+  // absent entirely) as a failed geo gate, same fail-closed posture as
+  // isWithinInstitutionalRadius's own "no config configured" default.
+  //
+  // Optional, not required, on purpose: RULE-PRES-14/15's caminho
+  // alternativo student (location consent refused/revoked) never has the
+  // App Mobile even attempt to collect a location fix at all ("Consulta o
+  // consentimento de localização antes de sequer ligar o monitor" —
+  // architecture-overview.md's App Mobile component card) — the request
+  // body legitimately has no coordinates for that caller. Marking these
+  // @IsNotEmpty would 400 that legitimate case before the service ever gets
+  // a chance to route it through RULE-PRES-14's consent gate instead of the
+  // rede/geo AND. A present-but-active-consent caller missing coordinates is
+  // still correctly fail-closed inside the service (see submit()'s own
+  // comment), not by DTO validation.
+  @IsOptional()
+  @IsLatitude()
+  latitude?: number;
+
+  @IsOptional()
+  @IsLongitude()
+  longitude?: number;
 }
