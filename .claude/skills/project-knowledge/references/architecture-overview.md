@@ -6097,6 +6097,147 @@ consentimento); Frontend (tela de alerta do professor); `IdentificationService`
 verificação independente da sessão principal no mesmo dia (build, suíte de
 testes, leitura do código).
 
+### Implementação — classroom-headcount-reconciliation (Fluxo de Chamada Redesenhado) (2026-09-17)
+
+Quarta etapa real de implementação desta frente, fechando o Bloco 4
+(RULE-PRES-10/11/12) sobre os três blocos já entregues (schema de
+`room-presence`; `location-verification`/`location-consent`;
+`room-presence` e integração dos três gates). Mesmo idioma de
+`attendance-retention` (Frente 10): script CLI, sem scheduler embutido
+(agendamento real — a cada 15 minutos, RULE-SEC-05/PRES-11 — é decisão de
+DevOps, fora deste escopo).
+
+**1. Módulo `classroom-headcount-reconciliation`**
+(`backend/src/modules/classroom-headcount-reconciliation/`,
+`ClassroomHeadcountReconciliationService`, sem controller):
+
+- `evaluateInProgressSessions()` — auto-descobre toda `class_session` do
+  tenant com `status <> 'cancelled'` e `scheduled_start <= now < scheduled_end`,
+  e avalia cada uma. Mesmo idioma de "uma chamada de CLI cobre tudo o que é
+  elegível agora" já usado por
+  `AbsenceJustificationAttachmentService.sweepDueAttachments` — diferente do
+  idioma `session:evaluate` (que exige o chamador nomear uma sessão), porque
+  aqui nada externo enumera "sessões em andamento" para apontar o job.
+- `evaluateSession(classSessionId)` — ponto de entrada único, chamado tanto
+  pelo job periódico quanto pela leitura ao vivo do professor (self-service,
+  abaixo), garantindo que os dois nunca calculem números diferentes para a
+  mesma sessão.
+- **Decisão não trivial — "confirmada em duas contagens consecutivas"
+  (RULE-PRES-11) sem estado persistido entre execuções.** Em vez de guardar
+  o resultado da janela anterior numa tabela nova (que exigiria uma decisão
+  de schema — trabalho do Database Agent, não decidido nesta rodada, ver
+  "Flagged issues" abaixo), o serviço lê as **duas leituras `CAMERA_COUNT`
+  mais recentes** já persistidas em `raw_identification_event` para a sala
+  da sessão (a fonte real de "contagens consecutivas" é o próprio
+  Raspberry Pi, não o instante em que este job por acaso roda), e recalcula
+  a contagem de `APP_CHECKIN` satisfeitos e de "em sala" **como estavam no
+  instante exato de cada leitura** (`checkin_at <= capturedAt` /
+  `RoomPresenceService.countActiveInRoom(classSessionId, capturedAt)`), não
+  no instante em que o job é executado. Duas leituras reais de câmera SÃO
+  "duas contagens consecutivas" — nada mais precisa ser lembrado entre
+  execuções. Torna o job idempotente/re-executável de graça (rodar duas
+  vezes seguidas sobre os mesmos dados produz sempre o mesmo veredito) e
+  mantém o serviço **inteiramente sem escrita**, não só em relação às três
+  tabelas citadas no repasse da tarefa
+  (`session_attendance_consolidation`/`attendance_pending_review`/
+  `room_presence_event`) — nenhuma escrita de nenhum tipo, em lugar nenhum.
+- **Novo método de leitura em `RoomPresenceService`:**
+  `countActiveInRoom(classSessionId, asOf = now)` — conta pessoas cuja linha
+  mais recente de `room_presence_event` até `asOf` é `entry` sem `exit`
+  posterior (`DISTINCT ON (person_id) ... ORDER BY occurred_at DESC`
+  agregado no SQL, porque este método precisa do total do roster, diferente
+  de `getSessionProjectedInterval`, que já percorre o histórico de UMA
+  pessoa em código de aplicação). Leitura deliberadamente diferente de
+  `isPresentForSession` (que responde "esta pessoa alguma vez bateu tag
+  nesta sessão", verdadeiro para sempre uma vez satisfeito, RULE-PRES-05) —
+  esta responde "quantas pessoas estão DENTRO agora, neste instante".
+- **Contagem de `APP_CHECKIN` satisfeitos — versão literal, não a composta de
+  RULE-PRES-05/15.** O bloco composto que `AttendanceRulesEngineService` usa
+  (checkin **E** `room-presence`, mais o desvio de RULE-PRES-15 para quem
+  recusou consentimento) só faz sentido ao FIM da sessão. Para uma sessão em
+  andamento, "contagem de fatores `APP_CHECKIN` satisfeitos" foi implementada
+  como a leitura literal já pedida no repasse da tarefa: contagem simples de
+  `identification_checkin` não-duplicado com fator `APP_CHECKIN`, como de
+  qualquer outro fator no motor de regras, sem a camada de consentimento/
+  composição que só se aplica na avaliação final.
+- **Divergência calculada par a par entre os três números, não só
+  câmera-vs-outros.** RULE-PRES-11 diz "diferença entre os números
+  cruzados" — o próprio exemplo do texto da regra ("30 logins, 25 tags") cita
+  um descompasso entre login e tag SEM mencionar a câmera, evidência textual
+  de que qualquer par pode disparar o alerta, não apenas câmera contra os
+  outros dois. Implementado como o maior valor absoluto entre as três
+  diferenças possíveis (câmera×checkin, câmera×em-sala, checkin×em-sala).
+  Leitura direta do texto da regra, não uma regra de negócio nova — sinalizado
+  aqui para revisão, não presumido como a única leitura possível.
+
+**2. Canal do alerta — reaproveitando o Portal de Autoatendimento Web, sem
+tabela nova.** O texto da tarefa deixava a forma técnica do canal a critério
+do Backend. Não existe hoje, no schema, uma superfície de "aviso"
+genericamente reaproveitável sem migration nova para este caso
+(`attendance_pending_review` foi explicitamente excluída da escrita pelo
+repasse da tarefa; `attendance_frequency_warning` é um bounded context
+fechado sobre um aluno específico, não sobre uma sessão/sala inteira) — e
+decidir uma tabela nova é escolha do Database Agent, não deste agente. Como
+a "confirmação em duas janelas" já não depende de estado persistido (item 1
+acima), o alerta em si tem dois canais, computando sempre a MESMA chamada a
+`evaluateSession`, nunca lógica duplicada:
+  - **Job periódico:** `console.warn` estruturado com os três números,
+    quando `alertActive` é verdadeiro (`src/scripts/classroom-headcount-
+    reconciliation-check.ts`, `npm run classroom-headcount:reconcile --
+    <tenantId>`) — mesmo idioma de relatório via stdout já usado por
+    `attendance-retention:close-month`.
+  - **Leitura ao vivo do professor:** `GET /v1/me/class-sessions/
+    :classSessionId/headcount-alert` (`MeClassSessionHeadcountAlertService`,
+    novo, dentro de `self-service/`) — reaproveita a superfície HTTP do
+    Portal Web já existente (mesmo controller `MeController`, mesmo guard
+    `JwtAuthGuard` + `TenantContextInterceptor`), sem abrir canal novo
+    (push, e-mail, WebSocket). Autorização própria, mais estreita que
+    `MeClassGroupAttendanceService` (cadeia de liderança): checa
+    `class_group_enrollment.role = 'teacher'` para a turma da sessão —
+    mesmo teste de papel que `TeachingClassGroupsService` já usa
+    (RULE-INST-05) — porque o alerta de RULE-PRES-10 é sobre uma sessão que
+    esta pessoa especificamente leciona agora, não sobre uma cadeia de
+    liderança mais ampla.
+- **Registro em `app.module.ts`/`self-service.module.ts`:** mesmo padrão de
+  `AttendanceRetentionModule`/`RoomPresenceModule` — sem controller próprio
+  no módulo de domínio, registrado em `AppModule` só para resolução de DI
+  pelo script CLI; `SelfServiceModule` importa o módulo diretamente para o
+  novo endpoint.
+
+**Verificação feita pelo Backend Agent:** `nest build` limpo; suíte completa
+rodada (1155 testes, 111/112 suítes verdes) — as mesmas 2 falhas
+pré-existentes em `absence-justification-eligibility.service.spec.ts`, sem
+relação com este trabalho (confirmadas como tal nas rodadas anteriores desta
+mesma frente).
+
+**Não tocado nesta rodada:** App Mobile; Frontend (a tela de alerta em si —
+este round entrega só o endpoint que ela vai consumir);
+`AttendanceRulesEngineService`/`PresenceIntervalService`/`AppCheckinService`
+(sem mudança, já corretos); ingestão de `CAMERA_COUNT` (já existente, sem
+mudança); qualquer migration/schema novo.
+
+**Flagged issues:**
+1. **Persistência de estado do alerta entre execuções do job — não
+   decidido.** A abordagem sem estado (item 1 acima) resolve a "confirmação
+   em duas janelas" corretamente sem tabela nova, mas não produz um
+   HISTÓRICO de alertas disparados (cada leitura é recalculada do zero a
+   partir de `raw_identification_event`/`identification_checkin`/
+   `room_presence_event`, sem registro de "este alerta já foi mostrado ao
+   professor"). Se o produto quiser um histórico de alertas (auditoria,
+   "quantas vezes esta sala divergiu este semestre"), isso exige uma tabela
+   nova — decisão de schema que cabe ao Database Agent, sinalizada aqui e
+   não decidida nesta rodada.
+2. **Leitura de `raw_payload->>'roomId'`/`raw_payload->>'capturedAt'` sem
+   índice dedicado.** Mesma observação já registrada para
+   `raw_identification_event.raw_payload` no comentário original da entity
+   ("captured_at currently lives only inside raw_payload; promoting it to an
+   indexed column is a pending, non-blocking decision") — este round lê
+   esses campos via `->>`/`->` sem `EXPLAIN`/tuning formal, aceitável para o
+   volume atual (uma consulta por sessão em andamento a cada janela), mas
+   fica registrado como candidato a índice funcional se o volume crescer.
+**Source of confirmation:** Backend Agent, 2026-09-17 (implementação e
+verificação).
+
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 
 Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como

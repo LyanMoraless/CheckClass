@@ -28,7 +28,8 @@
     "group:manage": "ts-node -r tsconfig-paths/register src/scripts/group-manage.ts",
     "absence-justification:retention-sweep": "ts-node -r tsconfig-paths/register src/scripts/absence-justification-attachment-retention-sweep.ts",
     "attendance-retention:close-month": "ts-node -r tsconfig-paths/register src/scripts/attendance-retention-close-month.ts",
-    "attendance-retention:consolidate-annual": "ts-node -r tsconfig-paths/register src/scripts/attendance-retention-consolidate-annual.ts"
+    "attendance-retention:consolidate-annual": "ts-node -r tsconfig-paths/register src/scripts/attendance-retention-consolidate-annual.ts",
+    "classroom-headcount:reconcile": "ts-node -r tsconfig-paths/register src/scripts/classroom-headcount-reconciliation-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1128.0",

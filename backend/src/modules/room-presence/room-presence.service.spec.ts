@@ -160,6 +160,33 @@ describe('RoomPresenceService', () => {
     });
   });
 
+  describe('countActiveInRoom', () => {
+    test('test_countActiveInRoom_queriesLatestDirectionPerPerson_returnsCount', async () => {
+      const { service, manager } = buildService();
+      manager.query.mockResolvedValueOnce([{ count: '3' }]);
+
+      const asOf = new Date('2026-09-17T10:15:00.000Z');
+      const result = await service.countActiveInRoom('session-1', asOf);
+
+      expect(result).toBe(3);
+      expect(manager.query).toHaveBeenCalledWith(expect.stringContaining('DISTINCT ON (person_id)'), [
+        'tenant-a-id',
+        'session-1',
+        asOf.toISOString(),
+      ]);
+    });
+
+    test('test_countActiveInRoom_defaultsAsOfToNow_stillReturnsCount', async () => {
+      const { service, manager } = buildService();
+      manager.query.mockResolvedValueOnce([{ count: '0' }]);
+
+      const result = await service.countActiveInRoom('session-1');
+
+      expect(result).toBe(0);
+      expect(manager.query).toHaveBeenCalled();
+    });
+  });
+
   describe('getSessionProjectedInterval', () => {
     const entryRow = (iso: string) => ({ direction: 'entry', occurredAt: new Date(iso) });
     const exitRow = (iso: string) => ({ direction: 'exit', occurredAt: new Date(iso) });

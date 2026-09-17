@@ -3,9 +3,11 @@ import { AttendanceFrequencyModule } from '../attendance-frequency/attendance-fr
 import { AttendanceRegisterModule } from '../attendance-register/attendance-register.module';
 import { AttendanceRetentionModule } from '../attendance-retention/attendance-retention.module';
 import { AuthModule } from '../auth/auth.module';
+import { ClassroomHeadcountReconciliationModule } from '../classroom-headcount-reconciliation/classroom-headcount-reconciliation.module';
 import { LeadershipScopeModule } from '../leadership-scope/leadership-scope.module';
 import { CoordinatedClassGroupsService } from './coordinated-class-groups.service';
 import { MeClassGroupAttendanceService } from './me-class-group-attendance.service';
+import { MeClassSessionHeadcountAlertService } from './me-class-session-headcount-alert.service';
 import { MeContextService } from './me-context.service';
 import { MeController } from './me.controller';
 import { MePersonAttendanceService } from './me-person-attendance.service';
@@ -29,7 +31,20 @@ import { TeachingClassGroupsService } from './teaching-class-groups.service';
 // addendum b): this import adds NO leadership-scoped surface, and Controle B
 // deliberately has no dependency on LeadershipScopeService.
 @Module({
-  imports: [AuthModule, AttendanceRegisterModule, LeadershipScopeModule, AttendanceFrequencyModule, AttendanceRetentionModule],
+  imports: [
+    AuthModule,
+    AttendanceRegisterModule,
+    LeadershipScopeModule,
+    AttendanceFrequencyModule,
+    AttendanceRetentionModule,
+    // RULE-PRES-10/11 (Bloco 4): ClassroomHeadcountReconciliationModule is
+    // imported, not re-provided — GET /v1/me/class-sessions/:id/headcount-alert
+    // is a plain teacher-of-this-session read whose entire computation
+    // belongs to that bounded context (same "this module contributes the
+    // route and nothing else" posture already used for AttendanceFrequencyModule
+    // above).
+    ClassroomHeadcountReconciliationModule,
+  ],
   controllers: [MeController],
   providers: [
     MyScheduleService,
@@ -42,6 +57,7 @@ import { TeachingClassGroupsService } from './teaching-class-groups.service';
     // GET /v1/me/attendance only — see the service's own header for why this
     // is not a change to getPersonHistory itself.
     MePersonAttendanceService,
+    MeClassSessionHeadcountAlertService,
   ],
 })
 export class SelfServiceModule {}

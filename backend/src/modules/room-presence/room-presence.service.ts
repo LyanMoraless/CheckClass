@@ -246,6 +246,44 @@ export class RoomPresenceService {
     return evaluation.prolongedDepartureDetected ? evaluation.departureStartedAt : null;
   }
 
+  // classroom-headcount-reconciliation (RULE-PRES-10/11): a DIFFERENT read
+  // from isPresentForSession — that one asks "did this ONE person ever tag
+  // in for this session" (RULE-PRES-05, true forever once it happens, never
+  // revisited). This one asks, across EVERYONE, "how many are CURRENTLY
+  // inside, as of a given instant" — the count of persons whose MOST RECENT
+  // room_presence_event row at-or-before `asOf` is an 'entry' with no later
+  // 'exit'. `asOf` defaults to now, but classroom-headcount-reconciliation
+  // passes a PAST instant (a specific CAMERA_COUNT reading's own capturedAt)
+  // so the count reflects who was in the room at that reading's moment, not
+  // at call time — same "evaluate as of a specific instant, not wall-clock
+  // now" discipline `evaluateDepartureFromClassLocation`'s `asOfDate` already
+  // established for RULE-PRES-09.
+  // DISTINCT ON (person_id) ... ORDER BY occurred_at DESC is the standard
+  // Postgres idiom for "latest row per group" — getSessionProjectedInterval
+  // above walks a single person's rows by hand in application code because it
+  // needs the full interval history for ONE person; this needs only the
+  // latest direction, aggregated across the whole roster, which SQL expresses
+  // more directly than a per-person loop would.
+  async countActiveInRoom(classSessionId: string, asOf: Date = new Date()): Promise<number> {
+    const manager = this.tenantContext.getManager();
+    const tenantId = this.tenantContext.getTenantId();
+
+    const rows: Array<{ count: string }> = await manager.query(
+      `
+      SELECT COUNT(*) AS count
+      FROM (
+        SELECT DISTINCT ON (person_id) person_id, direction
+        FROM room_presence_event
+        WHERE tenant_id = $1 AND class_session_id = $2 AND occurred_at <= $3
+        ORDER BY person_id, occurred_at DESC
+      ) latest
+      WHERE latest.direction = 'entry'
+      `,
+      [tenantId, classSessionId, asOf.toISOString()],
+    );
+    return Number(rows[0]?.count ?? 0);
+  }
+
   // RULE-PRES-08 priority 2's second leg ("logout explícito do app" — "o
   // aluno apertou 'sair'"). FLAGGED, not decided here: no backend signal
   // exists yet for this today. mobile-auth's own logout()/refresh-token

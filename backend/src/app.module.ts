@@ -17,6 +17,7 @@ import { CameraModule } from './modules/camera/camera.module';
 import { ClassGroupModule } from './modules/class-group/class-group.module';
 import { ClassScheduleModule } from './modules/class-schedule/class-schedule.module';
 import { ClassSessionModule } from './modules/class-session/class-session.module';
+import { ClassroomHeadcountReconciliationModule } from './modules/classroom-headcount-reconciliation/classroom-headcount-reconciliation.module';
 import { TenantConfigModule } from './modules/config/tenant-config.module';
 import { CourseModule } from './modules/course/course.module';
 import { DeduplicationModule } from './modules/deduplication/deduplication.module';
@@ -165,6 +166,14 @@ import { QueueModule } from './queue/queue.module';
     // (recordFromCheckin) is invoked by DeduplicationModule, its reads by
     // AttendanceRulesModule (both import it directly too).
     RoomPresenceModule,
+    // RULE-PRES-10/11/12 (Bloco 4 — Contagem por câmera como cruzamento;
+    // architecture-overview.md's "Implementação —
+    // classroom-headcount-reconciliation"): job de tempo, same family as
+    // AttendanceRetentionModule above — no controller of its own here either.
+    // Registered for DI resolution by src/scripts/classroom-headcount-
+    // reconciliation-check.ts; SelfServiceModule imports it directly too, for
+    // the professor's live read (GET /v1/me/class-sessions/:id/headcount-alert).
+    ClassroomHeadcountReconciliationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

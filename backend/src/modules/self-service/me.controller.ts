@@ -4,6 +4,7 @@ import { FrequencyWarningReadService } from '../attendance-frequency/frequency-w
 import { AuthenticatedRequest, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CoordinatedClassGroupsService } from './coordinated-class-groups.service';
 import { MeClassGroupAttendanceService } from './me-class-group-attendance.service';
+import { MeClassSessionHeadcountAlertService } from './me-class-session-headcount-alert.service';
 import { MeContextService } from './me-context.service';
 import { MePersonAttendanceService } from './me-person-attendance.service';
 import { MyScheduleService } from './my-schedule.service';
@@ -49,6 +50,7 @@ export class MeController {
     private readonly coordinatedClassGroupsService: CoordinatedClassGroupsService,
     private readonly classGroupAttendanceService: MeClassGroupAttendanceService,
     private readonly warningReadService: FrequencyWarningReadService,
+    private readonly headcountAlertService: MeClassSessionHeadcountAlertService,
   ) {}
 
   // Frente 10 (RULE-RET-01 mobile-app note, confirmed 2026-08-22): a session
@@ -120,5 +122,23 @@ export class MeController {
   @Get('warnings')
   getMyWarnings(@Req() request: AuthenticatedRequest) {
     return this.warningReadService.listActiveWarningsForPerson(request.personId);
+  }
+
+  // RULE-PRES-10/11 (Bloco 4 — Contagem por câmera como cruzamento).
+  // Teacher-of-this-session read, computed live from
+  // ClassroomHeadcountReconciliationService — the SAME computation the
+  // periodic classroom-headcount-reconciliation job runs, exposed here for
+  // the Portal Web to poll/display instead of a new notification channel
+  // (see that module's own header). Authorization (is this person a teacher
+  // of this session's turma) happens inside
+  // MeClassSessionHeadcountAlertService, not here — same "controller stays
+  // thin, delegates its own authorization check" idiom as
+  // getClassGroupAttendance above.
+  @Get('class-sessions/:classSessionId/headcount-alert')
+  getClassSessionHeadcountAlert(
+    @Param('classSessionId', ParseUUIDPipe) classSessionId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.headcountAlertService.getHeadcountAlertForAuthorizedSession(request.personId, classSessionId);
   }
 }
