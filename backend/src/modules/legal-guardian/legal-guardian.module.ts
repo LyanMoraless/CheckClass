@@ -17,5 +17,13 @@ import { LegalGuardianService } from './legal-guardian.service';
   imports: [AuthModule, PersonManagementModule, GuardianLinkFollowupModule, LocationConsentGuardModule],
   controllers: [LegalGuardianController],
   providers: [LegalGuardianService],
+  // Additive export (no behavior change to this module's own routes) — the
+  // new location-consent module (RULE-PRES-14, architecture-overview.md's
+  // "Implementação — location-verification e location-consent") imports this
+  // module to reuse LegalGuardianService.findById for the exact same
+  // guardianId->studentId(+status='active') integrity check
+  // LegalGuardianController.assertBelongsToStudent already does for its own
+  // routes, instead of a second, divergent copy of that lookup.
+  exports: [LegalGuardianService],
 })
 export class LegalGuardianModule {}

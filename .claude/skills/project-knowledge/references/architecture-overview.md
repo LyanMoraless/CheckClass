@@ -5852,6 +5852,122 @@ App Mobile; Frontend.
 verificação independente da sessão principal no mesmo dia (build, suíte de
 testes, leitura do código gerado).
 
+### Implementação — location-verification e location-consent (Fluxo de Chamada Redesenhado) (2026-09-16)
+
+Segunda etapa real de implementação desta frente, sobre o schema entregue
+pelo Database Agent em "Implementação — schema de `room-presence`" acima
+(entities/migrations já existentes de `institutional_location_config`,
+`raw_location_signal`, `location_consent_decision`) — nenhuma migration
+nova. Dois módulos novos, self-contained, sem tocar `room-presence`
+propriamente dito nem nenhum dos serviços de integração
+(`AppCheckinService`, `IdentificationService`, `PresenceIntervalService`,
+`AttendanceRulesEngineService`) — isso fica para a próxima etapa.
+
+**1. `location-verification`** (`backend/src/modules/location-verification/`,
+`LocationVerificationService`, sem controller — primitiva stateless, mesmo
+idioma de `InstitutionalNetworkService`, lida explicitamente pelo caller):
+
+- `isWithinInstitutionalRadius(tenantId, coordinates)` — RULE-PRES-01(b):
+  Haversine contra o ponto de referência + raio de `institutional_location_config`
+  (mesma decisão de "sem PostGIS" já registrada nessa entity). Fail-closed
+  quando o tenant não tem config (mesma postura de
+  `InstitutionalNetworkService.isWithinInstitutionalNetwork` para "nenhuma
+  faixa configurada").
+- `evaluateDepartureFromClassLocation(tenantId, personId, classSessionId, coordinates)`
+  — RULE-PRES-09: reusa a MESMA checagem geométrica privada
+  (`isCoordinateWithinRadius`) que `isWithinInstitutionalRadius` usa
+  publicamente, não uma segunda implementação. Lê o histórico já persistido
+  em `raw_location_signal` (`signal_type = 'class_monitoring'`, escopado por
+  pessoa+sessão) para achar desde quando o afastamento é contínuo — percorre
+  as leituras da mais recente para a mais antiga até achar a última leitura
+  que estava DENTRO do raio (o afastamento atual só começou logo depois
+  dela) ou esgotar o histórico (afastamento contínuo desde a leitura mais
+  antiga registrada). Sem histórico algum, o afastamento acabou de começar
+  (0 minutos decorridos). Compara os minutos decorridos contra
+  `class_session.departureTimeoutMinutesSnapshot` (o valor **snapshotted**,
+  não o live de `attendance_config` — mesmo mecanismo já usado para
+  `toleranceMinutesSnapshot`/`minAttendancePercentageSnapshot`, para que uma
+  mudança de config no meio da aula não altere retroativamente o limiar de
+  quem já está sendo monitorado). Não persiste a leitura recebida — só lê
+  `raw_location_signal`, nunca escreve nela (a ingestão desse sinal é a
+  próxima etapa, fora do escopo desta rodada).
+
+**2. `location-consent`** (`backend/src/modules/location-consent/`,
+`LocationConsentService` + dois controllers — módulo irmão do já existente
+`location-consent-guard`, sobre a MESMA tabela `location_consent_decision`,
+nenhuma migration nova, conforme já registrado no addendum de 2026-09-16
+acima):
+
+- `getActiveConsent`/`hasActiveConsent` delegam integralmente a
+  `LocationConsentSuspensionService.getLatestDecision` (importando
+  `LocationConsentGuardModule`) — nenhuma reimplementação dessa query.
+- Self-service (`LocationConsentSelfServiceController`, `v1/me/location-consent`,
+  `JwtAuthGuard` + `TenantContextInterceptor` apenas, sem
+  `PermissionCheckInterceptor`, `personId` sempre de `request.personId` —
+  mesmo idioma de `MeController`): `grant`/`refuse`/`revoke`, titular
+  decidindo por si.
+- Secretaria em nome do responsável legal
+  (`LocationConsentGuardianController`,
+  `v1/users/:personId/legal-guardians/:guardianId/location-consent`,
+  `MANAGE_USERS`, mesmo padrão de `LegalGuardianController`):
+  `grant`/`refuse`/`revoke`, validando primeiro que `:guardianId` é um
+  vínculo **ativo** de `:personId` (reusa `LegalGuardianService.findById`,
+  mesmo idioma de `LegalGuardianController.assertBelongsToStudent`, ampliado
+  para também rejeitar vínculo revogado).
+- **Decisão não trivial — gate de menor no auto-consentimento:**
+  `grantForSelf` combina os dois helpers já existentes em
+  `PersonMinorityStatusService`, sem reabrir RULE-GRD-01/07: primeiro
+  `assertSensitiveConsentGateOpen` (bloqueia enquanto o estado de
+  confirmação de nascimento for "ausente"/"provisório" — exatamente o plug-in
+  point que o próprio método já documentava para RULE-PRES-14), depois,
+  separadamente, `getStatus(...).isMinor === true` mesmo já confirmado
+  (`assertSensitiveConsentGateOpen` sozinho não cobre esse caso — ele só
+  olha o estado de confirmação, não a minoridade em si). Esse segundo
+  degrau é necessário porque a pessoa pode ter `date_of_birth` **confirmado
+  presencialmente** e ainda assim ser menor — nesse caso o auto-consentimento
+  deve ser recusado (`ForbiddenException`), exigindo o caminho do
+  responsável legal (`grantByGuardian`, que deliberadamente NUNCA passa por
+  esse gate — é exatamente o caso que `assertSensitiveConsentGateOpen` diz
+  que não deve bloquear). `refuseForSelf`/`revokeForSelf` não passam por
+  nenhum gate de minoridade — recusar/revogar é ato protetivo (reduz coleta
+  de dado), não uma capacidade que precise de responsável legal.
+- **Decisão não trivial — `consentVersion` como input do caller, não
+  derivado:** o comentário original do Database Agent na coluna
+  `consent_version` ("Evidence of which version of the consent text was
+  shown... pending confirmation") ficava em aberto sobre o mecanismo de
+  preenchimento. Resolvido como decisão de implementação (não de regra de
+  negócio): quem exibiu o texto do termo — App Mobile no self-service,
+  tela de atendimento da Secretaria no caminho do responsável legal — é
+  quem sabe qual versão mostrou, então `grant`/`refuse` recebem
+  `consentVersion` como campo obrigatório do body
+  (`RecordLocationConsentDecisionDto`). `revoke` não pede
+  `consentVersion` — carrega adiante a da última decisão `granted` (mesmo
+  idioma que `LocationConsentSuspensionService.suspendAndOpenFollowup` já
+  usa para o caminho `system`-revoked: revogar não mostra um novo texto,
+  então não há versão nova a registrar).
+- **Mudança aditiva em módulo já existente:** `LegalGuardianModule` ganhou
+  `exports: [LegalGuardianService]` (antes não exportava nada) — necessário
+  para `location-consent` reusar `LegalGuardianService.findById` em vez de
+  duplicar essa leitura; sem mudança de comportamento nas rotas que já
+  existiam ali.
+
+**Verificação feita pelo Backend Agent:** `nest build` limpo; suíte completa
+rodada (1114 testes, 108/109 suítes verdes) — as 2 falhas em
+`absence-justification-eligibility.service.spec.ts` são pré-existentes na
+branch, confirmadas como tal antes desta tarefa, sem relação com este
+trabalho (mesmo arquivo já sinalizado como pré-existente na entrada acima).
+
+**Não tocado nesta rodada:** `room-presence` e sua lógica; qualquer mudança
+em `AppCheckinService`/`IdentificationService`/`PresenceIntervalService`/
+`AttendanceRulesEngineService`; os dois pontos de consumo reais de
+`location-consent` (gate no App Mobile antes do monitor de afastamento;
+terceira checagem no `AppCheckinService`, ao lado de rede e raio) —
+`location-verification`/`location-consent` ficam prontos como serviço, mas
+não conectados a nenhum caller ainda; `classroom-headcount-reconciliation`;
+App Mobile; Frontend.
+**Source of confirmation:** Backend Agent, 2026-09-16 (implementação e
+verificação).
+
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 
 Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como

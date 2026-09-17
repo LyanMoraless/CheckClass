@@ -34,7 +34,9 @@ import { InstitutionalNetworkModule } from './modules/institutional-network/inst
 import { IntrusionDetectionModule } from './modules/intrusion-detection/intrusion-detection.module';
 import { LeadershipAssignmentModule } from './modules/leadership-assignment/leadership-assignment.module';
 import { LegalGuardianModule } from './modules/legal-guardian/legal-guardian.module';
+import { LocationConsentModule } from './modules/location-consent/location-consent.module';
 import { LocationConsentGuardModule } from './modules/location-consent-guard/location-consent-guard.module';
+import { LocationVerificationModule } from './modules/location-verification/location-verification.module';
 import { PendingReviewModule } from './modules/pending-review/pending-review.module';
 import { PersonManagementModule } from './modules/person-management/person-management.module';
 import { RoomModule } from './modules/room/room.module';
@@ -89,6 +91,12 @@ import { QueueModule } from './queue/queue.module';
     LocationConsentGuardModule,
     PersonManagementModule,
     LegalGuardianModule,
+    // RULE-PRES-14/15 (architecture-overview.md's "Implementação —
+    // location-verification e location-consent"): irmão de
+    // LocationConsentGuardModule above, imports LegalGuardianModule for its
+    // guardian-path integrity check — placed after it for the same
+    // readability-only reasoning already used elsewhere in this array.
+    LocationConsentModule,
     StudentDirectoryModule,
     CourseModule,
     SubjectModule,
@@ -142,6 +150,13 @@ import { QueueModule } from './queue/queue.module';
     // it directly for createBinding's own use.
     InstitutionalNetworkModule,
     DeviceBindingModule,
+    // RULE-PRES-01(b)/RULE-PRES-09 (architecture-overview.md's
+    // "Implementação — location-verification e location-consent", wired to
+    // its two intended callers in "Implementação — room-presence e
+    // integração dos três gates"): same shared-stateless-primitive family as
+    // InstitutionalNetworkModule above, registered here purely for DI
+    // resolution — no controller of its own, no route lives here.
+    LocationVerificationModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
