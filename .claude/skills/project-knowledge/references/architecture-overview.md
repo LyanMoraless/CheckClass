@@ -5250,7 +5250,7 @@ Architect → Tech Decision → ... (ver
 `project-knowledge/references/pending-decisions.md`, seção "As duas
 frentes novas").
 
-## Decisão de arquitetura — Fluxo de Chamada Redesenhado, RULE-PRES-01 a 15 (PROPOSTA — 2026-09-14; tecnologias internas APROVADAS 2026-09-15; consolidada em `.doc/checkclass-arquitetura-chamada.html` 2026-09-15, ver nota de revisão abaixo)
+## Decisão de arquitetura — Fluxo de Chamada Redesenhado, RULE-PRES-01 a 15 (PROPOSTA — 2026-09-14; tecnologias internas APROVADAS 2026-09-15; consolidada em `.doc/checkclass-arquitetura-chamada.html` 2026-09-15, ver nota de revisão abaixo; correção de framing location-consent/location-consent-guard, achado do Project Guardian, ver addendum 2026-09-16)
 
 > Desenho do Solution Architect Agent a partir de
 > `business-rules/references/attendance-presence-flow-rules.md`
@@ -5679,6 +5679,105 @@ aula, só eventos discretos) mas não substitui a decisão jurídica pendente.
 > (VPN, adiado), item 5 (texto exato do consentimento, ainda não
 > formalizado por Business Analyst/Security) e item 7 (divisão "em sala"
 > por aula, adiado).
+
+### Addendum (2026-09-16) — Reconciliação `location-consent` vs. `location-consent-guard` (achado do Project Guardian, correção, não nova proposta)
+
+> O Project Guardian encontrou uma inconsistência real ao checar
+> `.doc/checkclass-arquitetura-chamada.html` (2026-09-15) contra esta
+> seção: aquele documento descreve `location-consent` como componente
+> **inteiramente novo** para RULE-PRES-14/15, sem mencionar que, no mesmo
+> dia, "Decisão de arquitetura — CRUD de legal_guardian" (acima) já havia
+> implementado a tabela `location_consent_decision` e o módulo
+> `location-consent-guard` sobre ela, reservando explicitamente o nome
+> `location-consent` para "um futuro módulo que viria a possuir os
+> próprios endpoints de conceder/recusar de RULE-PRES-14". Este addendum
+> reconcilia os dois — corrige o framing do HTML, não abre uma decisão de
+> arquitetura nova.
+
+**Decisão: módulo separado (`location-consent`), não extensão de
+`location-consent-guard`.** A leitura de que a nota reservando o nome
+sugeriria um único módulo está invertida: "para não colidir **com** um
+futuro módulo" só faz sentido antecipando dois módulos distintos — não se
+evita colisão de nome com o próprio futuro-eu de um módulo já existente.
+A nota é evidência a favor de dois módulos, não de um.
+
+**Justificativa (coesão/acoplamento, não repetição da nota):**
+1. `location-consent-guard` é mecanismo interno, sem controller,
+   disparado por eventos de domínio não relacionados (descoberta
+   retroativa de menoridade — `RetroactiveMinorConsentGuardService`;
+   revogação de responsável — `LegalGuardianService.revoke()`). O futuro
+   `location-consent` é voltado a ator por construção: titular via App
+   Mobile (self-service) ou responsável legal via atendimento presencial
+   da Secretaria (mesmo padrão RULE-GRD-02/05) decidindo diretamente.
+   Mesma tabela, chamadores e ciclos de vida estruturalmente diferentes —
+   mesmo critério já usado para manter `room-presence` e `device-binding`
+   deliberadamente separados apesar de "estruturalmente parecidos" (ver
+   "Acoplamento / coesão" acima nesta mesma seção).
+2. A CHECK constraint `location_consent_decision_system_revoked_only_check`
+   (migration `1755875000000-AddLegalGuardianAndLocationConsentDecision.ts`)
+   já trata `decided_by_type='system'` como categoricamente restrito
+   (`decision='revoked'` apenas) — o próprio schema separa "suspensão
+   automática" de "decisão humana" como dois caminhos de código. Um limite
+   de módulo que espelha essa costura não é arbitrário.
+3. Acoplamento fica em mão única, sem ciclo:
+   `location-consent → location-consent-guard`, importando
+   `LocationConsentGuardModule` para reusar
+   `LocationConsentSuspensionService.getLatestDecision(subjectPersonId)`
+   como a leitura de "qual é a decisão vigente", em vez de reimplementar
+   essa query pela segunda vez — mesmo formato já usado por
+   `LegalGuardianModule → LocationConsentGuardModule` e
+   `PersonManagementModule → LocationConsentGuardModule`.
+
+**Nomenclatura:** `location-consent` permanece o nome correto para o
+módulo futuro — é o nome que já estava reservado exatamente para ele. O
+erro do HTML não estava no nome; estava em descrevê-lo como construído do
+zero, sem citar `location-consent-guard` nem a tabela já existente.
+
+**Schema — confirmado, sem migration nova:** `decision`
+(`granted|refused|revoked`) + `decided_by_type`
+(`person|legal_guardian|system`) + `consent_version` já cobrem
+integralmente conceder/recusar/revogar por titular ou responsável
+(CHECK constraints `location_consent_decision_decision_check`,
+`..._decided_by_type_check`, `..._decided_by_exclusive_check`, todas já
+existentes; grant `INSERT` já concedido, suficiente para os novos casos
+de uso, que são inserts num log append-only). Nenhum discriminador de
+"propósito" adicional é necessário — hoje existe um único propósito
+(RULE-PRES-01/09/14); adicionar um campo especulativo para um propósito
+futuro inexistente contrariaria o princípio já aplicado neste projeto de
+não antecipar modelagem (mesmo raciocínio de não adicionar lat/long em
+`room` especulativamente, ver "Necessidade de modelagem de dados —
+geolocalização" acima nesta mesma seção).
+
+**Impacto em código:** nenhum. `location-consent-guard`,
+`RetroactiveMinorConsentGuardService`, `LegalGuardianModule` e seus testes
+permanecem exatamente como implementados em 2026-09-15 — este addendum
+não altera comportamento já em produção, só corrige a descrição do
+componente ainda não construído.
+
+**Consistency check:** consistente com a decisão já registrada em "CRUD
+de legal_guardian" (mesma seção, acima) e com o precedente já
+estabelecido de `room-presence`/`device-binding`. A inconsistência estava
+apenas em `.doc/checkclass-arquitetura-chamada.html`, corrigida no mesmo
+dia deste addendum (ver seção "Consistência" daquele documento).
+
+**Open questions (não bloqueantes, não decisão de negócio nova):**
+1. Forma exata das rotas de `location-consent` (self-service pelo titular
+   vs. atendimento presencial da Secretaria em nome do responsável) —
+   mesma categoria de "ergonomia de implementação, não decisão de
+   negócio" já registrada para a orquestração de RULE-PRES-08 (ver "Open
+   questions", item 3, acima nesta mesma seção); fica com o Backend
+   quando esta frente for implementada.
+2. Sinalizado para Security, não decidido aqui: confirmar que um titular
+   menor (`isMinor === true`) não deveria conseguir usar o caminho de
+   auto-concessão do futuro endpoint enquanto for menor — RULE-GRD-01/07
+   já cobre o caminho de suspensão retroativa quando a menoridade é
+   descoberta depois, mas isso não foi reconfirmado explicitamente para o
+   caminho de concessão original (antes de qualquer suspeita de
+   menoridade).
+
+**Source of confirmation:** Project Guardian Agent, 2026-09-16 (achado de
+inconsistência); Solution Architect Agent, 2026-09-16 (reconciliação —
+módulo separado, nome mantido, schema reaproveitado sem migration).
 
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 

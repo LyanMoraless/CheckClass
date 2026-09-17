@@ -610,9 +610,13 @@ professor).
    **fechada 2026-09-15:** Art. 11 não se aplica (lista taxativa não
    inclui geolocalização); tratamento reforçado é postura voluntária, não
    exigência legal — ver ressalva atualizada em RULE-PRES-14, acima; (b)
-   mecânica exata do caminho alternativo por tag física ainda não
+   ~~mecânica exata do caminho alternativo por tag física ainda não
    modelada — fica como item novo para o Business Analyst antes da
-   implementação.
+   implementação~~ — **fechada 2026-09-15, resíduo de redação corrigido
+   2026-09-16 (achado do Project Guardian):** RULE-PRES-15, mais abaixo
+   neste mesmo arquivo, já modela essa mecânica por completo, com "Source
+   of confirmation" da mesma data — este item ficou desatualizado por
+   simples esquecimento de limpeza, não por decisão pendente.
    **Source of confirmation:** Usuário, 2026-09-14 (caminho: consentimento
    formal); Business Analyst Agent, 2026-09-15 (texto, registro, retenção);
    Usuário, 2026-09-15 (consequência da recusa: bloqueio).
