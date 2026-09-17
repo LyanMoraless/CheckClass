@@ -6238,6 +6238,114 @@ mudança); qualquer migration/schema novo.
 **Source of confirmation:** Backend Agent, 2026-09-17 (implementação e
 verificação).
 
+### Implementação — Frontend (Fluxo de Chamada Redesenhado) (2026-09-17)
+
+Quinta e última peça de superfície visível desta frente: o Portal de
+Autoatendimento Web (professor) ganha uma tela de alerta de divergência de
+contagem (RULE-PRES-10/11/12), consumindo o endpoint self-service já
+entregue pelo Backend Agent
+(`GET /v1/me/class-sessions/:classSessionId/headcount-alert`,
+`MeClassSessionHeadcountAlertService`). Nenhuma mudança em `backend/` ou
+`mobile/` nesta rodada.
+
+**1. Cliente HTTP** (`frontend/src/features/portal-teacher/
+class-session-headcount-alert-api.ts`): mirror local de
+`ClassroomHeadcountReconciliationResult` (mesmo idioma já usado por todo
+outro `*-api.ts` deste app, ex. `ActiveWarningEntry`) — `inProgress`,
+`roomId`, `windows` (`capturedAt`/`cameraCount`/`appCheckinCount`/
+`roomPresenceCount`/`maxDivergence`) e `alertActive`, lidos e renderizados
+verbatim, nenhum campo novo inventado.
+
+**2. Onde a tela aparece — decisão de UX tomada nesta rodada, sem regra de
+negócio nova.** A arquitetura pedia para reusar "a superfície de
+notificação/pendência já existente" em vez de abrir uma tela nova isolada.
+Duas opções foram avaliadas:
+- **Enxertar no fluxo de "Revisões pendentes" (`MyPendingReviewsPage`,
+  `/portal/pending-reviews`)** — descartada: aquela tela representa um
+  objeto de domínio estruturalmente diferente
+  (`attendance_pending_review`, com ação de resolver
+  presente/ausente por linha), e o alerta de contagem é: (a) escopado a
+  UMA sessão em andamento, não a uma fila; (b) puramente informativo, sem
+  nenhuma ação — misturar os dois exigiria lógica condicional para
+  esconder o botão "resolver" só para este tipo de item, contra a própria
+  simplicidade que aquela tela tem hoje.
+- **Estender "Minhas turmas" (`TeachingClassGroupsPage`,
+  `/teacher/class-groups`)** — escolhida. É a tela que o professor já usa
+  como ponto de entrada do Portal (primeiro item do grupo de nav
+  "Professor"), então uma nova coluna "Aula agora" ali satisfaz
+  literalmente a opção "dentro de uma aula em andamento que o professor já
+  está vendo" do repasse da tarefa, sem abrir uma rota nova nem uma
+  entrada de menu nova.
+
+**3. Como "aula em andamento" é resolvida no cliente, sem endpoint novo.**
+A tela de turmas não tinha, até esta rodada, nenhum jeito de saber QUAL
+sessão de uma turma está em andamento agora — só o endpoint de alerta
+recebe um `classSessionId`. Em vez de pedir uma rota nova ao Backend, a
+solução reaproveita `GET /v1/me/schedule` (`MyScheduleService`), que já é
+deliberadamente role-agnostic — o próprio comentário do backend antecipava
+exatamente isto: *"Professor doesn't get a 'meu cronograma' screen this
+round... but that's the Portal frontend simply not calling this endpoint
+yet — the backend contract shouldn't need to change again if/when it
+does."* Esta rodada é esse "if/when": `TeachingClassGroupsPage` agora
+também busca `/v1/me/schedule` e calcula, inteiramente no cliente,
+`status !== 'cancelled' && scheduledStart <= now < scheduledEnd` por
+turma, para decidir se mostra o botão "Ver contagem" (que abre o modal com
+o `classSessionId` resolvido). Mesmo idioma de import cross-feature já
+usado por `student-warnings-page.tsx` (que importa
+`listMySchedule`/`StudentScheduleEntry` de `portal-student/
+student-schedule-api.ts`) — reaproveitado aqui, não duplicado.
+
+**4. Painel do alerta** (`headcount-alert-modal.tsx`, usando o `Modal`
+compartilhado já existente): mostra os três números da leitura mais
+recente (e da anterior, se houver duas — RULE-PRES-11 pede exatamente
+"confirmada em duas contagens consecutivas", então as duas janelas ficam
+visíveis, não só a última) e um `Badge` de "Divergência confirmada" /"Sem
+divergência confirmada" a partir de `alertActive`. Três estados tratados
+como normais, nunca como erro (via `InfoBanner`, nunca `ErrorBanner`):
+`inProgress: false` (aula não está em andamento agora), `windows: []`
+(aula em andamento mas ainda sem leitura de câmera suficiente), e
+`windows.length === 1` (uma leitura só — RULE-PRES-11 ainda não pode
+confirmar). Nenhum botão de "resolver"/"confirmar presença" existe nesta
+tela — decisão do usuário já registrada na arquitetura ("a decisão de
+presença nunca é automática a partir do alerta"), reforçada por um teste
+dedicado que falha se tal botão for reintroduzido.
+
+**5. Poll enquanto o modal está aberto** (60s, `HEADCOUNT_ALERT_POLL_INTERVAL_MS`):
+mesmo raciocínio de "load parameter, not a UX knob" já documentado em
+`WARNINGS_POLL_INTERVAL_MS` (`student-warnings-page.tsx`) — a câmera só
+produz uma leitura nova a cada 15 minutos (RULE-PRES-11), então este
+intervalo existe só para notar a sessão terminando ou uma janela nova
+chegando enquanto o professor olha a tela, não porque os números mudam
+mais rápido que isso. Roda só enquanto o componente está montado (modal
+aberto), nunca em background.
+
+**Componentes/telas afetados:** `frontend/src/features/portal-teacher/
+teaching-class-groups-page.tsx` (nova coluna "Aula agora"),
+`class-session-headcount-alert-api.ts` (novo), `headcount-alert-modal.tsx`
+(novo) + `.module.css` (novo).
+
+**Cobertura de teste:** `headcount-alert-modal.spec.tsx` (loading, erro,
+`inProgress: false`, `windows: []`, uma janela sem confirmação, duas
+janelas com `alertActive: true`, botão fechar, ausência de qualquer ação
+de resolver/confirmar) e `teaching-class-groups-page.spec.tsx` (sem sessão
+em andamento, sessão futura, sessão cancelada cobrindo "agora", sessão em
+andamento mostra o botão, clique abre o modal com o `classSessionId`
+correto). `npx tsc -b`, `npx vite build` e `npx vitest run` (suíte
+completa, 100/100) rodados limpos; `npx oxlint` sem warnings novos (os 3
+warnings pré-existentes de `set-state-in-effect`/`only-export-components`
+não têm relação com este trabalho).
+
+**Não tocado nesta rodada:** `backend/`; `mobile/`; qualquer regra de
+negócio nova (RULE-PRES-10/11/12 lidas e aplicadas exatamente como
+documentadas, nenhuma nuance nova encontrada).
+
+**Flagged issues:** nenhum. A única decisão não trivial (onde a tela
+aparece) está documentada no item 2 acima como decisão de UX dentro do
+escopo já delegado pelo repasse da tarefa, não como uma regra de negócio
+inventada.
+**Source of confirmation:** Frontend Agent, 2026-09-17 (implementação e
+verificação).
+
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 
 Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como
