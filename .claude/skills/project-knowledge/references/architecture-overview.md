@@ -5779,6 +5779,79 @@ dia deste addendum (ver seção "Consistência" daquele documento).
 inconsistência); Solution Architect Agent, 2026-09-16 (reconciliação —
 módulo separado, nome mantido, schema reaproveitado sem migration).
 
+### Implementação — schema de `room-presence` (2026-09-16)
+
+Primeira etapa real de implementação desta frente, sobre a arquitetura já
+aprovada acima ("Estrutura proposta", item 3) e a checagem de consistência
+do Project Guardian que confirmou o escopo "por sessão" (não "por dia").
+Database Agent entregou apenas schema — nenhuma lógica de negócio
+(`RoomPresenceService`, `isPresentForSession`/`getSessionProjectedInterval`,
+cadeia de precedência de saída RULE-PRES-08) foi implementada nesta rodada,
+fica para o Backend Agent.
+
+- **Nova tabela `room_presence_event`**
+  (`backend/src/database/entities/room-presence-event.entity.ts`, migration
+  `1755881000000-AddRoomPresenceEvent.ts`): um registro por swipe físico de
+  tag já resolvido a uma `class_session` específica (`direction`
+  `entry`/`exit`, RULE-PRES-04/07), com `identification_checkin_id`
+  `NOT NULL UNIQUE` — reaproveita a dedup que o pipeline de
+  Identificação/Dedup já resolveu a montante, sem reimplementar dedup
+  própria (o write path faz `INSERT ... ON CONFLICT (identification_checkin_id)
+  DO NOTHING`, idempotente contra retry).
+- **Decisões de modelagem deliberadas, não triviais:**
+  - `class_session_id` é `NOT NULL` (diferente de `identification_checkin`,
+    onde é opcional) — um swipe que `IdentificationService` não conseguiu
+    resolver a nenhuma sessão não tem significado de "em sala" para
+    `room-presence` rastrear; a linha simplesmente não é gerada, em vez de
+    persistir um `NULL` sem sentido.
+  - `room_id` **não é coluna aqui** — `IdentificationService.resolveClassSession`
+    já exige `COALESCE(class_session.room_id, class_group.room_id)` igual ao
+    `room_id` do leitor antes de resolver `class_session_id` (RULE-PRES-04 já
+    é garantida a montante, uma vez só); repetir a sala aqui seria
+    denormalização especulativa sem padrão de leitura que a justifique —
+    mesma disciplina já aplicada pelo Solution Architect ao não adicionar
+    lat/long especulativos em `room`.
+  - Os sinais de prioridade 2 da cadeia de precedência de saída
+    (RULE-PRES-08 — afastamento prolongado de `location-verification`,
+    logout explícito) **não são colunas desta tabela** — são lidos ao vivo
+    (leitura, mão única) quando `getSessionProjectedInterval` for
+    implementado, preservando a direção de acoplamento já fixada pela
+    arquitetura (`room-presence` nunca escreve num módulo, só lê).
+  - `direction` é denormalizado do `attendance_factor_type` de
+    `identification_checkin` (evita join no hot path de leitura), mesmo
+    raciocínio já usado para `location_consent_decision.subject_person_id`.
+- **Retenção:** `identification_checkin_id` tem `ON DELETE CASCADE` — o
+  expurgo já existente da Frente 10 (`AttendancePurgeService`, RULE-RET-01)
+  continua funcionando sem alteração; `room_presence_event` desaparece como
+  efeito colateral do mesmo expurgo gated por `attendance_pending_review`
+  que `identification_checkin` já respeita. Sinalizado, não bloqueante:
+  adicionar `room_presence_event` à lista explícita de `DELETE` do
+  `AttendancePurgeService` (defesa em profundidade, mesmo padrão já usado
+  por `presence_interval`) é follow-up razoável, não obrigatório para
+  correção hoje.
+- **Segurança de banco:** RLS por tenant (mesmo padrão de toda tabela nova
+  do projeto); tabela append-only — `GRANT SELECT, INSERT` seguido de
+  `REVOKE UPDATE, DELETE` explícito, porque os `GRANT` default do
+  `InitSchema` cobririam `UPDATE`/`DELETE` por padrão (mesma correção já
+  precisou ser feita para `legal_guardian`, ver "Decisão de arquitetura —
+  CRUD de legal_guardian" acima).
+- **Verificação independente feita pela sessão principal:** `nest build`
+  limpo; suíte completa rodada (1075 testes, 103/105 suítes verdes) — as 3
+  falhas em `absence-justification-eligibility.service.spec.ts` são
+  pré-existentes na branch antes desta mudança (confirmado rodando a mesma
+  suíte com `git stash`, sem nenhuma alteração desta frente), não
+  introduzidas por este schema.
+
+**Não tocado nesta rodada:** `RoomPresenceService` e sua lógica
+(`isPresentForSession`, `getSessionProjectedInterval`, cadeia de
+precedência de saída); `location-verification`; `location-consent`;
+`classroom-headcount-reconciliation`; qualquer mudança em
+`IdentificationService`/`PresenceIntervalService`/`AttendanceRulesEngineService`;
+App Mobile; Frontend.
+**Source of confirmation:** Database Agent, 2026-09-16 (implementação);
+verificação independente da sessão principal no mesmo dia (build, suíte de
+testes, leitura do código gerado).
+
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 
 Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como
