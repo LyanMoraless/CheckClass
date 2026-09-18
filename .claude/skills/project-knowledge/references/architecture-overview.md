@@ -6465,6 +6465,150 @@ por limite de sessão antes de chegar a este passo, não porque o
 trabalho ficou incompleto (implementação e testes já estavam prontos e
 verificados quando a interrupção ocorreu).
 
+### Implementação — endpoint de ingestão de raw_location_signal (Fluxo de Chamada Redesenhado) (2026-09-17)
+
+Fecha o GAP REAL confirmado na subseção anterior ("Implementação — App
+Mobile", item 4): até esta rodada, `LocationVerificationService.evaluateDepartureFromClassLocation`
+(RULE-PRES-09) já lia `raw_location_signal` (`signal_type = 'class_monitoring'`),
+mas nada no backend escrevia nela — `class-monitoring-api.ts`'s
+`reportClassMonitoringReading` era um stub deliberado (`__DEV__`-only
+`console.warn`, leitura descartada). Esta rodada entrega o endpoint e
+conecta o App Mobile a ele — o schema (`raw_location_signal`) e o leitor
+(`LocationVerificationService`) já existiam, sem alteração.
+
+**1. Módulo `class-monitoring-signal`**
+(`backend/src/modules/class-monitoring-signal/`,
+`ClassMonitoringSignalController`/`ClassMonitoringSignalService`):
+
+- **Rota:** `POST /v1/class-monitoring-signals` — recurso plural,
+  coerente com o padrão já usado no projeto (`v1/rooms`,
+  `v1/security-incidents` etc.), mesma família de autenticação de
+  `POST /v1/app-checkin`: JWT do titular (`JwtAuthGuard` +
+  `TenantContextInterceptor`, sem `PermissionCheckInterceptor`),
+  `personId` sempre de `request.personId`, nunca aceito no body — mesma
+  disciplina de `AppCheckinController`.
+- **`captured_at`:** `serverReceivedAt = new Date()`, lido uma única vez
+  no topo de `ClassMonitoringSignalService.report` — mesma disciplina de
+  `AppCheckinService` (RULE-PRES-02). `ReportClassMonitoringSignalDto`
+  não tem nenhum campo `capturedAt`, pelo mesmo motivo documentado no
+  comentário de `AppCheckinDto`: o valor nunca teve outro propósito além
+  de resolução/autorização, então não é reintroduzido como campo
+  informativo não-autoritativo sem decisão nova.
+- **Decisão não trivial — sessão precisa estar em andamento E o titular
+  precisa estar matriculado nela, senão 422 (não "aceita e ignora").**
+  A tarefa pedia para decidir, a partir do padrão já estabelecido, se uma
+  leitura para uma sessão que já terminou (ou de alguém nunca matriculado
+  nela) deveria ser rejeitada ou tolerada silenciosamente como
+  RULE-PRES-01's "login funciona normalmente, evento não entra no
+  pipeline". Decidido como **rejeição** (`UnprocessableEntityException`,
+  422), reaproveitando **a mesma query** de
+  `AppCheckinService.resolveActiveClassSession` (matrícula do titular +
+  janela `scheduled_start/scheduled_end` contra o relógio do servidor),
+  só que escopada ao `classSessionId` que o cliente já informa (o app já
+  sabe qual sessão está monitorando, via `GET /v1/me/schedule`) em vez de
+  descobri-la sozinho. Raciocínio registrado no próprio código: a
+  tolerância de RULE-PRES-01 existe porque uma ação maior (o login em si)
+  precisa continuar funcionando independentemente do resultado do gate;
+  aqui não há ação maior — a leitura de localização É o pedido inteiro,
+  então quando ela não tem onde ser anexada não há nada para "suceder
+  silenciosamente". É a mesma família de decisão que
+  `AppCheckinService` já toma para sua própria "no active session" (422),
+  não uma regra nova.
+- **Ambiguidade sinalizada, não decidida — "presente por login" via
+  `APP_CHECKIN`/tag não é verificado no momento da escrita.** A tarefa
+  também citou, como segundo exemplo do mesmo problema, "a pessoa nunca
+  fez check-in". Este agente decidiu **não** exigir, além de
+  matrícula+sessão-em-andamento acima, que o titular já tenha um
+  `identification_checkin`/`room_presence_event` `ROOM_ENTRY` bem-sucedido
+  para esta sessão — porque isso não é necessário para a integridade dos
+  dados hoje: o único leitor real de `raw_location_signal` em produção
+  (`RoomPresenceService.resolveDepartureExitAt`) só é alcançado quando já
+  existe um `ROOM_ENTRY` sem par para aquela pessoa+sessão — uma leitura
+  "órfã" (sem tag de entrada) nunca é lida por ninguém hoje, confirmado
+  por grep (nenhum outro caller de `evaluateDepartureFromClassLocation`
+  existe além desse). Mas nenhuma regra de negócio confirma explicitamente
+  que essa leniência é a intenção — RULE-PRES-09 não fala do momento da
+  ingestão, só da avaliação. Fica sinalizado para o Orchestrator/Business
+  Analyst: se um consumidor futuro ler `raw_location_signal` sem esse
+  mesmo gate a montante (ex.: um painel ao vivo), esta ausência de
+  checagem passaria a ser relevante e precisaria de decisão explícita.
+- **Idempotência/dedup:** `idempotencyKey` gerado pelo cliente, mesmo
+  padrão de `AppCheckinDto`/`app-checkin`, mesmo mecanismo de
+  `INSERT ... ON CONFLICT (tenant_id, idempotency_key) DO NOTHING`
+  (`raw_location_signal_tenant_idempotency_key_unique`, já existente
+  desde a migration original — nenhuma migration nova nesta rodada). Uma
+  reentrega de rede retorna `created: false` com o `signalId` já
+  existente, nunca duplica a linha.
+- **Rate limiting:** `ClassMonitoringSignalThrottlerGuard`
+  (`extends ThrottlerGuard`), aplicado no método (não na classe), mesmo
+  padrão de `ExamEventThrottlerGuard` — rastreado por `(tenantId,
+  personId)` em vez do IP padrão global (`ThrottlerModule.forRoot`,
+  100/60s), porque uma sala inteira pode estar atrás do mesmo NAT/Wi-Fi
+  institucional monitorando ao mesmo tempo. Diferente de
+  `ExamEventThrottlerGuard`, o `classSessionId` **não** entra na chave de
+  rastreamento — ele vem do body, que ainda não foi validado pelo
+  `ValidationPipe` no momento em que um Guard roda (Guards rodam antes de
+  Pipes no ciclo do Nest), então usar um campo de body não confiável na
+  chave do throttle derrotaria o propósito. Limite: 20/60s por pessoa —
+  teto contra abuso/script, não limite de uso normal (o monitor emite no
+  máximo ~1 leitura/minuto por desenho, `distanceInterval`/`timeInterval`
+  em `use-class-monitoring.ts`), mesmo idioma do comentário de
+  `EVENT_REPORT_LIMIT` em `exam-student.controller.ts`.
+- **`accuracyMeters` obrigatório no DTO, não opcional.** `raw_location_signal.accuracy_meters`
+  é `NOT NULL` no schema, mas `ClassMonitoringReading.accuracyMeters` do
+  App Mobile é `number | null` (comentário original: "nulo apenas na web,
+  praticamente nunca em iOS/Android real"). Resolvido como decisão de
+  forma de dado, não de regra de negócio: em vez de inventar um valor
+  sentinela para "precisão desconhecida", uma leitura com
+  `accuracyMeters: null` é **descartada no cliente**, nunca enviada —
+  mesma tolerância já estabelecida por RULE-PRES-09 para leitura ausente
+  em geral ("ausência de sinal de localização não é tratada como
+  afastamento").
+
+**2. App Mobile — `class-monitoring-api.ts` deixa de ser stub.**
+`reportClassMonitoringReading` (assinatura/interface `ClassMonitoringReading`
+inalteradas, conforme pedido — `use-class-monitoring.ts` não foi tocado)
+agora chama `POST /v1/class-monitoring-signals` via `apiClient.post`,
+gerando o `idempotencyKey` internamente (`generateIdempotencyKey()`, mesma
+função já usada por `use-checkin.ts`) e descartando a leitura antes de
+enviar quando `accuracyMeters` é `null` (ver acima). Chamada
+"fire-and-forget", mesma postura que `use-class-monitoring.ts` já tinha
+para esta função (nunca é `await`ada pelo chamador): uma falha de rede é
+logada só em `__DEV__` e engolida, nunca propagada — não existe fila de
+retry offline para este dado (diferente de `checkin-api`/`pending-checkin-storage`),
+coerente com a tolerância já estabelecida de "sinal ausente não é
+afastamento".
+
+**Verificação feita pelo Backend Agent:** `nest build` limpo; suíte
+completa do backend rodada (1161 testes, 112/113 suítes verdes, 2 falhas
+pré-existentes e já conhecidas em
+`absence-justification-eligibility.service.spec.ts`, sem relação com este
+trabalho); `npm run typecheck` do mobile limpo; suíte completa do mobile
+rodada (75/75 testes, 12/12 suítes) — confirmado que o aviso de "worker
+process failed to exit gracefully" já existia antes desta rodada (mesmo
+aviso reproduzido rodando a suíte sem o novo arquivo de teste).
+
+**Não tocado nesta rodada:** `LocationVerificationService`/`room-presence`
+(já corretos, sem mudança); schema/migrations (`raw_location_signal` já
+existia); UI/lógica do monitor em `use-class-monitoring.ts` (mudança
+pedida explicitamente como fora de escopo); escrita de `raw_location_signal`
+para `signal_type = 'login_checkin'` (RULE-PRES-01(b) — gap distinto,
+pré-existente, não mencionado na tarefa desta rodada: `AppCheckinService`
+já lê `isWithinInstitutionalRadius` sem persistir nenhuma leitura de
+login; permanece sem escritor, assim como antes desta rodada).
+
+**Flagged issues:**
+1. Ver "Ambiguidade sinalizada" acima — se "presente por login" deve ser
+   verificado no momento da ingestão (não só reaproveitado indiretamente
+   via o gate do único leitor atual) é uma decisão de negócio ainda não
+   tomada explicitamente por nenhuma regra.
+2. O gap de escrita de `raw_location_signal` para `signal_type =
+   'login_checkin'` (RULE-PRES-01(b)) continua aberto, sem relação com
+   esta tarefa — sinalizado aqui só para não ficar presumido como
+   fechado por engano numa leitura futura desta seção.
+**Source of confirmation:** Backend Agent, 2026-09-17 (implementação e
+verificação).
+
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 
 Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como

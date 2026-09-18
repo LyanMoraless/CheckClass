@@ -17,6 +17,7 @@ import { CameraModule } from './modules/camera/camera.module';
 import { ClassGroupModule } from './modules/class-group/class-group.module';
 import { ClassScheduleModule } from './modules/class-schedule/class-schedule.module';
 import { ClassSessionModule } from './modules/class-session/class-session.module';
+import { ClassMonitoringSignalModule } from './modules/class-monitoring-signal/class-monitoring-signal.module';
 import { ClassroomHeadcountReconciliationModule } from './modules/classroom-headcount-reconciliation/classroom-headcount-reconciliation.module';
 import { TenantConfigModule } from './modules/config/tenant-config.module';
 import { CourseModule } from './modules/course/course.module';
@@ -159,6 +160,14 @@ import { QueueModule } from './queue/queue.module';
     // InstitutionalNetworkModule above, registered here purely for DI
     // resolution — no controller of its own, no route lives here.
     LocationVerificationModule,
+    // RULE-PRES-09 (architecture-overview.md's "Implementação — endpoint de
+    // ingestão de raw_location_signal"): the writer half of the
+    // read/write pair LocationVerificationModule/this module form —
+    // LocationVerificationService reads raw_location_signal,
+    // ClassMonitoringSignalService is its only writer today. Own controller
+    // (POST /v1/class-monitoring-signals), so — unlike LocationVerificationModule
+    // above — this one is NOT registered purely for DI resolution.
+    ClassMonitoringSignalModule,
     // RULE-PRES-04/05/06/07/08 (architecture-overview.md's "Implementação —
     // room-presence e integração dos três gates"): dedicated read primitive,
     // same family as DeviceBindingModule above. Registered here purely for
