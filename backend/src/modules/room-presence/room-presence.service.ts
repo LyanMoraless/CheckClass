@@ -208,7 +208,13 @@ export class RoomPresenceService {
   // live caller; passing that reading's own coordinates back into itself is
   // not circular, it's how a retroactive caller without a live GPS fix asks
   // "as of the last thing we ever heard from this person, were they
-  // departed, and since when". `asOfDate: session.scheduledEnd` caps the
+  // departed, and since when". `latestReading.isMocked` is threaded through
+  // unchanged (QA-flagged gap fix) — a mocked/compromised LAST reading must
+  // not be read as proof of "back inside the radius" any more than a mocked
+  // historical row is read as proof of either state; forwarding the flag
+  // lets evaluateDepartureFromClassLocation apply that same non-punitive
+  // exclusion instead of this caller re-deciding it.
+  // `asOfDate: session.scheduledEnd` caps the
   // elapsed-minutes computation at the session's own end instead of
   // evaluateSession's wall-clock call time (which can run long after
   // scheduled_end) — without this cap, a departure that started 5 minutes
@@ -241,6 +247,7 @@ export class RoomPresenceService {
       personId,
       classSessionId,
       { latitude: Number(latestReading.latitude), longitude: Number(latestReading.longitude) },
+      latestReading.isMocked,
       session.scheduledEnd,
     );
     return evaluation.prolongedDepartureDetected ? evaluation.departureStartedAt : null;

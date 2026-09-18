@@ -69,6 +69,15 @@ export class LocationVerificationService {
   // config fetch here, reused for both the current reading and every
   // historical row below — not a second implementation of the radius
   // comparison, just a single extra DB round trip avoided).
+  // `isMocked` is this SAME current reading's own anti-spoofing flag
+  // (raw_location_signal.is_mocked — expo-location `mocked` OR Talsec
+  // freeRASP, "Decisão de tecnologia — Detecção de localização simulada e
+  // dispositivo comprometido", 2026-09-15). Defaults to false so existing
+  // callers that only care about clean fixtures don't have to thread it
+  // through, but any caller sourcing `coordinates` from a persisted
+  // raw_location_signal row (the only real one today, room-presence's
+  // resolveDepartureExitAt) must pass the row's own isMocked — see below for
+  // what happens when it's true.
   // asOfDate defaults to "now" (the live-caller shape, e.g. the app's own
   // afastamento monitor calling this in real time) — a SECOND caller,
   // room-presence's retroactive getSessionProjectedInterval (RULE-PRES-08),
@@ -83,6 +92,7 @@ export class LocationVerificationService {
     personId: string,
     classSessionId: string,
     coordinates: GeoCoordinates,
+    isMocked = false,
     asOfDate: Date = new Date(),
   ): Promise<DepartureEvaluation> {
     const manager = this.tenantContext.getManager();
@@ -92,7 +102,14 @@ export class LocationVerificationService {
     }
 
     const config = await this.getConfig(tenantId);
-    const isWithinRadius = config ? this.isCoordinateWithinRadius(config, coordinates) : false;
+    // A mocked/compromised current reading is never trustworthy evidence of
+    // ANYTHING (same non-punitive "reading simply doesn't enter the
+    // pipeline" posture RULE-PRES-01 already applies) — never let it prove
+    // "back inside the radius" (isWithinRadius forced false below), and it
+    // can't fabricate a NEW departure anchor either, since
+    // resolveDepartureStartedAt's own history query excludes isMocked rows,
+    // including this exact same persisted row when there is one.
+    const isWithinRadius = !isMocked && config ? this.isCoordinateWithinRadius(config, coordinates) : false;
     const departureTimeoutMinutes = classSession.departureTimeoutMinutesSnapshot;
 
     if (isWithinRadius) {
@@ -123,6 +140,13 @@ export class LocationVerificationService {
   // earliest recorded reading). No history at all => the current reading is
   // the first evidence of departure, so it just started (server clock, per
   // RULE-PRES-02 — never a device-supplied timestamp).
+  //
+  // isMocked: false in the query itself (not a filter applied after
+  // fetching): a mocked/compromised row is excluded as if it had never been
+  // persisted at all, so it neither breaks the walk (as a false "returned
+  // inside the radius") nor extends it (as a false "still outside") — it is
+  // simply invisible to this evaluation, same posture as RULE-PRES-01's
+  // treatment of a mocked reading.
   private async resolveDepartureStartedAt(
     tenantId: string,
     personId: string,
@@ -131,7 +155,7 @@ export class LocationVerificationService {
   ): Promise<Date> {
     const manager = this.tenantContext.getManager();
     const readings = await manager.getRepository(RawLocationSignalEntity).find({
-      where: { tenantId, personId, classSessionId, signalType: 'class_monitoring' },
+      where: { tenantId, personId, classSessionId, signalType: 'class_monitoring', isMocked: false },
       order: { capturedAt: 'DESC' },
     });
 

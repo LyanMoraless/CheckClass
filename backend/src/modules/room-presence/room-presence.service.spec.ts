@@ -248,7 +248,12 @@ describe('RoomPresenceService', () => {
       const classSessionRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'session-1', scheduledEnd }) });
       const latestReadingCapturedAt = new Date('2026-08-21T11:00:00.000Z');
       const rawLocationSignalRepo = createMockRepository({
-        findOne: jest.fn().mockResolvedValue({ latitude: '-23.571', longitude: '-46.655', capturedAt: latestReadingCapturedAt }),
+        findOne: jest.fn().mockResolvedValue({
+          latitude: '-23.571',
+          longitude: '-46.655',
+          capturedAt: latestReadingCapturedAt,
+          isMocked: false,
+        }),
       });
       const departureStartedAt = new Date('2026-08-21T11:40:00.000Z');
       const locationVerificationService = {
@@ -279,9 +284,52 @@ describe('RoomPresenceService', () => {
         'person-1',
         'session-1',
         { latitude: -23.571, longitude: -46.655 },
+        false,
         scheduledEnd,
       );
       expect(sessionRepo.findOneBy).toHaveBeenCalledWith({ id: 'session-1', tenantId: 'tenant-a-id' });
+    });
+
+    test('test_getSessionProjectedInterval_latestReadingIsMocked_forwardsIsMockedFlagToLocationVerification', async () => {
+      // QA-flagged gap fix: the LAST persisted class_monitoring reading can
+      // itself be isMocked=true — this caller must forward that flag rather
+      // than silently treating a spoofed/compromised reading as trustworthy
+      // evidence. LocationVerificationService is the one that actually
+      // applies the exclusion (its own spec covers that); this test only
+      // confirms the flag reaches it.
+      const rows = [entryRow('2026-08-21T10:00:00.000Z')];
+      const roomPresenceEventRepo = createMockRepository({ find: jest.fn().mockResolvedValue(rows) });
+      const scheduledEnd = new Date('2026-08-21T12:00:00.000Z');
+      const classSessionRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'session-1', scheduledEnd }) });
+      const rawLocationSignalRepo = createMockRepository({
+        findOne: jest.fn().mockResolvedValue({
+          latitude: '-23.571',
+          longitude: '-46.655',
+          capturedAt: new Date('2026-08-21T11:00:00.000Z'),
+          isMocked: true,
+        }),
+      });
+      const locationVerificationService = {
+        evaluateDepartureFromClassLocation: jest.fn().mockResolvedValue({
+          isWithinRadius: false,
+          departureStartedAt: new Date(),
+          departureMinutesElapsed: 0,
+          departureTimeoutMinutes: 15,
+          prolongedDepartureDetected: false,
+        }),
+      };
+      const { service } = buildService({ roomPresenceEventRepo, classSessionRepo, rawLocationSignalRepo, locationVerificationService });
+
+      await service.getSessionProjectedInterval('person-1', 'session-1');
+
+      expect(locationVerificationService.evaluateDepartureFromClassLocation).toHaveBeenCalledWith(
+        'tenant-a-id',
+        'person-1',
+        'session-1',
+        { latitude: -23.571, longitude: -46.655 },
+        true,
+        scheduledEnd,
+      );
     });
 
     test('test_getSessionProjectedInterval_noExitAndNoLocationSignalHistory_staysOpen', async () => {
@@ -304,7 +352,7 @@ describe('RoomPresenceService', () => {
       const roomPresenceEventRepo = createMockRepository({ find: jest.fn().mockResolvedValue(rows) });
       const classSessionRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'session-1', scheduledEnd: new Date() }) });
       const rawLocationSignalRepo = createMockRepository({
-        findOne: jest.fn().mockResolvedValue({ latitude: '-23.571', longitude: '-46.655', capturedAt: new Date() }),
+        findOne: jest.fn().mockResolvedValue({ latitude: '-23.571', longitude: '-46.655', capturedAt: new Date(), isMocked: false }),
       });
       const locationVerificationService = {
         evaluateDepartureFromClassLocation: jest.fn().mockResolvedValue({

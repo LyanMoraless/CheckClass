@@ -170,6 +170,7 @@ describe('LocationVerificationService', () => {
         'person-1',
         'session-1',
         FAR_OUTSIDE,
+        false,
         asOfDate,
       );
 
@@ -187,9 +188,92 @@ describe('LocationVerificationService', () => {
       await service.evaluateDepartureFromClassLocation('tenant-a-id', 'person-1', 'session-1', FAR_OUTSIDE);
 
       expect(rawLocationSignalRepo.find).toHaveBeenCalledWith({
-        where: { tenantId: 'tenant-a-id', personId: 'person-1', classSessionId: 'session-1', signalType: 'class_monitoring' },
+        where: {
+          tenantId: 'tenant-a-id',
+          personId: 'person-1',
+          classSessionId: 'session-1',
+          signalType: 'class_monitoring',
+          isMocked: false,
+        },
         order: { capturedAt: 'DESC' },
       });
+    });
+
+    // QA-flagged gap: raw_location_signal.is_mocked (expo-location `mocked`
+    // + Talsec freeRASP, "Decisão de tecnologia — Detecção de localização
+    // simulada e dispositivo comprometido", 2026-09-15) was persisted but
+    // never read here. A mocked reading must never count as evidence of
+    // anything — same non-punitive "doesn't enter the pipeline" treatment
+    // already applied to RULE-PRES-01.
+    test('test_evaluateDepartureFromClassLocation_currentReadingIsMocked_notTreatedAsWithinRadiusEvidence', async () => {
+      // INSIDE coordinates would normally report isWithinRadius=true — but
+      // isMocked=true must stop that from happening, since a spoofed
+      // reading proving "back inside the radius" is exactly the attack this
+      // gap allowed.
+      const rawLocationSignalRepo = createMockRepository({ find: jest.fn().mockResolvedValue([]) });
+      const { service } = buildService({ rawLocationSignalRepo });
+
+      const result = await service.evaluateDepartureFromClassLocation('tenant-a-id', 'person-1', 'session-1', INSIDE, true);
+
+      expect(result.isWithinRadius).toBe(false);
+    });
+
+    test('test_evaluateDepartureFromClassLocation_currentReadingIsMockedWithCleanHistoryShowingReturn_resolvesFromCleanHistoryInstead', async () => {
+      // The mocked "current" reading is itself excluded from the history
+      // walk (same row, isMocked: false in the query) — so this behaves
+      // exactly as if the current reading were absent and the last CLEAN
+      // reading (here, INSIDE, 5 minutes ago) is what actually determines
+      // the outcome: no sustained departure in progress.
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60000);
+      const rawLocationSignalRepo = createMockRepository({
+        find: jest.fn().mockResolvedValue([{ ...INSIDE, capturedAt: fiveMinutesAgo }]),
+      });
+      const { service } = buildService({ rawLocationSignalRepo });
+
+      const result = await service.evaluateDepartureFromClassLocation('tenant-a-id', 'person-1', 'session-1', FAR_OUTSIDE, true);
+
+      expect(result.isWithinRadius).toBe(false);
+      expect(result.prolongedDepartureDetected).toBe(false);
+      expect(result.departureMinutesElapsed).toBeLessThan(1);
+    });
+
+    test('test_evaluateDepartureFromClassLocation_historicalReadingIsMocked_skippedNotTreatedAsAReturn', async () => {
+      // History (most recent first): still-outside CLEAN reading at T2
+      // (tenMinutesAgo), then a MOCKED reading at T1.5 that LOOKS like it's
+      // within radius (would normally "break" the walk and reset the
+      // departure clock right there), then a genuinely clean outside
+      // reading at T1 (twentyMinutesAgo). `find`'s mockImplementation below
+      // actually honors the `where.isMocked` filter the service passes —
+      // unlike the other tests in this file (which stub a fixed
+      // mockResolvedValue), this one exercises the real exclusion instead of
+      // only asserting the query shape, since the scenario specifically
+      // depends on the mocked-and-inside-radius row being excluded.
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60000);
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60000);
+      const twentyMinutesAgo = new Date(Date.now() - 20 * 60000);
+      const allReadings = [
+        { ...FAR_OUTSIDE, capturedAt: tenMinutesAgo, isMocked: false },
+        { ...INSIDE, capturedAt: fifteenMinutesAgo, isMocked: true },
+        { ...FAR_OUTSIDE, capturedAt: twentyMinutesAgo, isMocked: false },
+      ];
+      const rawLocationSignalRepo = createMockRepository({
+        find: jest
+          .fn()
+          .mockImplementation(({ where }: { where: { isMocked: boolean } }) =>
+            Promise.resolve(allReadings.filter((reading) => reading.isMocked === where.isMocked)),
+          ),
+      });
+      const { service } = buildService({ rawLocationSignalRepo });
+
+      const result = await service.evaluateDepartureFromClassLocation('tenant-a-id', 'person-1', 'session-1', FAR_OUTSIDE);
+
+      // Had the mocked "within radius" row been honored instead of excluded,
+      // departureStartedAt would have reset to tenMinutesAgo and
+      // prolongedDepartureDetected would be false (10 < 15). Excluded, it
+      // correctly resolves all the way back to twentyMinutesAgo instead.
+      expect(result.departureStartedAt).toEqual(twentyMinutesAgo);
+      expect(result.departureMinutesElapsed).toBeGreaterThanOrEqual(15);
+      expect(result.prolongedDepartureDetected).toBe(true);
     });
   });
 });
