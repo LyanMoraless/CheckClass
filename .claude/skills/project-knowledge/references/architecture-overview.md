@@ -6609,6 +6609,99 @@ login; permanece sem escritor, assim como antes desta rodada).
 **Source of confirmation:** Backend Agent, 2026-09-17 (implementação e
 verificação).
 
+### Testing + QA — Fluxo de Chamada Redesenhado (2026-09-17)
+
+Fecha a cadeia de encerramento desta frente (Testing → QA → Project
+Guardian), mesmo padrão já usado para fechar a Frente 12 (ver
+"Implementação — Vínculo de Dispositivo Institucional (Frente 12):
+Testing + QA + Project Guardian").
+
+**Testing Agent:** cobertura pré-existente (escrita pelos próprios
+agentes de implementação) já era substancial — não duplicada. Lacunas
+reais cobertas: cadeia de precedência de RULE-PRES-08 (duas entradas
+consecutivas sem saída entre elas; duas saídas consecutivas sem par; teste
+que fixa o gap conhecido de `resolveExplicitLogoutAt` sempre retornar
+`null`), combinação rede+raio falhando simultaneamente no app-checkin,
+`hasActiveConsent` com decisão `revoked` (só `refused` estava coberto),
+limiar de divergência de contagem (4 vs. 5) e sessão sem nenhuma leitura
+de câmera ainda. Dois specs de integração novos (idempotência real via
+Postgres de `room_presence_event` e `raw_location_signal`) foram escritos
+seguindo o padrão exato dos specs de integração já existentes, mas **não
+puderam ser executados nesta sessão** — Docker Desktop não está disponível
+na máquina usada (confirmado por `docker ps` e ausência do executável);
+ficam pendentes de validação em ambiente com Postgres real antes de
+considerar essa dupla confiável. Suítes completas rodadas e verificadas
+independentemente pela sessão principal: backend 1166/1168 (as mesmas 2
+falhas pré-existentes de `absence-justification-eligibility.service.spec.ts`,
+sem aumento), frontend 100/100, mobile 75/75 (o flake conhecido de
+`use-location-consent.test.tsx` não se manifestou nesta rodada — não é
+regressão de qualquer forma, já documentado como order-dependent).
+
+**QA Agent — validação funcional de RULE-PRES-01 a 15, regra por regra:**
+conforme na esmagadora maioria dos pontos, incluindo os mais sutis (AND
+estrito no gate de rede+geo do login, relógio de servidor nunca do
+cliente, roteamento de consentimento *antes* dos dois gates — não como um
+terceiro AND, condição composta de RULE-PRES-05, cadeia de precedência de
+RULE-PRES-08, natureza 100% read-only do cruzamento de câmera, ausência de
+qualquer botão de resolução automática na tela do professor). Veredito:
+**aprovado com ressalvas.**
+
+**Achado novo, real, não documentado em nenhum lugar antes desta
+validação — sinal anti-spoofing (`isMocked`) de RULE-PRES-09 é coletado e
+persistido, mas nunca lido na avaliação de afastamento:**
+`LocationVerificationService.evaluateDepartureFromClassLocation`/
+`resolveDepartureStartedAt` (`location-verification.service.ts`) percorre
+o histórico de `raw_location_signal` (`signal_type = 'class_monitoring'`)
+sem filtrar `is_mocked = true` em nenhum ponto — uma leitura marcada como
+simulada/dispositivo comprometido é tratada exatamente como uma leitura
+confiável. Contraste confirmado por leitura direta do código: no login
+(RULE-PRES-01), `location-capture.ts` já descarta client-side qualquer
+leitura `mocked`/comprometida antes de sequer enviá-la (a leitura suja
+nunca chega ao servidor); no monitor de sala (RULE-PRES-09),
+`use-class-monitoring.ts` calcula `isMocked` corretamente mas **envia a
+leitura suja do mesmo jeito**, e o backend a persiste e usa sem filtro. A
+"Decisão de tecnologia — Detecção de localização simulada e dispositivo
+comprometido" logo abaixo já aprova as duas camadas anti-spoofing
+explicitamente **"para alimentar `location-verification`
+(RULE-PRES-01/09)"** — as duas regras, não uma — e fixa o comportamento
+esperado em caso de sinal positivo como "o evento simplesmente não entra
+no pipeline de presença", o mesmo padrão não-punitivo já usado em
+RULE-PRES-01. Hoje isso só está implementado para RULE-PRES-01; para
+RULE-PRES-09 o sinal é coletado sem efeito nenhum. **Consequência prática
+de fraude:** um aluno que sai fisicamente da instituição mas mantém um
+app de GPS falso reportando "ainda dentro do raio" nunca dispara o
+gatilho de afastamento prolongado — metade da tecnologia anti-spoofing já
+aprovada está sem efeito. Não é uma leitura ambígua de regra de negócio
+(a tecnologia já foi aprovada explicitamente para os dois casos); é uma
+lacuna de implementação a fechar. **Ainda não corrigido — fica para uma
+próxima rodada de Backend Agent.**
+
+**Ambiguidades textuais já auto-sinaladas pelos próprios agentes de
+implementação, reconfirmadas pelo QA como ainda sem decisão explícita do
+usuário (não são achados novos, apenas continuam abertas):**
+1. RULE-PRES-11 — divergência calculada par-a-par entre os três números
+   (câmera×checkin, câmera×em-sala, checkin×em-sala) em vez de só
+   câmera-vs-outros; leitura defensável, não confirmada.
+2. RULE-PRES-15 — "sem pendência" foi implementado como dispensando
+   apenas a pendência da checagem composta de `APP_CHECKIN`; a rede de
+   segurança `missing_exit` de um `ROOM_ENTRY` sem par continua valendo
+   também para quem está no caminho alternativo — RULE-PRES-15 é silente
+   sobre isso.
+3. Se "presente por login" deveria gatear a ingestão de
+   `class-monitoring-signal` (hoje não gateia — ver "Flagged issues" da
+   subseção anterior).
+
+**Gaps já conhecidos, reconfirmados abertos pelo QA, sem mudança de
+status:** RULE-PRES-08 prioridade 2 "logout explícito" (sempre retorna
+`null`); escrita de `raw_location_signal` para `signal_type =
+'login_checkin'` (RULE-PRES-01(b)).
+
+**Source of confirmation:** Testing Agent + QA Agent, 2026-09-17;
+verificação independente (build, typecheck, suítes completas, leitura
+direta do código de `location-verification.service.ts`/
+`use-class-monitoring.ts`/`location-capture.ts`) feita pela sessão
+principal.
+
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 
 Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como
