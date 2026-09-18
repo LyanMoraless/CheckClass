@@ -29,6 +29,10 @@ export default function AppTabsLayout() {
           list -> detail navigation, not a nested Stack. */}
       <Tabs.Screen name="leadership-class-groups/[classGroupId]" options={{ href: null, title: 'Class group attendance' }} />
       <Tabs.Screen name="account" options={{ title: 'Account' }} />
+      {/* Same href: null idiom as justifications/[submissionId] above — reached from
+          Account's "Location consent" button and from checkin's inline offer banner,
+          never its own tab. */}
+      <Tabs.Screen name="location-consent" options={{ href: null, title: 'Location consent' }} />
     </Tabs>
   );
 }

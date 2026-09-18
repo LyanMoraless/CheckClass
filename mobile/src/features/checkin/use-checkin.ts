@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { NetworkError } from '../../lib/api-client';
 import { generateIdempotencyKey } from '../../lib/idempotency-key';
-import { clearPendingCheckIn, getPendingCheckIn, savePendingCheckIn } from '../../lib/storage/pending-checkin-storage';
-import { describeCheckInError, submitCheckIn, type CheckInResult } from './checkin-api';
+import { clearPendingCheckIn, getPendingCheckIn, savePendingCheckIn, type PendingCheckIn } from '../../lib/storage/pending-checkin-storage';
+import { captureCheckInCoordinates } from './location-capture';
+import { describeCheckInError, submitCheckIn, type CheckInResult, type SubmitCheckInPayload } from './checkin-api';
 
 export type CheckInUiState =
   | { phase: 'idle' }
@@ -26,6 +27,13 @@ export type CheckInUiState =
 // freshly mounted hook instance whose own local `mutation` object has no memory of it — see
 // the guard in retryIfPending() below.
 const CHECK_IN_MUTATION_KEY = ['check-in'];
+
+function toSubmitPayload(pending: PendingCheckIn): SubmitCheckInPayload {
+  return {
+    idempotencyKey: pending.idempotencyKey,
+    coordinates: pending.latitude !== undefined && pending.longitude !== undefined ? { latitude: pending.latitude, longitude: pending.longitude } : undefined,
+  };
+}
 
 export function useCheckIn() {
   const queryClient = useQueryClient();
@@ -63,15 +71,20 @@ export function useCheckIn() {
     const pending = await getPendingCheckIn();
     if (pending) {
       // Already one queued from a previous attempt — resubmit the SAME idempotency key
-      // rather than minting a new one, so this stays correct even if that earlier attempt
-      // actually reached the server and this app session merely lost track of the response.
+      // (and the SAME captured coordinates, if any) rather than minting a new attempt, so
+      // this stays correct even if that earlier attempt actually reached the server and
+      // this app session merely lost track of the response.
       setUiState({ phase: 'queued' });
-      mutation.mutate(pending.idempotencyKey);
+      mutation.mutate(toSubmitPayload(pending));
       return;
     }
     const idempotencyKey = generateIdempotencyKey();
-    await savePendingCheckIn({ idempotencyKey, queuedAt: new Date().toISOString() });
-    mutation.mutate(idempotencyKey);
+    // Consent/permission/anti-spoofing gate (location-capture.ts) — runs once, here, before
+    // the payload is even persisted, so a later automatic retry (mount/foreground) reuses
+    // this exact reading instead of re-prompting the OS or silently dropping it.
+    const coordinates = await captureCheckInCoordinates();
+    await savePendingCheckIn({ idempotencyKey, queuedAt: new Date().toISOString(), latitude: coordinates?.latitude, longitude: coordinates?.longitude });
+    mutation.mutate({ idempotencyKey, coordinates });
   }
 
   useEffect(() => {
@@ -85,7 +98,7 @@ export function useCheckIn() {
       // firing one in the first place.
       if (pending && queryClient.isMutating({ mutationKey: CHECK_IN_MUTATION_KEY }) === 0) {
         setUiState({ phase: 'queued' });
-        mutation.mutate(pending.idempotencyKey);
+        mutation.mutate(toSubmitPayload(pending));
       }
     }
 

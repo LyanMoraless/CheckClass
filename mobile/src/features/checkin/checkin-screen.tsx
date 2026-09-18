@@ -1,22 +1,31 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/screen-container';
+import { useClassMonitoringSession } from '../class-monitoring/use-class-monitoring';
+import { LocationConsentOfferBanner } from '../location-consent/location-consent-offer-banner';
 import { useCheckIn } from './use-checkin';
 
 export function CheckInScreen() {
   const { uiState, submit, isSubmitting } = useCheckIn();
 
+  // RULE-PRES-09: "presente por login" starts existing at exactly this moment — a
+  // successful, non-duplicate check-in. See use-class-monitoring.ts's own header
+  // comment for the known relaunch-mid-class limitation of keying off this instead of
+  // a persisted "am I currently checked in" signal (none exists yet).
+  useClassMonitoringSession(uiState.phase === 'success' && uiState.result.created);
+
   return (
     <ScreenContainer>
       <Text style={styles.title}>Check-in</Text>
+      <LocationConsentOfferBanner />
       <View style={styles.body}>
         <Text style={styles.description}>
-          Tap the button below during a scheduled class you're enrolled in. The app automatically figures out which
-          session this belongs to — you don't need to pick one.
+          Tap the button below during a scheduled class you&apos;re enrolled in. The app automatically figures out
+          which session this belongs to — you don&apos;t need to pick one.
         </Text>
 
         {uiState.phase === 'queued' && (
           <Text style={styles.queuedBanner}>
-            Your check-in is saved on this device and will be sent automatically once you're back online.
+            Your check-in is saved on this device and will be sent automatically once you&apos;re back online.
           </Text>
         )}
         {uiState.phase === 'success' && (

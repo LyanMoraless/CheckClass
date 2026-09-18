@@ -1,9 +1,11 @@
+import { useRouter } from 'expo-router';
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../../components/screen-container';
 import { useAuth } from '../auth/auth-context';
 
 export function AccountScreen() {
   const { logout } = useAuth();
+  const router = useRouter();
 
   function handleLogout(): void {
     // Alert.alert has no confirm/cancel dialog on web — logging out is a low-risk, easily
@@ -23,6 +25,9 @@ export function AccountScreen() {
     <ScreenContainer>
       <Text style={styles.title}>Account</Text>
       <View style={styles.body}>
+        <Pressable style={styles.secondaryButton} onPress={() => router.push('/location-consent')}>
+          <Text style={styles.secondaryButtonText}>Location monitoring consent</Text>
+        </Pressable>
         <Pressable style={styles.button} onPress={handleLogout}>
           <Text style={styles.buttonText}>Log out</Text>
         </Pressable>
@@ -48,6 +53,18 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#208aef',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#208aef',
     fontSize: 16,
     fontWeight: '600',
   },

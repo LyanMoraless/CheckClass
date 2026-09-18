@@ -6,13 +6,31 @@ export interface CheckInResult {
   created: boolean;
 }
 
+// RULE-PRES-01(b)/RULE-PRES-14/15: AppCheckinDto.latitude/longitude are optional on
+// purpose — a titular without active location consent (or one whose reading came
+// back untrustworthy, see location-capture.ts) legitimately submits with no
+// coordinates at all, never a 400. See that DTO's own comment.
+export interface CheckInCoordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export interface SubmitCheckInPayload {
+  idempotencyKey: string;
+  coordinates?: CheckInCoordinates;
+}
+
 // POST /v1/app-checkin (app-checkin.controller.ts): person-JWT-authenticated, no roomId/
 // capturedAt — RULE-ATT-06's confirmed note means the server resolves the class session
 // purely from the caller's active enrollments + the server's own clock at receipt time. The
 // DTO intentionally does not accept a client-supplied timestamp at all (see
 // AppCheckinDto) — never attempt to add one here.
-export async function submitCheckIn(idempotencyKey: string): Promise<CheckInResult> {
-  return apiClient.post<CheckInResult>('/v1/app-checkin', { idempotencyKey });
+export async function submitCheckIn(payload: SubmitCheckInPayload): Promise<CheckInResult> {
+  return apiClient.post<CheckInResult>('/v1/app-checkin', {
+    idempotencyKey: payload.idempotencyKey,
+    latitude: payload.coordinates?.latitude,
+    longitude: payload.coordinates?.longitude,
+  });
 }
 
 // Gap — "Overlapping simultaneous class sessions in app check-in" (pending-decisions.md):

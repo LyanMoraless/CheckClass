@@ -6346,6 +6346,125 @@ inventada.
 **Source of confirmation:** Frontend Agent, 2026-09-17 (implementação e
 verificação).
 
+### Implementação — App Mobile (Fluxo de Chamada Redesenhado) (2026-09-17)
+
+Última etapa de superfície visível desta frente: duas capacidades novas
+no App Mobile do Aluno, sobre a tela de check-in já existente, mais a
+integração real das duas tecnologias já aprovadas em "Decisão de
+tecnologia — Detecção de localização simulada e dispositivo
+comprometido" logo abaixo.
+
+**1. Captura de coordenadas no check-in (RULE-PRES-01/02) —
+`mobile/src/features/checkin/location-capture.ts`:** antes de sequer
+tentar capturar, consulta `GET /v1/me/location-consent`; sem
+consentimento ativo, a localização nunca é sequer solicitada ao SO
+(RULE-PRES-15). Com consentimento, pede permissão (se ainda não
+concedida), lê a posição atual e aplica os dois sinais de
+anti-spoofing já aprovados — campo `mocked` do próprio `expo-location`
+(camada 1) e Talsec freeRASP via `mobile-security-signals.ts` (camada
+2, `isDeviceIntegrityCompromised`/`isLocationSpoofingDetected`). Toda
+falha (sem consentimento, permissão negada, falha do SO, leitura não
+confiável) resolve para `undefined`, nunca lança exceção — o check-in
+em si sempre é tentado, com ou sem coordenadas, mesma disciplina que
+`AppCheckinDto.latitude`/`longitude` opcionais já fixam do lado do
+backend. `use-checkin.ts`/`checkin-api.ts`/`pending-checkin-storage.ts`
+foram estendidos para carregar a coordenada capturada (quando existir)
+através do fluxo de fila offline/retry já existente — a mesma leitura é
+reenviada, nunca uma nova é solicitada ao SO numa retentativa.
+
+**2. Módulo `mobile-security-signals.ts`
+(`backend/src/lib/mobile-security-signals.ts` — caminho correto:
+`mobile/src/lib/mobile-security-signals.ts`):** integra Talsec
+freeRASP com escopo deliberadamente restrito ao que RULE-PRES-01/09
+exigem — apenas dois sinais wired (`isDeviceIntegrityCompromised`,
+fundindo `privilegedAccess`/`hooks`/`bootloader`/`simulator` numa única
+flag, já que a regra não distingue entre eles; e
+`isLocationSpoofingDetected`, sinal próprio). As demais capacidades do
+freeRASP (detecção de captura de tela, malware, ADB, VPN,
+multi-instância, integridade do app) foram deliberadamente **não**
+integradas — fora do escopo desta regra, não decidido aqui.
+`killOnBypass: false` sempre — mesma postura não-punitiva de
+RULE-PRES-01 (login continua funcionando normalmente mesmo com um
+gate falhando), estendida a esta camada. Montado uma única vez, para o
+app inteiro (`app/_layout.tsx`), não escopado ao check-in — um
+dispositivo comprometido já é comprometido antes do tap.
+
+**3. Monitor de localização de vida curta (RULE-PRES-09) —
+`mobile/src/features/class-monitoring/use-class-monitoring.ts`:** ativo
+**somente** enquanto `uiState.phase === 'success' && uiState.result.created`
+(o exato momento em que "presente por login" começa a valer), nunca em
+segundo plano fora desse contexto (`app.json` desabilita
+explicitamente localização em background em Android e iOS — mesma
+restrição arquitetural de "nunca stream contínuo"). Usa
+`Location.watchPositionAsync` com `distanceInterval`/`timeInterval`
+(25m / 60s, escolha técnica deste agente dentro da restrição de
+"eventos discretos, não stream" — não fixados por nenhuma regra de
+negócio) para emitir só transições, nunca uma posição a cada instante.
+Reconsulta o consentimento do mesmo cache compartilhado da tela de
+consentimento — uma revogação no meio da aula interrompe o monitor sem
+poll dedicado.
+
+**4. GAP REAL, confirmado por grep no backend, não presumido — falta o
+endpoint de ingestão de `raw_location_signal`:** `class-monitoring-api.ts`
+constrói exatamente o payload que o sinal discreto de RULE-PRES-09
+precisa (`classSessionId`, `latitude`/`longitude`, `accuracyMeters`,
+`isMocked`), mas **não existe hoje nenhum endpoint de backend que
+receba esse envio** — `LocationVerificationService.evaluateDepartureFromClassLocation`
+já *lê* `raw_location_signal` (ver "Implementação — room-presence e
+integração dos três gates" acima), mas nada hoje *escreve* nela. A
+função correspondente (`reportClassMonitoringReading`) é um stub
+deliberado: em `__DEV__`, loga um aviso e descarta a leitura, em vez de
+chamar um endpoint inventado. Consequência prática enquanto este gap
+não for fechado: `evaluateDepartureFromClassLocation` nunca encontra
+histórico para avaliar (RULE-PRES-08 prioridade 2, perna de
+"afastamento prolongado", já cai sempre em prioridade 3 —
+`room-presence.service.ts`'s own comment já documentava esse caminho
+como `null` até a rodada de App Mobile; este é exatamente o momento,
+mas falta a última peça). **Fica como próxima etapa de Backend**:
+desenhar o contrato do endpoint (rota, autenticação — provavelmente o
+mesmo padrão JWT+`personId` do próprio `POST /v1/app-checkin`,
+idempotência) e implementá-lo.
+
+**5. Tela/fluxo de consentimento (RULE-PRES-14) —
+`mobile/src/features/location-consent/`:** `location-consent-screen.tsx`
+(texto integral do termo de RULE-PRES-14, conceder/recusar/revogar,
+acessível a partir de Account) e `location-consent-offer-banner.tsx`
+(oferta ambiente no topo da tela de check-in, mesmo idioma já usado
+pelo portal web para a oferta de vínculo de dispositivo da Frente 12 —
+dispensar não é o mesmo que recusar, só adia a decisão).
+
+**6. Pendência sinalizada, não decidida — credenciais reais do Talsec:**
+`buildTalsecConfig()` só inicia o freeRASP quando
+`EXPO_PUBLIC_FREERASP_WATCHER_MAIL`/`EXPO_PUBLIC_FREERASP_ANDROID_CERT_HASHES`/
+`EXPO_PUBLIC_FREERASP_IOS_TEAM_ID` estiverem preenchidas — nenhuma
+organização provisionou uma conta Talsec real ainda. Sem elas, o app
+nunca quebra nem bloqueia — a detecção degrada para camada 1 apenas
+(`mocked` do `expo-location`). Mesmo ponto já registrado como ressalva
+não-bloqueante na "Decisão de tecnologia" abaixo (custo do freeRASP na
+escala do projeto, a confirmar diretamente com a Talsec).
+
+**Verificação independente feita pela sessão principal:** `npm run
+typecheck` limpo; suíte completa rodada (72/72 testes, 11/11 suítes
+verdes); `npm run lint` mostra 7 erros/1 warning pré-existentes em
+telas não tocadas por esta rodada (`absence-justification/*`,
+`pending-reviews-screen.tsx`) — confirmado que nenhum arquivo tocado
+por esta implementação está entre eles.
+
+**Não tocado nesta rodada:** o endpoint de ingestão de
+`raw_location_signal` (gap real, item 4 acima); qualquer mudança em
+backend/frontend; resiliência a app morto/relançado no meio de uma aula
+(o monitor não retoma sozinho — sinalizado no próprio código de
+`use-class-monitoring.ts`, não bloqueante para este round: não há hoje
+nenhum caminho funcional que dependa disso, já que o endpoint de
+ingestão também não existe).
+**Source of confirmation:** Mobile Agent, 2026-09-17 (implementação);
+verificação independente da sessão principal no mesmo dia (typecheck,
+lint, suíte de testes, leitura do código) — a documentação desta seção
+foi escrita pela sessão principal porque o Mobile Agent foi interrompido
+por limite de sessão antes de chegar a este passo, não porque o
+trabalho ficou incompleto (implementação e testes já estavam prontos e
+verificados quando a interrupção ocorreu).
+
 ## Decisão de tecnologia — Detecção de localização simulada e dispositivo comprometido, App Mobile (APROVADA — 2026-09-15)
 
 Proposta do Tech Decision Agent, aprovada pelo usuário exatamente como

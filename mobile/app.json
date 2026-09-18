@@ -48,7 +48,22 @@
           }
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "CheckClass uses your device location, only with your consent, to confirm attendance at check-in and to detect a prolonged departure while a class you're checked into is in progress. Never collected in the background.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "freerasp-react-native",
+        {}
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

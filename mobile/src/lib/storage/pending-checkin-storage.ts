@@ -14,6 +14,13 @@ export interface PendingCheckIn {
   // Informational only (when the app queued this submission) — never sent to the server;
   // RULE-ATT-06 resolves the session strictly from the server's own clock at receipt time.
   queuedAt: string;
+  // Captured once, at the moment of the original tap (location-capture.ts) — persisted here
+  // so a queued/retried submission resends the SAME reading rather than re-prompting the OS
+  // for location (or silently dropping it) on a later retry/app relaunch. Absent whenever
+  // location-capture.ts itself returned undefined (no active consent, permission denied, or
+  // an untrustworthy reading) — same optionality as AppCheckinDto.latitude/longitude.
+  latitude?: number;
+  longitude?: number;
 }
 
 export async function savePendingCheckIn(pending: PendingCheckIn): Promise<void> {

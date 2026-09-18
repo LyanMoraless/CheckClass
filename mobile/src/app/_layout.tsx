@@ -4,8 +4,14 @@ import { Loading } from '../components/loading';
 import { ScreenContainer } from '../components/screen-container';
 import { AuthProvider, useAuth } from '../features/auth/auth-context';
 import { queryClient } from '../lib/query-client';
+import { useMobileSecuritySignals } from '../lib/mobile-security-signals';
 
 export default function RootLayout() {
+  // Runs for the app's whole lifetime, not scoped to check-in/class-monitoring —
+  // see mobile-security-signals.ts's own header comment (Tech Decision, camada 2
+  // of RULE-PRES-01/09's anti-spoofing design).
+  useMobileSecuritySignals();
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
