@@ -5775,6 +5775,19 @@ dia deste addendum (ver seção "Consistência" daquele documento).
    caminho de concessão original (antes de qualquer suspeita de
    menoridade).
 
+   > **Nota de fechamento (achado do Project Guardian, 2026-09-17):** esta
+   > pergunta nunca chegou a passar formalmente pelo agente de Security —
+   > o Backend Agent a resolveu diretamente na rodada seguinte (ver
+   > "Decisão não trivial — gate de menor no auto-consentimento",
+   > subseção "Implementação — location-verification e location-consent"
+   > logo abaixo), bloqueando `grantForSelf` para `isMinor === true`
+   > (`ForbiddenException`, obrigando o caminho do responsável legal). A
+   > escolha é a protetiva/conservadora e consistente com o resto do
+   > projeto — não é uma violação de regra de negócio — mas o loop nunca
+   > foi fechado formalmente com Security. Registrado para rastreabilidade,
+   > não bloqueante; retomar apenas se o usuário/Security quiser uma
+   > confirmação retroativa explícita.
+
 **Source of confirmation:** Project Guardian Agent, 2026-09-16 (achado de
 inconsistência); Solution Architect Agent, 2026-09-16 (reconciliação —
 módulo separado, nome mantido, schema reaproveitado sem migration).
@@ -6373,8 +6386,7 @@ através do fluxo de fila offline/retry já existente — a mesma leitura é
 reenviada, nunca uma nova é solicitada ao SO numa retentativa.
 
 **2. Módulo `mobile-security-signals.ts`
-(`backend/src/lib/mobile-security-signals.ts` — caminho correto:
-`mobile/src/lib/mobile-security-signals.ts`):** integra Talsec
+(`mobile/src/lib/mobile-security-signals.ts`):** integra Talsec
 freeRASP com escopo deliberadamente restrito ao que RULE-PRES-01/09
 exigem — apenas dois sinais wired (`isDeviceIntegrityCompromised`,
 fundindo `privilegedAccess`/`hooks`/`bootloader`/`simulator` numa única
