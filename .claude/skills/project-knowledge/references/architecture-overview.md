@@ -6673,8 +6673,26 @@ app de GPS falso reportando "ainda dentro do raio" nunca dispara o
 gatilho de afastamento prolongado — metade da tecnologia anti-spoofing já
 aprovada está sem efeito. Não é uma leitura ambígua de regra de negócio
 (a tecnologia já foi aprovada explicitamente para os dois casos); é uma
-lacuna de implementação a fechar. **Ainda não corrigido — fica para uma
-próxima rodada de Backend Agent.**
+lacuna de implementação a fechar.
+
+> **FECHADO (2026-09-17), mesma sessão:** o usuário optou por fechar o
+> gap imediatamente em vez de deixá-lo como pendência.
+> `LocationVerificationService.evaluateDepartureFromClassLocation`/
+> `resolveDepartureStartedAt` (`location-verification.service.ts`) agora
+> excluem leituras `isMocked = true` tanto na leitura atual (novo
+> parâmetro `isMocked`, força `isWithinRadius = false`, nunca deixa uma
+> leitura suja provar "voltou para dentro do raio") quanto no histórico
+> usado para resolver `departureStartedAt` (`isMocked: false` direto no
+> `where` da query) — mesma postura não-punitiva já usada em RULE-PRES-01:
+> a leitura simplesmente não entra na avaliação, nunca bloqueio duro.
+> `RoomPresenceService.resolveDepartureExitAt` (o único chamador real
+> hoje) passa a repassar `latestReading.isMocked`. Testes novos em
+> `location-verification.service.spec.ts` e `room-presence.service.spec.ts`
+> cobrem leitura atual suja, leitura histórica suja, e ausência de
+> regressão para leituras limpas — suíte completa do backend verificada
+> independentemente pela sessão principal (1170/1172, mesmas 2 falhas
+> pré-existentes não relacionadas). **Source of confirmation:** Usuário,
+> 2026-09-17 ("Fechar o gap agora via Backend Agent").
 
 **Ambiguidades textuais já auto-sinaladas pelos próprios agentes de
 implementação, reconfirmadas pelo QA como ainda sem decisão explícita do
