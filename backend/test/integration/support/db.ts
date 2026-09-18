@@ -96,6 +96,16 @@ export async function cleanupTenants(superuser: Client, tenantIds: string[]): Pr
     'session_attendance_consolidation',
     'presence_interval',
     'identification_checkin',
+    // Fluxo de Chamada Redesenhado (RULE-PRES-01/09) — raw_location_signal
+    // references class_session_id/raw_identification_event_id/person_id, all
+    // still further down/below, with none of those FKs cascading. Must go
+    // before all three (and before tenant itself), same as every other row
+    // in this list; unlike room_presence_event (cascades automatically via
+    // identification_checkin_id ON DELETE CASCADE when identification_checkin
+    // rows above are deleted), this table has no cascading FK anywhere, so it
+    // needs its own explicit entry or a later test's leftover rows will start
+    // failing this cleanup with a FK violation.
+    'raw_location_signal',
     'raw_identification_event',
     'class_session_required_factor',
     'class_session',

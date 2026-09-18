@@ -101,6 +101,45 @@ describe('ClassroomHeadcountReconciliationService', () => {
       expect(result).toEqual({ classSessionId: 'session-1', inProgress: true, roomId: null, windows: [], alertActive: false });
     });
 
+    test('test_evaluateSession_noCameraReadingYet_returnsEmptyWindowsNoAlert', async () => {
+      // Session in progress, effective room resolved, but the camera hasn't
+      // produced a single CAMERA_COUNT reading yet for this room/session
+      // window — zero windows, not one, and definitely no alert.
+      const classSessionRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(inProgressSession) });
+      const { service, manager } = buildService({ classSessionRepo });
+      manager.query
+        .mockResolvedValueOnce([{ roomId: 'room-1' }]) // resolveEffectiveRoomId
+        .mockResolvedValueOnce([]); // findRecentCameraReadings — none yet
+
+      const result = await service.evaluateSession('session-1');
+
+      expect(result).toEqual({ classSessionId: 'session-1', inProgress: true, roomId: 'room-1', windows: [], alertActive: false });
+    });
+
+    test('test_evaluateSession_divergenceJustBelowThresholdWithAllThreeNumbersDifferent_noAlert', async () => {
+      // RULE-PRES-11's threshold is >= 5; this pins the boundary just under
+      // it (4) with all three numbers distinct from each other (camera 30,
+      // app-checkin 34, room-presence 33 — max pairwise diff is |30-34|=4).
+      const classSessionRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(inProgressSession) });
+      const { service, manager, roomPresenceService } = buildService({ classSessionRepo });
+      const latest = new Date('2026-09-17T10:15:00.000Z');
+      const previous = new Date('2026-09-17T10:00:00.000Z');
+      manager.query
+        .mockResolvedValueOnce([{ roomId: 'room-1' }])
+        .mockResolvedValueOnce([
+          { capturedAt: latest, count: 30 },
+          { capturedAt: previous, count: 30 },
+        ])
+        .mockResolvedValueOnce([{ count: '34' }])
+        .mockResolvedValueOnce([{ count: '34' }]);
+      (roomPresenceService.countActiveInRoom as jest.Mock).mockResolvedValueOnce(33).mockResolvedValueOnce(33);
+
+      const result = await service.evaluateSession('session-1');
+
+      expect(result.windows[0].maxDivergence).toBe(4);
+      expect(result.alertActive).toBe(false);
+    });
+
     test('test_evaluateSession_onlyOneCameraReadingYet_notConfirmedNoAlert', async () => {
       const classSessionRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue(inProgressSession) });
       const { service, manager, roomPresenceService } = buildService({ classSessionRepo });

@@ -55,6 +55,18 @@ describe('LocationConsentService', () => {
 
       expect(await service.hasActiveConsent('student-1')).toBe(false);
     });
+
+    // RULE-PRES-14: revocation has the SAME blocking consequence as refusal
+    // (both route the student to RULE-PRES-15's caminho alternativo) — only
+    // 'granted' ever counts as active. Previously only 'refused' was covered
+    // here; 'revoked' is a distinct decision value with its own code path
+    // (revokeForSelf/revokeByGuardian) and deserves its own assertion.
+    test('test_hasActiveConsent_latestIsRevoked_returnsFalse', async () => {
+      const locationConsentSuspension = { getLatestDecision: jest.fn().mockResolvedValue({ decision: 'revoked' }) };
+      const { service } = buildService({ locationConsentSuspension });
+
+      expect(await service.hasActiveConsent('student-1')).toBe(false);
+    });
   });
 
   describe('grantForSelf', () => {

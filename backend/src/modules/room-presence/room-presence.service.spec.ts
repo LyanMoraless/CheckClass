@@ -330,5 +330,70 @@ describe('RoomPresenceService', () => {
 
       expect(result).toEqual({ closedIntervals: [], hasOpenInterval: false, openIntervalEntryAt: null });
     });
+
+    // Edge case not previously covered: two consecutive ROOM_ENTRY rows with
+    // no ROOM_EXIT between them (device/dedup anomaly — a second tag-in
+    // before the first was ever closed out). The service logs a warning and
+    // treats the LATER entry as the active one; the earlier entry is
+    // silently dropped rather than producing a spurious extra interval.
+    test('test_getSessionProjectedInterval_twoConsecutiveEntriesWithNoExitBetween_treatsLaterEntryAsActive', async () => {
+      const firstEntryAt = new Date('2026-08-21T10:00:00.000Z');
+      const secondEntryAt = new Date('2026-08-21T10:05:00.000Z');
+      const exitAt = new Date('2026-08-21T10:20:00.000Z');
+      const rows = [entryRow(firstEntryAt.toISOString()), entryRow(secondEntryAt.toISOString()), exitRow(exitAt.toISOString())];
+      const roomPresenceEventRepo = createMockRepository({ find: jest.fn().mockResolvedValue(rows) });
+      const { service } = buildService({ roomPresenceEventRepo });
+
+      const result = await service.getSessionProjectedInterval('person-1', 'session-1');
+
+      expect(result).toEqual({
+        closedIntervals: [{ entryAt: secondEntryAt, exitAt }],
+        hasOpenInterval: false,
+        openIntervalEntryAt: null,
+      });
+    });
+
+    // Two ROOM_EXIT rows in a row with nothing to pair the second one with —
+    // both are unmatched-exit cases (the first pairs correctly, the trailing
+    // one has no preceding open entry) and must both be ignored rather than
+    // throwing or fabricating a negative-length interval.
+    test('test_getSessionProjectedInterval_twoConsecutiveUnmatchedExits_bothIgnoredAfterThePairedOne', async () => {
+      const entryAt = new Date('2026-08-21T10:00:00.000Z');
+      const firstExitAt = new Date('2026-08-21T10:20:00.000Z');
+      const secondExitAt = new Date('2026-08-21T10:25:00.000Z');
+      const rows = [entryRow(entryAt.toISOString()), exitRow(firstExitAt.toISOString()), exitRow(secondExitAt.toISOString())];
+      const roomPresenceEventRepo = createMockRepository({ find: jest.fn().mockResolvedValue(rows) });
+      const { service } = buildService({ roomPresenceEventRepo });
+
+      const result = await service.getSessionProjectedInterval('person-1', 'session-1');
+
+      expect(result.closedIntervals).toEqual([{ entryAt, exitAt: firstExitAt }]);
+      expect(result.hasOpenInterval).toBe(false);
+    });
+
+    // RULE-PRES-08 priority 2's second leg (explicit app logout) has no
+    // backend signal yet — resolveExplicitLogoutAt is hardcoded to return
+    // null (see that method's own comment, a documented gap, not a bug).
+    // This test pins that behavior down explicitly: an open interval with no
+    // tag-out ALWAYS falls through to the location-departure check, never
+    // short-circuits on a logout signal that doesn't exist. If a real logout
+    // signal is ever wired in, this test should start failing and needs to
+    // be revisited alongside it.
+    test('test_getSessionProjectedInterval_noExitRow_alwaysEvaluatesLocationDepartureNeverAnExplicitLogoutSignal', async () => {
+      const rows = [entryRow('2026-08-21T10:00:00.000Z')];
+      const roomPresenceEventRepo = createMockRepository({ find: jest.fn().mockResolvedValue(rows) });
+      const classSessionRepo = createMockRepository({ findOneBy: jest.fn().mockResolvedValue({ id: 'session-1', scheduledEnd: new Date() }) });
+      const rawLocationSignalRepo = createMockRepository({ findOne: jest.fn().mockResolvedValue(null) });
+      const { service, locationVerificationService } = buildService({ roomPresenceEventRepo, classSessionRepo, rawLocationSignalRepo });
+
+      await service.getSessionProjectedInterval('person-1', 'session-1');
+
+      // No location signal history at all AND no logout signal exists (gap):
+      // evaluateDepartureFromClassLocation is never even reached in this
+      // specific case (no reading to evaluate — see resolveDepartureExitAt's
+      // own early return), which is itself proof no logout short-circuit
+      // fired first to close the interval a different way.
+      expect(locationVerificationService.evaluateDepartureFromClassLocation).not.toHaveBeenCalled();
+    });
   });
 });

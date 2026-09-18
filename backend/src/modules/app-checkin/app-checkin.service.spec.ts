@@ -286,6 +286,20 @@ describe('AppCheckinService', () => {
       expect(queue.sendWithManager).not.toHaveBeenCalled();
     });
 
+    test('test_submit_bothNetworkAndRadiusFail_returnsSuccessWithoutInsertingOrEnqueuing', async () => {
+      // Both anti-fraud legs failing at once (student neither on the
+      // institutional network nor within the geographic radius) must take
+      // the exact same silent-success path as either failing alone — no
+      // special-cased behavior for the "fails both" combination.
+      const { service, manager, queue } = buildService({ withinNetwork: false, withinRadius: false });
+
+      const result = await service.submit(personId, dto, sourceIp);
+
+      expect(result).toEqual({ created: false, eventId: null });
+      expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+      expect(queue.sendWithManager).not.toHaveBeenCalled();
+    });
+
     test('test_submit_coordinatesAbsentFromDto_treatedAsFailedGeoGateWithoutCallingLocationVerification', async () => {
       // RULE-PRES-15's caminho alternativo caller legitimately omits
       // coordinates (see AppCheckinDto's own comment) — but that path is
