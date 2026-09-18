@@ -4251,3 +4251,51 @@ Não são esquecimentos — foram apresentados e mantidos por decisão:
 **Source of confirmation:** Usuário, 2026-09-14, ao longo de uma sessão
 inteira de perguntas e respostas, com cada decisão confirmada
 individualmente.
+
+## Levantamento de status de todas as frentes (2026-09-17)
+
+Pedido do usuário: "quantos % faltam para finalizarmos todos nossos
+afazeres?". Levantamento feito lendo `pending-decisions.md` por completo e
+cruzando com `architecture-overview.md`/código real. Estimativa é uma
+aproximação com pesos, não um número exato — registrada aqui para não se
+perder entre sessões (mesmo motivo do bloco HANDOFF de 2026-09-02).
+
+**As 13 frentes numeradas (1-11 do HANDOFF de 2026-09-02, mais 12 e 13):**
+
+| # | Frente | Status |
+|---|---|---|
+| 1 | Reconciliação documentação ↔ código | Parcial — falta etapa 3 (Documentation Agent, `.doc/*.html`) |
+| 2 | Dívida de decisões fechadas ("empresa", `follow_camera_events`) | Concluída |
+| 3 | Portal de autoatendimento web | Concluída |
+| 4 | Área de Provas | Concluída |
+| 5 | Turma com várias matérias (RULE-INST-14) | Planejamento pronto, **implementação não iniciada** |
+| 6 | Frequência acumulada + aviso de limite | Concluída |
+| 7 | Justificativa de faltas | Concluída |
+| 8 | Segurança de Intrusão, 1ª rodada | **Bloqueada** — tecnologia de contagem exata (RULE-SEC-05) rejeitada em 2026-09-14 sem substituto (mas o recorte de sala de aula foi resolvido pelo Fluxo de Chamada Redesenhado); tela de Áreas/Blocos nunca construída; RULE-SEC-03 travada no vídeo ao vivo adiado |
+| 9 | App mobile | Provavelmente concluída (3 telas web-only implementadas em 2026-09-14), mas **sem Testing/QA/Project Guardian formal registrado** |
+| 10 | Conformidade LGPD e retenção | Concluída — resíduo pequeno: RULE-RET-04/05/06 sem implementação de código |
+| 11 | Débitos técnicos menores | Majoritariamente resolvida, 2-3 itens pequenos sem prazo |
+| 12 | Vínculo de Dispositivo Institucional | Concluída (Testing+QA+Project Guardian rodaram) — resíduo pequeno de guard de endpoint |
+| 13 | Verificação facial no login | Só gaps periféricos fechados — **arquitetura/tecnologia/código não iniciados**, GAP-07 (tecnologia de reconhecimento facial) em aberto |
+
+**Fora da numeração, concluído nesta sessão:** Fluxo de Chamada
+Redesenhado (RULE-PRES-01 a 15) — substituiu a direção técnica original
+da Frente 08 para o recorte específico de sala de aula, não resolve os
+outros itens bloqueados da Frente 08 acima.
+
+**Fora da contagem — escopo ainda não definido, não é frente pendente:**
+Inteligência Artificial (hipótese, 4ª prioridade, sem decisão de escopo).
+
+**Fora da contagem — adiado por decisão do usuário, não é dívida:**
+"Atividades" no app mobile; RULE-SEC-04 (bloqueio automático de portas);
+vídeo ao vivo das câmeras; paginação do cronograma mobile.
+
+**Estimativa aproximada:** ~75-80% das 13 frentes numeradas concluídas ou
+quase concluídas, com a maior parte do restante concentrada em 3 frentes:
+5 (não iniciada), 8 (bloqueada por decisão de tecnologia pendente) e 13
+(não iniciada). Não é um número exato — é uma aproximação ponderada por
+frente, não por linha de código ou esforço real.
+
+**Source of confirmation:** Levantamento feito por subagente de pesquisa
+a pedido da sessão principal, 2026-09-17, com leitura integral de
+`pending-decisions.md` e grep dirigido em `architecture-overview.md`.
